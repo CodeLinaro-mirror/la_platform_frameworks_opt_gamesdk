@@ -18,7 +18,6 @@ package com.google.androidgamesdk;
 import static android.view.inputmethod.EditorInfo.IME_ACTION_DONE;
 import static android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN;
 
-import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -44,9 +43,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.DisplayCutoutCompat;
 import androidx.core.view.OnApplyWindowInsetsListener;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 import com.google.androidgamesdk.gametextinput.GameTextInput;
 import com.google.androidgamesdk.gametextinput.InputConnection;
 import com.google.androidgamesdk.gametextinput.Listener;
@@ -89,7 +86,7 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     int action = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) ? event.getActionButton() : 0;
     int cls = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ? event.getClassification() : 0;
 
-    return onTouchEventNative(mNativeHandle, event, event.getPointerCount(), event.getHistorySize(),
+    return onTouchEventNative(nativeHandle, event, event.getPointerCount(), event.getHistorySize(),
         event.getDeviceId(), event.getSource(), event.getAction(), event.getEventTime(),
         event.getDownTime(), event.getFlags(), event.getMetaState(), action, event.getButtonState(),
         cls, event.getEdgeFlags(), event.getXPrecision(), event.getYPrecision());
@@ -106,6 +103,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   @Override
   public boolean onGenericMotionEvent(MotionEvent event) {
+    if (isNativeDestroyed()) {
+      return false;
+    }
     if (processMotionEvent(event)) {
       return true;
     } else {
@@ -115,7 +115,10 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   @Override
   public boolean onKeyUp(final int keyCode, KeyEvent event) {
-    if (onKeyUpNative(mNativeHandle, event)) {
+    if (isNativeDestroyed()) {
+      return false;
+    }
+    if (onKeyUpNative(nativeHandle, event)) {
       return true;
     } else {
       return super.onKeyUp(keyCode, event);
@@ -124,7 +127,10 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   @Override
   public boolean onKeyDown(final int keyCode, KeyEvent event) {
-    if (onKeyDownNative(mNativeHandle, event)) {
+    if (isNativeDestroyed()) {
+      return false;
+    }
+    if (onKeyDownNative(nativeHandle, event)) {
       return true;
     } else {
       return super.onKeyDown(keyCode, event);
@@ -134,11 +140,17 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
   // Called when the IME has changed the input
   @Override
   public void stateChanged(State newState, boolean dismissed) {
-    onTextInputEventNative(mNativeHandle, newState);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onTextInputEventNative(nativeHandle, newState);
   }
 
   @Override
   public void onGlobalLayout() {
+    if (isNativeDestroyed()) {
+      return;
+    }
     mSurfaceView.getLocationInWindow(mLocation);
     int w = mSurfaceView.getWidth();
     int h = mSurfaceView.getHeight();
@@ -150,10 +162,8 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
       mLastContentWidth = w;
       mLastContentHeight = h;
 
-      if (!mDestroyed) {
-        onContentRectChangedNative(
-            mNativeHandle, mLastContentX, mLastContentY, mLastContentWidth, mLastContentHeight);
-      }
+      onContentRectChangedNative(
+          nativeHandle, mLastContentX, mLastContentY, mLastContentWidth, mLastContentHeight);
     }
   }
 
@@ -168,7 +178,20 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
       mSurfaceView.mInputConnection.setState(s);
   }
 
-  private long mNativeHandle;
+  /*
+   *   Android can create new activity before completely destroying previous one:
+   *   ActivityA->onPause
+   *   ActivityB->onCreate
+   *   ActivityB->onResume
+   *   ActivityA->onStop
+   *   ActivityA->onDestroy
+   *
+   *   This can be reproduced as calling Finish for activity A and quickly launch the same app.
+   *
+   *   Current implementation assumes native code should be only one per process.
+   */
+  static private GameActivity nativeHandleOwner = null;
+  static private long nativeHandle = 0;
 
   private SurfaceHolder mCurSurfaceHolder;
 
@@ -177,8 +200,6 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
   protected int mLastContentY;
   protected int mLastContentWidth;
   protected int mLastContentHeight;
-
-  protected boolean mDestroyed;
 
   protected native long initializeNativeCode(String internalDataPath, String obbPath,
       String externalDataPath, AssetManager assetMgr, byte[] savedState, Configuration config);
@@ -235,10 +256,14 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   /**
    * Get the pointer to the C `GameActivity` struct associated to this activity.
-   * @return the pointer to the C `GameActivity` struct associated to this activity.
+   * @return the pointer to the C `GameActivity` struct associated to this activity or 0 if there is
+   *     none.
    */
   public long getGameActivityNativeHandle() {
-    return this.mNativeHandle;
+    if (isNativeDestroyed()) {
+      return nativeHandle;
+    }
+    return 0;
   }
 
   /**
@@ -350,18 +375,24 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     if (extPaths != null && extPaths.length > 0) {
       extDir = extPaths[0];
     }
-    mNativeHandle = initializeNativeCode(getAbsolutePath(getFilesDir()),
+
+    if (nativeHandle != 0) {
+      // terminate native code if it is still active in another Activity of the same process
+      terminateNativeCode(nativeHandle);
+    }
+    nativeHandle = initializeNativeCode(getAbsolutePath(getFilesDir()),
         getAbsolutePath(getObbDir()), getAbsolutePath(extDir), getAssets(), nativeSavedState,
         getResources().getConfiguration());
+    nativeHandleOwner = this;
 
-    if (mNativeHandle == 0) {
+    if (nativeHandle == 0) {
       throw new UnsatisfiedLinkError(
           "Unable to initialize native code \"" + path + "\": " + getDlError());
     }
 
     // Set up the input connection
     if (mSurfaceView != null) {
-      setInputConnectionNative(mNativeHandle, mSurfaceView.mInputConnection);
+      setInputConnectionNative(nativeHandle, mSurfaceView.mInputConnection);
     }
 
     super.onCreate(savedInstanceState);
@@ -373,32 +404,45 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   @Override
   protected void onDestroy() {
-    mDestroyed = true;
+    super.onDestroy();
+    if (isNativeDestroyed()) {
+      return;
+    }
+    nativeHandleOwner = null;
     if (mCurSurfaceHolder != null) {
-      onSurfaceDestroyedNative(mNativeHandle);
+      onSurfaceDestroyedNative(nativeHandle);
       mCurSurfaceHolder = null;
     }
 
-    terminateNativeCode(mNativeHandle);
-    super.onDestroy();
+    terminateNativeCode(nativeHandle);
+    nativeHandle = 0;
   }
 
   @Override
   protected void onPause() {
     super.onPause();
-    onPauseNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onPauseNative(nativeHandle);
   }
 
   @Override
   protected void onResume() {
     super.onResume();
-    onResumeNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onResumeNative(nativeHandle);
   }
 
   @Override
   protected void onSaveInstanceState(Bundle outState) {
     super.onSaveInstanceState(outState);
-    byte[] state = onSaveInstanceStateNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    byte[] state = onSaveInstanceStateNative(nativeHandle);
     if (state != null) {
       outState.putByteArray(KEY_NATIVE_SAVED_STATE, state);
     }
@@ -407,69 +451,82 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
   @Override
   protected void onStart() {
     super.onStart();
-    onStartNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onStartNative(nativeHandle);
   }
 
   @Override
   protected void onStop() {
     super.onStop();
-    onStopNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onStopNative(nativeHandle);
   }
 
   @Override
   public void onConfigurationChanged(Configuration newConfig) {
     super.onConfigurationChanged(newConfig);
-    if (!mDestroyed) {
-      onConfigurationChangedNative(mNativeHandle, newConfig);
+    if (isNativeDestroyed()) {
+      return;
     }
+    onConfigurationChangedNative(nativeHandle, newConfig);
   }
 
   @Override
   public void onTrimMemory(int level) {
     super.onTrimMemory(level);
-    if (!mDestroyed) {
-      onTrimMemoryNative(mNativeHandle, level);
+    if (isNativeDestroyed()) {
+      return;
     }
+    onTrimMemoryNative(nativeHandle, level);
   }
 
   @Override
   public void onWindowFocusChanged(boolean hasFocus) {
     super.onWindowFocusChanged(hasFocus);
-    if (!mDestroyed) {
-      onWindowFocusChangedNative(mNativeHandle, hasFocus);
+    if (isNativeDestroyed()) {
+      return;
     }
+    onWindowFocusChangedNative(nativeHandle, hasFocus);
   }
 
   @Override
   public void surfaceCreated(SurfaceHolder holder) {
-    if (!mDestroyed) {
-      mCurSurfaceHolder = holder;
-      onSurfaceCreatedNative(mNativeHandle, holder.getSurface());
+    if (isNativeDestroyed()) {
+      return;
     }
+    mCurSurfaceHolder = holder;
+    onSurfaceCreatedNative(nativeHandle, holder.getSurface());
   }
 
   @Override
   public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-    if (!mDestroyed) {
-      mCurSurfaceHolder = holder;
-      onSurfaceChangedNative(mNativeHandle, holder.getSurface(), format, width, height);
+    if (isNativeDestroyed()) {
+      return;
     }
+    mCurSurfaceHolder = holder;
+    onSurfaceChangedNative(nativeHandle, holder.getSurface(), format, width, height);
   }
 
   @Override
   public void surfaceRedrawNeeded(SurfaceHolder holder) {
-    if (!mDestroyed) {
-      mCurSurfaceHolder = holder;
-      onSurfaceRedrawNeededNative(mNativeHandle, holder.getSurface());
+    if (isNativeDestroyed()) {
+      return;
     }
+    mCurSurfaceHolder = holder;
+    onSurfaceRedrawNeededNative(nativeHandle, holder.getSurface());
   }
 
   @Override
   public void surfaceDestroyed(SurfaceHolder holder) {
-    mCurSurfaceHolder = null;
-    if (!mDestroyed) {
-      onSurfaceDestroyedNative(mNativeHandle);
+    if (isNativeDestroyed()) {
+      return;
     }
+    mCurSurfaceHolder = null;
+    onSurfaceDestroyedNative(nativeHandle);
   }
 
   @Keep
@@ -483,13 +540,16 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
   @Override
   public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+    if (isNativeDestroyed()) {
+      return insets;
+    }
     this.onImeInsetsChanged(insets.getInsets(WindowInsetsCompat.Type.ime()));
     boolean keyboardVisible = isSoftwareKeyboardVisible(insets);
     if (keyboardVisible != softwareKeyboardVisible) {
       softwareKeyboardVisible = keyboardVisible;
       onSoftwareKeyboardVisibilityChanged(keyboardVisible);
     }
-    onWindowInsetsChangedNative(mNativeHandle);
+    onWindowInsetsChangedNative(nativeHandle);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
       // Pass through to the view - we don't want to handle the insets, just observe them.
       v.onApplyWindowInsets(insets.toWindowInsets());
@@ -531,14 +591,20 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
   // From the text input Listener.
   @Override
   public void onSoftwareKeyboardVisibilityChanged(boolean visible) {
-    onSoftwareKeyboardVisibilityChangedNative(mNativeHandle, visible);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onSoftwareKeyboardVisibilityChangedNative(nativeHandle, visible);
   }
 
   // From the text input Listener.
   // Called when editor action is performed.
   @Override
   public void onEditorAction(int action) {
-    onEditorActionNative(mNativeHandle, action);
+    if (isNativeDestroyed()) {
+      return;
+    }
+    onEditorActionNative(nativeHandle, action);
   }
 
   /**
@@ -623,5 +689,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     return insets.isVisible(WindowInsetsCompat.Type.ime());
+  }
+
+  private boolean isNativeDestroyed() {
+    return nativeHandleOwner != this;
   }
 }
