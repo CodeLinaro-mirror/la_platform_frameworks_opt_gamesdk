@@ -127,6 +127,24 @@ std::string WelcomeScene::AboutMessage() {
   return aboutStream.str();
 }
 
+void WelcomeScene::OnPointerDown(int pointerId, const struct PointerCoords *coords) {
+  if (GameActivity_isSoftwareKeyboardVisible(
+          NativeEngine::GetInstance()->GetAndroidApp()->activity)) {
+    return;
+  }
+  UiScene::OnPointerDown(pointerId, coords);
+}
+
+void WelcomeScene::OnPointerUp(int pointerId, const struct PointerCoords *coords) {
+  if (GameActivity_isSoftwareKeyboardVisible(
+          NativeEngine::GetInstance()->GetAndroidApp()->activity)) {
+    GameActivity_hideSoftInput(
+        NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
+    return;
+  }
+  UiScene::OnPointerUp(pointerId, coords);
+}
+
 void WelcomeScene::OnButtonClicked(int id) {
   SceneManager *mgr = SceneManager::GetInstance();
 
@@ -169,6 +187,12 @@ void WelcomeScene::OnButtonClicked(int id) {
   } else if (id == mMemoryButtonId) {
     NativeEngine::GetInstance()->GetMemoryConsumer()->SetActive(true);
   }
+}
+
+bool WelcomeScene::OnBackKeyPressed() {
+  GameActivity_hideSoftInput(
+      NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
+  return true;
 }
 
 void WelcomeScene::OnTextInput() {

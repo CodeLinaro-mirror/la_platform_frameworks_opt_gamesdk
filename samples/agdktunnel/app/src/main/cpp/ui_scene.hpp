@@ -59,7 +59,7 @@ class UiScene : public Scene {
   // must be implemented by subclass
   virtual void OnButtonClicked(int buttonId);
 
-  bool OnBackKeyPressed() { return false; }
+  virtual bool OnBackKeyPressed() { return false; }
 
   virtual void RenderBackground();
 

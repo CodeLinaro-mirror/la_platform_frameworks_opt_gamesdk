@@ -48,9 +48,14 @@ class WelcomeScene : public UiScene {
 
   OwnedGameTextInputState mTextInputState;
 
+  virtual void OnPointerDown(int pointerId, const struct PointerCoords *coords) override;
+  virtual void OnPointerUp(int pointerId, const struct PointerCoords *coords) override;
+
   virtual void RenderBackground() override;
 
   virtual void OnButtonClicked(int id) override;
+
+  virtual bool OnBackKeyPressed() override;
 
   void UpdateWidgetStates();
 
