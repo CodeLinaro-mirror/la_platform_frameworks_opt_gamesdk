@@ -19,6 +19,8 @@ project(tuningfork-testing C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 set (TEST_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../..")
+set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
+
 add_subdirectory( "${TEST_DIR}" test_dir)
 
 include_directories("${TEST_DIR}"

@@ -6,6 +6,8 @@
 cmake_minimum_required(VERSION 3.4.1)
 project(metrics-test)
 
+set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
+
 include_directories(../../../../../../../src/common)
 
 # Build metrics-test native library.

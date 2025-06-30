@@ -5,6 +5,8 @@ project(game-input)
 
 include_directories(src/main/cpp)
 
+set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
+
 # Find the Game Text Input package, exposed via Prefab.
 find_package(game-text-input REQUIRED CONFIG)
 
