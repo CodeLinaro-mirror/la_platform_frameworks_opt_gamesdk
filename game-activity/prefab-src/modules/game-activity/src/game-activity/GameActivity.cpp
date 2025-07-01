@@ -44,6 +44,8 @@
 
 namespace {
 
+static std::atomic<bool> g_methodsRegistered(false);
+
 struct OwnedGameTextInputState {
   OwnedGameTextInputState &operator=(const GameTextInputState &rhs) {
     inner = rhs;
@@ -1269,6 +1271,11 @@ static int jniRegisterNativeMethods(JNIEnv *env, const char *className,
 }
 
 extern "C" int GameActivity_register(JNIEnv *env) {
+  if (g_methodsRegistered.exchange(true)) {
+    // Already registered, do nothing.
+    return JNI_OK;
+  }
+
   ALOGD("GameActivity_register");
   jclass activity_class;
   FIND_CLASS(activity_class, kGameActivityPathName);
@@ -1392,4 +1399,15 @@ Java_com_google_androidgamesdk_GameActivity_initializeNativeCode(
       env, javaGameActivity, internalDataDir, obbDir, externalDataDir,
       jAssetMgr, savedState, javaConfig);
   return nativeCode;
+}
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) __attribute__((weak));
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    JNIEnv* env;
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+    int result = GameActivity_register(env);
+    return (result == 0) ? JNI_VERSION_1_6 : -1;
 }
