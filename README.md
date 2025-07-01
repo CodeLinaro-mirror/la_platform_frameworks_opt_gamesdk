@@ -15,6 +15,21 @@ cd android-games-sdk
 repo init -u https://android.googlesource.com/platform/manifest -b android-games-sdk
 ```
 
+### Build with all prebuilt SDKs
+
+Download the whole repository with all available prebuilt Android SDKs and NDKs (~23GB).
+
+```bash
+repo sync -c -j8
+```
+
+Build static and dynamic libraries for several SDK/NDK pairs.
+
+```bash
+cd gamesdk
+ANDROID_HOME=`pwd`/../prebuilts/sdk ./gradlew packageZip -Plibraries=swappy,tuningfork
+```
+
 ### Build with locally installed SDK/NDK
 
 If the Android SDK is already installed locally, then download only the AGDK source and build tools (~500Mb).
@@ -71,21 +86,6 @@ cd gamesdk
 ANDROID_HOME=`pwd`/../prebuilts/sdk ANDROID_NDK=`pwd`/../prebuilts/ndk/r20 ./gradlew packageLocalZip -Plibraries=swappy -PpackageName=local
 # Build and package Swappy and Tuning Fork in a ZIP file:
 ANDROID_HOME=`pwd`/../prebuilts/sdk ANDROID_NDK=`pwd`/../prebuilts/ndk/r20 ./gradlew packageLocalZip -Plibraries=swappy,tuningfork -PpackageName=localtf
-```
-
-### Build with all prebuilt SDKs
-
-Download the whole repository with all available prebuilt Android SDKs and NDKs (~23GB).
-
-```bash
-repo sync -c -j8
-```
-
-Build static and dynamic libraries for several SDK/NDK pairs.
-
-```bash
-cd gamesdk
-ANDROID_HOME=`pwd`/../prebuilts/sdk ./gradlew packageZip -Plibraries=swappy,tuningfork
 ```
 
 ### Build properties reference
