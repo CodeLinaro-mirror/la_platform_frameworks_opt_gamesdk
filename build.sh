@@ -42,6 +42,7 @@ echo yes | $sdkmanager_path "platforms;android-35"
 echo yes | $sdkmanager_path "platforms;android-31"
 echo yes | $sdkmanager_path "build-tools;35.0.0"
 echo yes | $sdkmanager_path "ndk;23.1.7779620"
+echo yes | $sdkmanager_path "ndk;27.2.12479018"
 
 # Use the distribution path given to the script by the build bot in DIST_DIR. Otherwise,
 # build in the default location.

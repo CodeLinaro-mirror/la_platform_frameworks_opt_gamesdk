@@ -5,7 +5,7 @@ plugins {
 android {
     namespace "com.gametextinput.testbed"
     compileSdk 31
-    ndkVersion "23.1.7779620"
+    ndkVersion "27.2.12479018"
 
     defaultConfig {
         applicationId "com.gametextinput.testbed"
@@ -13,6 +13,11 @@ android {
         targetSdk 35
         versionCode 1
         versionName "1.0"
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
     }
 
     buildTypes {
@@ -33,7 +38,6 @@ android {
     buildFeatures {
         prefab true
     }
-    namespace 'com.gametextinput.testbed'
 }
 
 dependencies {
