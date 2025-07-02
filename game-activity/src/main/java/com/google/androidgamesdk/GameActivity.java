@@ -33,6 +33,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.View.OnGenericMotionListener;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -83,6 +84,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
   protected InputEnabledSurfaceView mSurfaceView;
 
   protected boolean processMotionEvent(MotionEvent event) {
+    if (isNativeDestroyed()) {
+      return false;
+    }
     int action = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) ? event.getActionButton() : 0;
     int cls = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ? event.getClassification() : 0;
 
@@ -90,27 +94,6 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
         event.getDeviceId(), event.getSource(), event.getAction(), event.getEventTime(),
         event.getDownTime(), event.getFlags(), event.getMetaState(), action, event.getButtonState(),
         cls, event.getEdgeFlags(), event.getXPrecision(), event.getYPrecision());
-  }
-
-  @Override
-  public boolean onTouchEvent(MotionEvent event) {
-    if (processMotionEvent(event)) {
-      return true;
-    } else {
-      return super.onTouchEvent(event);
-    }
-  }
-
-  @Override
-  public boolean onGenericMotionEvent(MotionEvent event) {
-    if (isNativeDestroyed()) {
-      return false;
-    }
-    if (processMotionEvent(event)) {
-      return true;
-    } else {
-      return super.onGenericMotionEvent(event);
-    }
   }
 
   @Override
@@ -390,9 +373,29 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
           "Unable to initialize native code \"" + path + "\": " + getDlError());
     }
 
-    // Set up the input connection
     if (mSurfaceView != null) {
+      // Set up the input connection
       setInputConnectionNative(nativeHandle, mSurfaceView.mInputConnection);
+
+      mSurfaceView.setOnGenericMotionListener(new View.OnGenericMotionListener() {
+        @Override
+        public boolean onGenericMotion(View v, MotionEvent event) {
+          if (processMotionEvent(event)) {
+            return true;
+          }
+          return false;
+        }
+      });
+
+      mSurfaceView.setOnTouchListener(new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+          if (processMotionEvent(event)) {
+            return true;
+          }
+          return false;
+        }
+      });
     }
 
     super.onCreate(savedInstanceState);
