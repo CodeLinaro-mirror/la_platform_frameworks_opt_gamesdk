@@ -213,7 +213,7 @@ static void _handle_cmd_proxy(struct android_app *app, int32_t cmd) {
 // }
 
 bool NativeEngine::IsAnimating() {
-  return mHasFocus && mIsVisible && mHasWindow;
+  return mIsVisible && mHasWindow;
 }
 
 static bool _cooked_event_callback(struct CookedEvent *event) {
