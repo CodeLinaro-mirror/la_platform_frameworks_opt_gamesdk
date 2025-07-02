@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     System.loadLibrary("game-input");
   }
 
-  com.gametextinput.testbed.InputEnabledTextView inputEnabledTextView;
+  InputEnabledTextView inputEnabledTextView;
   TextView displayedText;
 
   native void onCreated();
