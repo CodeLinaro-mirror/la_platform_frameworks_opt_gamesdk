@@ -24,6 +24,8 @@ import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -33,7 +35,6 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.View.OnGenericMotionListener;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -279,7 +280,6 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     frameLayout.addView(mSurfaceView);
 
     setContentView(frameLayout);
-    frameLayout.requestFocus();
 
     mSurfaceView.getHolder().addCallback(
         this); // Register as a callback for the rendering of the surface, so that we can pass this
@@ -376,6 +376,18 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     if (mSurfaceView != null) {
       // Set up the input connection
       setInputConnectionNative(nativeHandle, mSurfaceView.mInputConnection);
+
+      if (VERSION.SDK_INT >= VERSION_CODES.O) {
+        mSurfaceView.setOnCapturedPointerListener(new View.OnCapturedPointerListener() {
+          @Override
+          public boolean onCapturedPointer(View v, MotionEvent event) {
+            if (processMotionEvent(event)) {
+              return true;
+            }
+            return false;
+          }
+        });
+      }
 
       mSurfaceView.setOnGenericMotionListener(new View.OnGenericMotionListener() {
         @Override
@@ -494,6 +506,10 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
       return;
     }
     onWindowFocusChangedNative(nativeHandle, hasFocus);
+    if (hasFocus && mSurfaceView != null) {
+      mSurfaceView.setFocusableInTouchMode(true);
+      mSurfaceView.requestFocus();
+    }
   }
 
   @Override
