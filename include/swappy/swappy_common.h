@@ -47,6 +47,7 @@
 #define SWAPPY_SYSTEM_PROP_KEY_DISABLE "swappy.disable"
 
 // Internal macros to track Swappy version, do not use directly.
+#define SWAPPY_VERSION_REVISION 7cd950d0022d01f1e7e2b470aba5a7b1abacdfaa
 #define SWAPPY_MAJOR_VERSION 2
 #define SWAPPY_MINOR_VERSION 3
 #define SWAPPY_BUGFIX_VERSION 0
