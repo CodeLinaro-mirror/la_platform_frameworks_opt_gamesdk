@@ -117,25 +117,26 @@ public class InputTest {
 
   @TestToCombine(group = TestGroup.TYPE_TEXT)
   public void typeText_singleCaracter() {
-    onInputView().perform(typeText("c"));
+    onInputView().perform(typeTextIntoFocusedView("c"));
     checkResultText("c");
   }
 
   @TestToCombine(group = TestGroup.TYPE_TEXT)
   public void typeText_phrase() {
-    onInputView().perform(typeText("123 456"));
+    onInputView().perform(typeTextIntoFocusedView("123 456"));
     checkResultText("123 456");
   }
 
   @TestToCombine(group = TestGroup.TYPE_TEXT)
   public void typeText_selectAll_overwrites() {
-    onInputView().perform(typeText("abcdef"), selectText(0, 6), typeText("xyz"));
+    onInputView().perform(
+        typeTextIntoFocusedView("abcdef"), selectText(0, 6), typeTextIntoFocusedView("xyz"));
     checkResultText("xyz");
   }
 
   @TestToCombine(group = TestGroup.TYPE_TEXT)
   public void typeText_twice() {
-    onInputView().perform(typeText("abc"), typeText("def"));
+    onInputView().perform(typeTextIntoFocusedView("abc"), typeTextIntoFocusedView("def"));
     checkResultText("abcdef");
   }
 
@@ -219,7 +220,8 @@ public class InputTest {
 
   @TestToCombine(group = TestGroup.KEY_DEL)
   public void keyDel_selectionFirstTwoCharacters() {
-    onInputView().perform(setState("mncdef", 0, 2), key(KeyEvent.KEYCODE_DEL), typeText("ab"));
+    onInputView().perform(
+        setState("mncdef", 0, 2), key(KeyEvent.KEYCODE_DEL), typeTextIntoFocusedView("ab"));
     checkResultText("abcdef");
   }
 
@@ -266,10 +268,12 @@ public class InputTest {
     onInputView().perform(setState("abcdefgh", 6, 8), key(KeyEvent.KEYCODE_FORWARD_DEL));
     checkResultText("abcdef");
 
-    onInputView().perform(selectText(0, 2), key(KeyEvent.KEYCODE_FORWARD_DEL), typeText("mn"));
+    onInputView().perform(
+        selectText(0, 2), key(KeyEvent.KEYCODE_FORWARD_DEL), typeTextIntoFocusedView("mn"));
     checkResultText("mncdef");
 
-    onInputView().perform(selectText(1, 4), key(KeyEvent.KEYCODE_FORWARD_DEL), typeText("xyz"));
+    onInputView().perform(
+        selectText(1, 4), key(KeyEvent.KEYCODE_FORWARD_DEL), typeTextIntoFocusedView("xyz"));
     checkResultText("mxyzef");
   }
 
