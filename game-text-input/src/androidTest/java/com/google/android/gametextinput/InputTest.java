@@ -30,17 +30,26 @@ import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.*;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.junit.Assert.assertTrue;
 
+import android.graphics.Typeface;
 import android.os.SystemClock;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import androidx.core.graphics.Insets;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
 import androidx.test.espresso.ViewInteraction;
+import androidx.test.espresso.matcher.BoundedMatcher;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.filters.LargeTest;
 import com.google.androidgamesdk.gametextinput.InputConnection;
+import com.google.androidgamesdk.gametextinput.Listener;
 import com.google.androidgamesdk.gametextinput.State;
 import com.google.common.collect.ImmutableList;
 import java.lang.annotation.ElementType;
@@ -51,6 +60,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
@@ -79,7 +90,9 @@ public class InputTest {
     KEY_DPAD_LEFT,
     KEY_DPAD_RIGHT,
     KEYCODE_MOVE_HOME,
-    KEYCODE_MOVE_END
+    KEYCODE_MOVE_END,
+    IME_VISIBILITY_AND_INSETS,
+    PERFORM_EDITOR_ACTION
   }
 
   @Target({ElementType.METHOD})
@@ -116,7 +129,7 @@ public class InputTest {
   }
 
   @TestToCombine(group = TestGroup.TYPE_TEXT)
-  public void typeText_singleCaracter() {
+  public void typeText_singleCharacter() {
     onInputView().perform(typeTextIntoFocusedView("c"));
     checkResultText("c");
   }
@@ -137,6 +150,13 @@ public class InputTest {
   @TestToCombine(group = TestGroup.TYPE_TEXT)
   public void typeText_twice() {
     onInputView().perform(typeTextIntoFocusedView("abc"), typeTextIntoFocusedView("def"));
+    checkResultText("abcdef");
+  }
+
+  @Test
+  public void typeText_singleLineFilterSpanned() {
+    onInputView().perform(setSingleLine(true));
+    onInputView().perform(typeTextSpanned("abc\ndef"));
     checkResultText("abcdef");
   }
 
@@ -277,6 +297,57 @@ public class InputTest {
     checkResultText("mxyzef");
   }
 
+  private ViewAction typeTextSpanned(String text) {
+    return new ViewAction() {
+      @Override
+      public Matcher<View> getConstraints() {
+        return isDisplayed();
+      }
+
+      @Override
+      public String getDescription() {
+        return "type text spanned";
+      }
+
+      @Override
+      public void perform(UiController uiController, View view) {
+        InputEnabledTextView inputView = (InputEnabledTextView) view;
+        InputConnection ic = inputView.getInputConnection();
+        SpannableString spannableString = new SpannableString(text);
+        spannableString.setSpan(
+            new StyleSpan(Typeface.BOLD), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        ic.commitText(spannableString, 1);
+      }
+    };
+  }
+
+  private ViewAction setSingleLine(boolean singleLine) {
+    return new ViewAction() {
+      @Override
+      public Matcher<View> getConstraints() {
+        return isDisplayed();
+      }
+
+      @Override
+      public String getDescription() {
+        return "sets single line mode";
+      }
+
+      @Override
+      public void perform(UiController uiController, View view) {
+        InputEnabledTextView inputView = (InputEnabledTextView) view;
+        InputConnection ic = inputView.getInputConnection();
+        EditorInfo editorInfo = ic.getEditorInfo();
+        if (singleLine) {
+          editorInfo.inputType &= ~EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE;
+        } else {
+          editorInfo.inputType |= EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE;
+        }
+        ic.setEditorInfo(editorInfo);
+      }
+    };
+  }
+
   @TestToCombine(group = TestGroup.KEY_DPAD_LEFT)
   public void keyDpadLeft_middle() {
     onInputView().perform(
@@ -321,6 +392,42 @@ public class InputTest {
     checkResultText("1abcdefgh2");
   }
 
+  @TestToCombine(group = TestGroup.IME_VISIBILITY_AND_INSETS)
+  public void testImeVisibilityAndInsets() {
+    onInputView().perform(activateSoftKeyboard());
+    onInputView().check(matches(isSoftwareKeyboardVisible(true)));
+    onInputView().check(matches(hasImeInsets(true)));
+    onInputView().perform(deactivateSoftKeyboard());
+    onInputView().check(matches(isSoftwareKeyboardVisible(false)));
+    onInputView().check(matches(hasImeInsets(false)));
+  }
+
+  @TestToCombine(group = TestGroup.PERFORM_EDITOR_ACTION)
+  public void testPerformEditorAction() {
+    final int FAKE_ACTION_ID = 123;
+    AtomicBoolean listenerCalled = new AtomicBoolean(false);
+    Listener listener = new Listener() {
+      @Override
+      public void stateChanged(State state, boolean dismissed) {}
+
+      @Override
+      public void onImeInsetsChanged(Insets insets) {}
+
+      @Override
+      public void onSoftwareKeyboardVisibilityChanged(boolean visible) {}
+
+      @Override
+      public void onEditorAction(int actionId) {
+        if (actionId == FAKE_ACTION_ID) {
+          listenerCalled.set(true);
+        }
+      }
+    };
+    onInputView().perform(setListener(listener));
+    onInputView().perform(performEditorAction(FAKE_ACTION_ID));
+    assertTrue(listenerCalled.get());
+  }
+
   @Test
   public void runCombinedTests_type() {
     runGroupTests(TestGroup.TYPE_TEXT, this.getClass());
@@ -339,6 +446,12 @@ public class InputTest {
     runGroupTests(TestGroup.KEY_DPAD_RIGHT, this.getClass());
     runGroupTests(TestGroup.KEYCODE_MOVE_HOME, this.getClass());
     runGroupTests(TestGroup.KEYCODE_MOVE_END, this.getClass());
+  }
+
+  @Test
+  public void runCombinedTests_Ime() {
+    runGroupTests(TestGroup.IME_VISIBILITY_AND_INSETS, this.getClass());
+    runGroupTests(TestGroup.PERFORM_EDITOR_ACTION, this.getClass());
   }
 
   private ViewInteraction onInputView() {
@@ -520,6 +633,78 @@ public class InputTest {
         ic.onKey(view, keyCode, downEvent);
         KeyEvent upEvent = new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0, 0);
         ic.onKey(view, keyCode, upEvent);
+      }
+    };
+  }
+
+  private static Matcher<View> isSoftwareKeyboardVisible(final boolean isVisible) {
+    return new BoundedMatcher<View, InputEnabledTextView>(InputEnabledTextView.class) {
+      @Override
+      public void describeTo(Description description) {
+        description.appendText("isSoftwareKeyboardVisible: " + isVisible);
+      }
+
+      @Override
+      protected boolean matchesSafely(InputEnabledTextView view) {
+        return view.getInputConnection().isSoftwareKeyboardVisible() == isVisible;
+      }
+    };
+  }
+
+  private static Matcher<View> hasImeInsets(final boolean hasInsets) {
+    return new BoundedMatcher<View, InputEnabledTextView>(InputEnabledTextView.class) {
+      @Override
+      public void describeTo(Description description) {
+        description.appendText("hasImeInsets: " + hasInsets);
+      }
+
+      @Override
+      protected boolean matchesSafely(InputEnabledTextView view) {
+        return (view.getInputConnection().getImeInsets().bottom > 0) == hasInsets;
+      }
+    };
+  }
+
+  private ViewAction performEditorAction(int actionId) {
+    return new ViewAction() {
+      @Override
+      public Matcher<View> getConstraints() {
+        return isDisplayed();
+      }
+
+      @Override
+      public String getDescription() {
+        return "performEditorAction";
+      }
+
+      @Override
+      public void perform(UiController uiController, View view) {
+        InputEnabledTextView inputView = (InputEnabledTextView) view;
+        InputConnection ic = inputView.getInputConnection();
+        ic.performEditorAction(actionId);
+        uiController.loopMainThreadForAtLeast(500);
+      }
+    };
+  }
+
+  private ViewAction setListener(Listener listener) {
+    return new ViewAction() {
+      @Override
+      public Matcher<View> getConstraints() {
+        return isDisplayed();
+      }
+
+      @Override
+      public String getDescription() {
+        return "setListener";
+      }
+
+      @Override
+      public void perform(UiController uiController, View view) {
+        InputEnabledTextView inputView = (InputEnabledTextView) view;
+        InputConnection ic = inputView.getInputConnection();
+        ic.setListener(listener);
+        uiController.loopMainThreadForAtLeast(500);
       }
     };
   }

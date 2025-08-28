@@ -59,7 +59,7 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
    * function works, refer to its documentation. If the suggested change is accepted without
    * modifications, filter() should return null.
    */
-  private class SingeLineFilter implements InputFilter {
+  private class singleLineFilter implements InputFilter {
     public CharSequence filter(
         CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
       boolean keepOriginal = true;
@@ -181,7 +181,7 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
     if ((settings.mEditorInfo.inputType & EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE) == 0) {
       mEditable.setFilters(
           new InputFilter[] {new InputFilter.LengthFilter(MAX_LENGTH_FOR_SINGLE_LINE_EDIT_TEXT),
-              new SingeLineFilter()});
+              new singleLineFilter()});
     } else {
       mEditable.setFilters(new InputFilter[] {});
     }
