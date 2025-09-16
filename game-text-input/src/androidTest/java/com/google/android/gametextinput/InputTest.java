@@ -398,6 +398,7 @@ public class InputTest {
     onInputView().check(matches(isSoftwareKeyboardVisible(true)));
     onInputView().check(matches(hasImeInsets(true)));
     onInputView().perform(deactivateSoftKeyboard());
+    onInputView().perform(sleep(1000)); // IME lingers briefly on older devices.
     onInputView().check(matches(isSoftwareKeyboardVisible(false)));
     onInputView().check(matches(hasImeInsets(false)));
   }
@@ -604,7 +605,7 @@ public class InputTest {
       public void perform(UiController uiController, View view) {
         InputEnabledTextView inputView = (InputEnabledTextView) view;
         InputConnection ic = inputView.getInputConnection();
-        State state = new State(text, selectionStart, selectionEnd, -1, -1);
+        State state = new State(text, selectionStart, selectionEnd, selectionStart, selectionEnd);
         ic.setState(state);
         uiController.loopMainThreadForAtLeast(500);
       }
