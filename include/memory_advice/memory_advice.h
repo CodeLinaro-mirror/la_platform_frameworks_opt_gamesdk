@@ -31,6 +31,19 @@
 extern "C" {
 #endif
 
+#define MEMORY_ADVICE_DEPRECATED_MSG                                                          \
+    "The Memory Advice API is deprecated. Use Android Vitals for Low Memory Kill monitoring " \
+    "(https://developer.android.com/topic/performance/vitals/lmk#lmk_metric_on_android_vitals)."
+
+#ifdef __cplusplus
+#define MEMORY_ADVICE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(__GNUC__) || defined(__clang__)
+#define MEMORY_ADVICE_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#else
+// Fallback for other compilers, does nothing
+#define MEMORY_ADVICE_DEPRECATED(msg)
+#endif
+
 #define MEMORY_ADVICE_VERSION_REVISION 7cd950d0022d01f1e7e2b470aba5a7b1abacdfaa
 #define MEMORY_ADVICE_MAJOR_VERSION 2
 #define MEMORY_ADVICE_MINOR_VERSION 3
@@ -42,6 +55,7 @@ extern "C" {
 /**
  * @brief All the error codes that can be returned by MemoryAdvice functions.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 typedef enum MemoryAdvice_ErrorCode : int32_t {
     MEMORYADVICE_ERROR_OK = 0, ///< No error
     MEMORYADVICE_ERROR_NOT_INITIALIZED =
@@ -59,6 +73,7 @@ typedef enum MemoryAdvice_ErrorCode : int32_t {
 /**
  * @brief All possible memory states that can be reported by the library.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 typedef enum MemoryAdvice_MemoryState : int32_t {
     MEMORYADVICE_STATE_UNKNOWN = 0, ///< The memory state cannot be determined.
     MEMORYADVICE_STATE_OK = 1,      ///< The application can safely allocate memory.
@@ -68,6 +83,7 @@ typedef enum MemoryAdvice_MemoryState : int32_t {
                                      ///< until the memory state changes.
 } MemoryAdvice_MemoryState;
 
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 typedef void (*MemoryAdvice_WatcherCallback)(MemoryAdvice_MemoryState state, void* user_data);
 
 /**
@@ -84,6 +100,7 @@ typedef void (*MemoryAdvice_WatcherCallback)(MemoryAdvice_MemoryState state, voi
  * @return MEMORYADVICE_ERROR_ALREADY_INITIALIZED if Memory Advice was already
  * initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv* env, jobject context);
 
 /**
@@ -105,6 +122,7 @@ MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv* env, jobject context);
  * @return MEMORYADVICE_ERROR_ALREADY_INITIALIZED if Memory Advice was already
  * initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv* env, jobject context,
                                                    const char* params);
 
@@ -118,6 +136,7 @@ MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv* env, jobject context,
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_MemoryState MemoryAdvice_getMemoryState();
 
 /**
@@ -129,6 +148,7 @@ MemoryAdvice_MemoryState MemoryAdvice_getMemoryState();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 int64_t MemoryAdvice_getAvailableMemory();
 
 /**
@@ -140,6 +160,7 @@ int64_t MemoryAdvice_getAvailableMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 float MemoryAdvice_getPercentageAvailableMemory();
 
 /**
@@ -150,6 +171,7 @@ float MemoryAdvice_getPercentageAvailableMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 int64_t MemoryAdvice_getTotalMemory();
 
 /**
@@ -171,6 +193,7 @@ int64_t MemoryAdvice_getTotalMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED if Memory Advice was not yet
  * initialized,
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(uint64_t intervalMillis,
                                                     MemoryAdvice_WatcherCallback callback,
                                                     void* user_data);
@@ -186,6 +209,7 @@ MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(uint64_t intervalMillis,
  * @return MEMORYADVICE_ERROR_WATCHER_NOT_FOUND if the given callback wasn't
  * previously registered.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_ErrorCode MemoryAdvice_unregisterWatcher(MemoryAdvice_WatcherCallback callback);
 
 #ifdef __cplusplus

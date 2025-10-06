@@ -23,6 +23,8 @@
 
 #include <jni.h>
 
+#include "memory_advice/memory_advice.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,7 @@ extern "C" {
  * @see MemoryAdvice_JsonSerialization_free for how to deallocate
  * the memory once finished with the buffer.
  */
-typedef struct MemoryAdvice_JsonSerialization {
+[[deprecated(MEMORY_ADVICE_DEPRECATED_MSG)]] typedef struct MemoryAdvice_JsonSerialization {
     char* json;    ///< String for the json object.
     uint32_t size; ///< Size of the json string.
     ///< Deallocation callback (may be NULL if not owned).
@@ -49,12 +51,14 @@ typedef struct MemoryAdvice_JsonSerialization {
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED if Memory Advice was not yet
  * initialized.
  */
+[[deprecated(MEMORY_ADVICE_DEPRECATED_MSG)]]
 MemoryAdvice_ErrorCode MemoryAdvice_getAdvice(MemoryAdvice_JsonSerialization* advice);
 
 /**
  * @brief Deallocate any memory owned by the json serialization.
  * @param ser A json serialization
  */
+[[deprecated(MEMORY_ADVICE_DEPRECATED_MSG)]]
 void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization* ser);
 
 /**
@@ -64,6 +68,7 @@ void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization* ser);
  * @return non-zero if the tests fail. Error messages will be printed to logcat
  * in this case.
  */
+[[deprecated(MEMORY_ADVICE_DEPRECATED_MSG)]]
 int32_t MemoryAdvice_test();
 
 #ifdef __cplusplus
