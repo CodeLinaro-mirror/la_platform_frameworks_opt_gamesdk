@@ -20,6 +20,7 @@ plugins {
 }
 
 def buildTest =  gradle.startParameter.taskNames.join(' ').contains('connectedAndroidTest')
+        || gradle.startParameter.taskNames.join(' ').contains('createDebugCoverageReport')
 
 buildDir="../../out_paddleboat"
 
