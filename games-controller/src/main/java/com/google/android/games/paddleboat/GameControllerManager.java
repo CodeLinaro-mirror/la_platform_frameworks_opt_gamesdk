@@ -18,14 +18,14 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.BatteryState;
-import android.hardware.input.InputManager;
-import android.hardware.lights.Light;
-import android.hardware.lights.LightState;
-import android.hardware.lights.LightsManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.input.InputManager;
+import android.hardware.lights.Light;
+import android.hardware.lights.LightState;
+import android.hardware.lights.LightsManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.VibrationEffect;
@@ -36,7 +36,7 @@ import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-
+import androidx.annotation.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -801,52 +801,53 @@ public class GameControllerManager {
                 gcInfo.GetGameControllerAxisFuzzArray());
     }
 
-    private String generateSourceString(int source) {
-        String sourceString = "Source Classes: ";
-        int sourceMasked = source & InputDevice.SOURCE_ANY;
-        int sourceClass = source & InputDevice.SOURCE_CLASS_MASK;
+    @VisibleForTesting
+    String generateSourceString(int source) {
+      String sourceString = "Source Classes: ";
+      int sourceMasked = source & InputDevice.SOURCE_ANY;
+      int sourceClass = source & InputDevice.SOURCE_CLASS_MASK;
 
-        if ((sourceClass & InputDevice.SOURCE_CLASS_BUTTON) != 0)
-            sourceString += "BUTTON ";
-        if ((sourceClass & InputDevice.SOURCE_CLASS_JOYSTICK) != 0)
-            sourceString += "JOYSTICK ";
-        if ((sourceClass & InputDevice.SOURCE_CLASS_POINTER) != 0)
-            sourceString += "POINTER ";
-        if ((sourceClass & InputDevice.SOURCE_CLASS_POSITION) != 0)
-            sourceString += "POSITION ";
-        if ((sourceClass & InputDevice.SOURCE_CLASS_TRACKBALL) != 0)
-            sourceString += "TRACKBALL ";
+      if ((sourceClass & InputDevice.SOURCE_CLASS_BUTTON) != 0)
+        sourceString += "BUTTON ";
+      if ((sourceClass & InputDevice.SOURCE_CLASS_JOYSTICK) != 0)
+        sourceString += "JOYSTICK ";
+      if ((sourceClass & InputDevice.SOURCE_CLASS_POINTER) != 0)
+        sourceString += "POINTER ";
+      if ((sourceClass & InputDevice.SOURCE_CLASS_POSITION) != 0)
+        sourceString += "POSITION ";
+      if ((sourceClass & InputDevice.SOURCE_CLASS_TRACKBALL) != 0)
+        sourceString += "TRACKBALL ";
 
-        sourceString += "\nSources: ";
+      sourceString += "\nSources: ";
 
-        if ((sourceMasked & InputDevice.SOURCE_BLUETOOTH_STYLUS) != 0)
-            sourceString += "BLUETOOTH_STYLUS ";
-        if ((sourceMasked & InputDevice.SOURCE_DPAD) != 0)
-            sourceString += "DPAD ";
-        if ((sourceMasked & InputDevice.SOURCE_HDMI) != 0)
-            sourceString += "HDMI ";
-        if ((sourceMasked & InputDevice.SOURCE_JOYSTICK) != 0)
-            sourceString += "JOYSTICK ";
-        if ((sourceMasked & InputDevice.SOURCE_KEYBOARD) != 0)
-            sourceString += "KEYBOARD ";
-        if ((sourceMasked & InputDevice.SOURCE_MOUSE) != 0)
-            sourceString += "MOUSE ";
-        if ((sourceMasked & InputDevice.SOURCE_MOUSE_RELATIVE) != 0)
-            sourceString += "MOUSE_RELATIVE ";
-        if ((sourceMasked & InputDevice.SOURCE_ROTARY_ENCODER) != 0)
-            sourceString += "ROTARY_ENCODER ";
-        if ((sourceMasked & InputDevice.SOURCE_STYLUS) != 0)
-            sourceString += "STYLUS ";
-        if ((sourceMasked & InputDevice.SOURCE_TOUCHPAD) != 0)
-            sourceString += "TOUCHPAD ";
-        if ((sourceMasked & InputDevice.SOURCE_TOUCHSCREEN) != 0)
-            sourceString += "TOUCHSCREEN ";
-        if ((sourceMasked & InputDevice.SOURCE_TOUCH_NAVIGATION) != 0)
-            sourceString += "TOUCH_NAVIGATION ";
-        if ((sourceMasked & InputDevice.SOURCE_TRACKBALL) != 0)
-            sourceString += "TRACKBALL ";
+      if ((sourceMasked & InputDevice.SOURCE_BLUETOOTH_STYLUS) != 0)
+        sourceString += "BLUETOOTH_STYLUS ";
+      if ((sourceMasked & InputDevice.SOURCE_DPAD) != 0)
+        sourceString += "DPAD ";
+      if ((sourceMasked & InputDevice.SOURCE_HDMI) != 0)
+        sourceString += "HDMI ";
+      if ((sourceMasked & InputDevice.SOURCE_JOYSTICK) != 0)
+        sourceString += "JOYSTICK ";
+      if ((sourceMasked & InputDevice.SOURCE_KEYBOARD) != 0)
+        sourceString += "KEYBOARD ";
+      if ((sourceMasked & InputDevice.SOURCE_MOUSE) != 0)
+        sourceString += "MOUSE ";
+      if ((sourceMasked & InputDevice.SOURCE_MOUSE_RELATIVE) != 0)
+        sourceString += "MOUSE_RELATIVE ";
+      if ((sourceMasked & InputDevice.SOURCE_ROTARY_ENCODER) != 0)
+        sourceString += "ROTARY_ENCODER ";
+      if ((sourceMasked & InputDevice.SOURCE_STYLUS) != 0)
+        sourceString += "STYLUS ";
+      if ((sourceMasked & InputDevice.SOURCE_TOUCHPAD) != 0)
+        sourceString += "TOUCHPAD ";
+      if ((sourceMasked & InputDevice.SOURCE_TOUCHSCREEN) != 0)
+        sourceString += "TOUCHSCREEN ";
+      if ((sourceMasked & InputDevice.SOURCE_TOUCH_NAVIGATION) != 0)
+        sourceString += "TOUCH_NAVIGATION ";
+      if ((sourceMasked & InputDevice.SOURCE_TRACKBALL) != 0)
+        sourceString += "TRACKBALL ";
 
-        return sourceString;
+      return sourceString;
     }
 
     private String getAxisString(int axis) {
