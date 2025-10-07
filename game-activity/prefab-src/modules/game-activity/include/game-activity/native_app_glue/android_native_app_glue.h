@@ -436,7 +436,7 @@ enum NativeAppGlueAppCmd : int8_t {
 };
 
 /**
- * Call when ALooper_pollAll() returns LOOPER_ID_MAIN, reading the next
+ * Call when ALooper_pollOnce() returns LOOPER_ID_MAIN, reading the next
  * app command message.
  */
 int8_t android_app_read_cmd(struct android_app* android_app);
