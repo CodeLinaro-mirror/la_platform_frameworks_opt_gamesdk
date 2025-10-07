@@ -27,6 +27,7 @@
 
 #define NATIVE_APP_GLUE_MOTION_EVENTS_DEFAULT_BUF_SIZE 16
 #define NATIVE_APP_GLUE_KEY_EVENTS_DEFAULT_BUF_SIZE 4
+#define NATIVE_APP_GLUE_CMD_WAIT_TIMEOUT_SECONDS 2
 
 #define LOGI(...) \
   ((void)__android_log_print(ANDROID_LOG_INFO, "threaded_app", __VA_ARGS__))
@@ -317,10 +318,12 @@ static struct android_app* android_app_create(GameActivity* activity,
   return android_app;
 }
 
-void android_app_write_cmd(struct android_app* android_app, int8_t cmd) {
+bool android_app_write_cmd(struct android_app* android_app, int8_t cmd) {
   if (write(android_app->msgwrite, &cmd, sizeof(cmd)) != sizeof(cmd)) {
     LOGE("Failure writing android_app cmd: %s", strerror(errno));
+    return false;
   }
+  return true;
 }
 
 static void android_app_set_window(struct android_app* android_app,
@@ -343,9 +346,21 @@ static void android_app_set_window(struct android_app* android_app,
 static void android_app_set_activity_state(struct android_app* android_app,
                                            int8_t cmd) {
   pthread_mutex_lock(&android_app->mutex);
-  android_app_write_cmd(android_app, cmd);
-  while (android_app->activityState != cmd) {
-    pthread_cond_wait(&android_app->cond, &android_app->mutex);
+  if (android_app_write_cmd(android_app, cmd)) {
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += NATIVE_APP_GLUE_CMD_WAIT_TIMEOUT_SECONDS;
+
+    int wait_result = 0;
+    while (android_app->activityState != cmd) {
+      wait_result = pthread_cond_timedwait(&android_app->cond,
+                                           &android_app->mutex, &timeout);
+      if (wait_result == ETIMEDOUT) {
+        LOGE("android_app_set_activity_state timed out waiting for cmd %d",
+             cmd);
+        break;
+      }
+    }
   }
   pthread_mutex_unlock(&android_app->mutex);
 }

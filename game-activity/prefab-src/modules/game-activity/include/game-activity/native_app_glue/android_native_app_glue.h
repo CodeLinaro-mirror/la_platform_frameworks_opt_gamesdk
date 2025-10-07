@@ -515,8 +515,10 @@ void android_app_set_motion_event_filter(struct android_app* app,
  *
  * Values from 0 to 127 are reserved for this library; values from -128 to -1
  * can be used for custom user's events.
+ *
+ * The function returns true if the write operation was successful.
  */
-void android_app_write_cmd(struct android_app* android_app, int8_t cmd);
+bool android_app_write_cmd(struct android_app* android_app, int8_t cmd);
 
 #ifdef __cplusplus
 }
