@@ -24,28 +24,28 @@
 namespace tuningfork {
 
 class ActivityLifecycleState {
- public:
-  ActivityLifecycleState();
-  bool SetNewState(TuningFork_LifecycleState newState);
-  TuningFork_LifecycleState GetCurrentState();
-  bool IsAppOnForeground();
-  virtual ~ActivityLifecycleState();
-  CrashReason GetLatestCrashReason();
+public:
+    ActivityLifecycleState();
+    bool SetNewState(TuningFork_LifecycleState newState);
+    TuningFork_LifecycleState GetCurrentState();
+    bool IsAppOnForeground();
+    virtual ~ActivityLifecycleState();
+    CrashReason GetLatestCrashReason();
 
- private:
-  bool app_on_foreground_ = false;
-  std::string tf_lifecycle_path_str_;
-  std::string tf_crash_info_file_;
-  TuningFork_LifecycleState current_state_ = TUNINGFORK_STATE_UNINITIALIZED;
+private:
+    bool app_on_foreground_ = false;
+    std::string tf_lifecycle_path_str_;
+    std::string tf_crash_info_file_;
+    TuningFork_LifecycleState current_state_ = TUNINGFORK_STATE_UNINITIALIZED;
 
-  const char* GetStateName(TuningFork_LifecycleState state);
-  TuningFork_LifecycleState GetStateFromString(const std::string& name);
-  TuningFork_LifecycleState GetStoredState();
-  void StoreStateToDisk(TuningFork_LifecycleState state);
+    const char* GetStateName(TuningFork_LifecycleState state);
+    TuningFork_LifecycleState GetStateFromString(const std::string& name);
+    TuningFork_LifecycleState GetStoredState();
+    void StoreStateToDisk(TuningFork_LifecycleState state);
 
-  static CrashReason GetReasonFromActivityManager();
+    static CrashReason GetReasonFromActivityManager();
 
-  static CrashReason ConvertSignalToCrashReason(int signal);
+    static CrashReason ConvertSignalToCrashReason(int signal);
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

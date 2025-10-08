@@ -27,85 +27,79 @@ import java.io.IOException;
 
 /** APK Validation tool for Tuningfork */
 final class TuningforkApkValidationTool {
+    private static class Parameters {
+        @Parameter(
+                names = {"--tuningforkPath"}, description = "Path to an assets/tuningfork folder")
+        public String tuningforkPath;
 
-  private static class Parameters {
-    @Parameter(
-        names = {"--tuningforkPath"},
-        description = "Path to an assets/tuningfork folder")
-    public String tuningforkPath;
+        @Parameter(names = {"--protoCompiler"}, description = "Path to protoc binary")
+        public String protoCompiler;
 
-    @Parameter(
-        names = {"--protoCompiler"},
-        description = "Path to protoc binary")
-    public String protoCompiler;
-
-    @Parameter(
-        names = {"--errorOnExit"},
-        description = "Exit with error code if there is an error")
-    public Boolean failOnError = false;
-  }
-
-  private static final FluentLogger logger = FluentLogger.forEnclosingClass();
-
-  public static void main(String[] args) {
-    Parameters parameters = new Parameters();
-    new JCommander(parameters, args);
-
-    checkArgument(
-        !Strings.isNullOrEmpty(parameters.tuningforkPath),
-        "You need to specify path to your tuningfork settings folder --tuningforkPath");
-
-    checkArgument(
-        !Strings.isNullOrEmpty(parameters.protoCompiler),
-        "You need to specify path to proto compiler --protoCompiler");
-
-    File tuningforkFolder = new File(parameters.tuningforkPath);
-    if (!tuningforkFolder.exists()) {
-      logger.atSevere().log(
-          "Tuningfork settings folder does not exist %s", parameters.tuningforkPath);
+        @Parameter(names = {"--errorOnExit"},
+                description = "Exit with error code if there is an error")
+        public Boolean failOnError = false;
     }
 
-    if (!tuningforkFolder.isDirectory()) {
-      logger.atSevere().log(
-          "--tuningforkPath=[%s] is not a path to a folder", parameters.tuningforkPath);
-    }
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-    File protoCompilerFile = new File(parameters.protoCompiler);
-    if (!protoCompilerFile.exists()) {
-      logger.atSevere().log("Proto compiler file does not exist %s", parameters.protoCompiler);
-    }
+    public static void main(String[] args) {
+        Parameters parameters = new Parameters();
+        new JCommander(parameters, args);
 
-    if (!protoCompilerFile.isFile() || !protoCompilerFile.canExecute()) {
-      logger.atSevere().log(
-          "--protoCompiler=[%s] is not a path to an executable file", parameters.protoCompiler);
-    }
+        checkArgument(!Strings.isNullOrEmpty(parameters.tuningforkPath),
+                "You need to specify path to your tuningfork settings folder --tuningforkPath");
 
-    logger.atInfo().log("Start validation of %s...", tuningforkFolder.getPath());
+        checkArgument(!Strings.isNullOrEmpty(parameters.protoCompiler),
+                "You need to specify path to proto compiler --protoCompiler");
 
-    ErrorCollector errors = new ParserErrorCollector();
-    DeveloperTuningforkParser parser =
-        new DeveloperTuningforkParser(errors, tuningforkFolder, protoCompilerFile);
-
-    try {
-      parser.parseFilesInFolder();
-      parser.validate();
-      for (String warningString: errors.getWarnings().values()) {
-        logger.atWarning().log(warningString);
-      }
-      if (errors.getErrorCount() == 0) {
-        logger.atInfo().log("Tuning Fork settings are valid");
-      } else {
-        logger.atWarning().log("Tuning Fork settings are invalid");
-        errors.printStatus();
-        if (parameters.failOnError) {
-          System.exit(1);
+        File tuningforkFolder = new File(parameters.tuningforkPath);
+        if (!tuningforkFolder.exists()) {
+            logger.atSevere().log(
+                    "Tuningfork settings folder does not exist %s", parameters.tuningforkPath);
         }
-      }
-    } catch (IOException | CompilationException e) {
-      logger.atSevere().withCause(e).log("An error happened during validation");
-      if (parameters.failOnError) {
-        System.exit(2);
-      }
+
+        if (!tuningforkFolder.isDirectory()) {
+            logger.atSevere().log(
+                    "--tuningforkPath=[%s] is not a path to a folder", parameters.tuningforkPath);
+        }
+
+        File protoCompilerFile = new File(parameters.protoCompiler);
+        if (!protoCompilerFile.exists()) {
+            logger.atSevere().log(
+                    "Proto compiler file does not exist %s", parameters.protoCompiler);
+        }
+
+        if (!protoCompilerFile.isFile() || !protoCompilerFile.canExecute()) {
+            logger.atSevere().log("--protoCompiler=[%s] is not a path to an executable file",
+                    parameters.protoCompiler);
+        }
+
+        logger.atInfo().log("Start validation of %s...", tuningforkFolder.getPath());
+
+        ErrorCollector errors = new ParserErrorCollector();
+        DeveloperTuningforkParser parser =
+                new DeveloperTuningforkParser(errors, tuningforkFolder, protoCompilerFile);
+
+        try {
+            parser.parseFilesInFolder();
+            parser.validate();
+            for (String warningString : errors.getWarnings().values()) {
+                logger.atWarning().log(warningString);
+            }
+            if (errors.getErrorCount() == 0) {
+                logger.atInfo().log("Tuning Fork settings are valid");
+            } else {
+                logger.atWarning().log("Tuning Fork settings are invalid");
+                errors.printStatus();
+                if (parameters.failOnError) {
+                    System.exit(1);
+                }
+            }
+        } catch (IOException | CompilationException e) {
+            logger.atSevere().withCause(e).log("An error happened during validation");
+            if (parameters.failOnError) {
+                System.exit(2);
+            }
+        }
     }
-  }
 }

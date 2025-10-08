@@ -28,12 +28,14 @@ namespace tuningfork {
 
 // A histogram or time-series stored inside a Session.
 struct MetricData {
-  MetricData(Metric::Type t) : type(t) {}
-  Metric::Type type;
-  virtual ~MetricData() {}
-  virtual void Clear() = 0;
-  virtual size_t Count() const = 0;
-  bool Empty() const { return Count() == 0; }
+    MetricData(Metric::Type t) : type(t) {}
+    Metric::Type type;
+    virtual ~MetricData() {}
+    virtual void Clear() = 0;
+    virtual size_t Count() const = 0;
+    bool Empty() const {
+        return Count() == 0;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -21,58 +21,54 @@
 namespace tuningfork_test {
 
 class TestDownloadBackend : public tf::IBackend {
- public:
-  int n_times_called_ = 0;
-  int wait_count_ = 0;
-  const tf::ProtobufSerialization* download_params_;
-  const tf::ProtobufSerialization* expected_training_params_;
-  TestDownloadBackend(
-      int wait_count = 0,
-      const tf::ProtobufSerialization* download_params = nullptr,
-      const tf::ProtobufSerialization* expected_training_params = nullptr)
-      : wait_count_(wait_count),
-        download_params_(download_params),
-        expected_training_params_(expected_training_params) {}
+public:
+    int n_times_called_ = 0;
+    int wait_count_ = 0;
+    const tf::ProtobufSerialization* download_params_;
+    const tf::ProtobufSerialization* expected_training_params_;
+    TestDownloadBackend(int wait_count = 0,
+                        const tf::ProtobufSerialization* download_params = nullptr,
+                        const tf::ProtobufSerialization* expected_training_params = nullptr)
+          : wait_count_(wait_count),
+            download_params_(download_params),
+            expected_training_params_(expected_training_params) {}
 
-  TuningFork_ErrorCode GenerateTuningParameters(
-      tf::HttpRequest& request,
-      const tf::ProtobufSerialization* training_mode_params,
-      tf::ProtobufSerialization& fidelity_params,
-      std::string& experiment_id) override {
-    n_times_called_++;
-    if (expected_training_params_ != nullptr) {
-      EXPECT_NE(training_mode_params, nullptr);
-      EXPECT_EQ(*expected_training_params_, *training_mode_params);
-    } else {
-      EXPECT_EQ(training_mode_params, nullptr);
+    TuningFork_ErrorCode GenerateTuningParameters(
+            tf::HttpRequest& request, const tf::ProtobufSerialization* training_mode_params,
+            tf::ProtobufSerialization& fidelity_params, std::string& experiment_id) override {
+        n_times_called_++;
+        if (expected_training_params_ != nullptr) {
+            EXPECT_NE(training_mode_params, nullptr);
+            EXPECT_EQ(*expected_training_params_, *training_mode_params);
+        } else {
+            EXPECT_EQ(training_mode_params, nullptr);
+        }
+        if (n_times_called_ > wait_count_) {
+            if (download_params_ != nullptr) {
+                fidelity_params = *download_params_;
+                return TUNINGFORK_ERROR_OK;
+            } else {
+                return TUNINGFORK_ERROR_NO_FIDELITY_PARAMS;
+            }
+        } else {
+            return TUNINGFORK_ERROR_GENERATE_TUNING_PARAMETERS_ERROR;
+        }
     }
-    if (n_times_called_ > wait_count_) {
-      if (download_params_ != nullptr) {
-        fidelity_params = *download_params_;
+
+    TuningFork_ErrorCode PredictQualityLevels(tf::HttpRequest& request,
+                                              tf::QLTimePredictions& predictions) override {
         return TUNINGFORK_ERROR_OK;
-      } else {
-        return TUNINGFORK_ERROR_NO_FIDELITY_PARAMS;
-      }
-    } else {
-      return TUNINGFORK_ERROR_GENERATE_TUNING_PARAMETERS_ERROR;
     }
-  }
 
-  TuningFork_ErrorCode PredictQualityLevels(
-      tf::HttpRequest& request, tf::QLTimePredictions& predictions) override {
-    return TUNINGFORK_ERROR_OK;
-  }
+    TuningFork_ErrorCode UploadTelemetry(const TuningForkLogEvent& evt_ser) override {
+        return TUNINGFORK_ERROR_OK;
+    }
 
-  TuningFork_ErrorCode UploadTelemetry(
-      const TuningForkLogEvent& evt_ser) override {
-    return TUNINGFORK_ERROR_OK;
-  }
+    TuningFork_ErrorCode UploadDebugInfo(tf::HttpRequest& request) override {
+        return TUNINGFORK_ERROR_OK;
+    }
 
-  TuningFork_ErrorCode UploadDebugInfo(tf::HttpRequest& request) override {
-    return TUNINGFORK_ERROR_OK;
-  }
-
-  void Stop() override {}
+    void Stop() override {}
 };
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

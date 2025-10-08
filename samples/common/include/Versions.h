@@ -30,7 +30,6 @@ namespace agdk_samples_util {
    @param versionName If non-null, this points to the version on return.
    @return 0 if no error, otherwise an error code.
 */
-int GetAppVersionInfo(JNIEnv* env, jobject context, int* versionCode,
-                      std::string* versionName);
+int GetAppVersionInfo(JNIEnv* env, jobject context, int* versionCode, std::string* versionName);
 
-}  // namespace agdk_samples_util
+} // namespace agdk_samples_util

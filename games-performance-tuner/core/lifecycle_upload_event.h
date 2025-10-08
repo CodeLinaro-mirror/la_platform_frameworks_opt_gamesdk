@@ -24,13 +24,13 @@
 namespace tuningfork {
 
 struct LifecycleLoadingEvent {
-  MetricId id;
-  ProcessTimeInterval interval;
+    MetricId id;
+    ProcessTimeInterval interval;
 };
 
 struct LifecycleUploadEvent {
-  TuningFork_LifecycleState state;
-  std::vector<LifecycleLoadingEvent> loading_events;
+    TuningFork_LifecycleState state;
+    std::vector<LifecycleLoadingEvent> loading_events;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

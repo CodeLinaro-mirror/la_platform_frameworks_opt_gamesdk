@@ -22,29 +22,33 @@
 
 // Generates obstacles given a difficulty level.
 class ObstacleGenerator {
- private:
-  int mDifficulty;
+private:
+    int mDifficulty;
 
- public:
-  ObstacleGenerator() { mDifficulty = 0; }
+public:
+    ObstacleGenerator() {
+        mDifficulty = 0;
+    }
 
-  void SetDifficulty(int dif) { mDifficulty = dif; }
+    void SetDifficulty(int dif) {
+        mDifficulty = dif;
+    }
 
-  // generate a new obstacle.
-  void Generate(Obstacle *result);
+    // generate a new obstacle.
+    void Generate(Obstacle* result);
 
- private:
-  void GenEasy(Obstacle *result);
+private:
+    void GenEasy(Obstacle* result);
 
-  void GenMedium(Obstacle *result);
+    void GenMedium(Obstacle* result);
 
-  void GenIntermediate(Obstacle *result);
+    void GenIntermediate(Obstacle* result);
 
-  void GenHard(Obstacle *result);
+    void GenHard(Obstacle* result);
 
-  void FillRow(Obstacle *result, int row);
+    void FillRow(Obstacle* result, int row);
 
-  void FillCol(Obstacle *result, int col);
+    void FillCol(Obstacle* result, int col);
 };
 
 #endif

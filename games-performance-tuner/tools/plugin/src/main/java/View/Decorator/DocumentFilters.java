@@ -21,35 +21,31 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
 public class DocumentFilters {
-
-  public static class NumberDocumentFilter extends DocumentFilter {
-
-    private boolean isNumber(String string) {
-      for (int i = 0; i < string.length(); i++) {
-        if (string.charAt(i) != '-' && !Character.isDigit(string.charAt(i))
-            && string.charAt(i) != '.') {
-          return false;
+    public static class NumberDocumentFilter extends DocumentFilter {
+        private boolean isNumber(String string) {
+            for (int i = 0; i < string.length(); i++) {
+                if (string.charAt(i) != '-' && !Character.isDigit(string.charAt(i))
+                        && string.charAt(i) != '.') {
+                    return false;
+                }
+            }
+            return true;
         }
-      }
-      return true;
-    }
 
-    @Override
-    public void insertString(DocumentFilter.FilterBypass fp, int offset, String string,
-        AttributeSet asset)
-        throws BadLocationException {
-      if (isNumber(string)) {
-        super.insertString(fp, offset, string, asset);
-      }
-    }
+        @Override
+        public void insertString(DocumentFilter.FilterBypass fp, int offset, String string,
+                AttributeSet asset) throws BadLocationException {
+            if (isNumber(string)) {
+                super.insertString(fp, offset, string, asset);
+            }
+        }
 
-    @Override
-    public void replace(DocumentFilter.FilterBypass fp, int offset, int length, String string,
-        AttributeSet asset)
-        throws BadLocationException {
-      if (isNumber(string)) {
-        super.replace(fp, offset, length, string, asset);
-      }
+        @Override
+        public void replace(DocumentFilter.FilterBypass fp, int offset, int length, String string,
+                AttributeSet asset) throws BadLocationException {
+            if (isNumber(string)) {
+                super.replace(fp, offset, length, string, asset);
+            }
+        }
     }
-  }
 }

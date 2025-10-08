@@ -35,43 +35,37 @@ import javax.swing.SwingUtilities;
 import org.jetbrains.annotations.NotNull;
 
 public class OpenPluginAction extends AnAction {
+    private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
 
-  private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent e) {
+        ProgressManager.getInstance().run(
+                new Task.Backgroundable(e.getProject(), resourceLoader.get("start_apt")) {
+                    public void run(@NotNull ProgressIndicator progressIndicator) {
+                        ProtoCompiler protoCompiler = ProtoCompiler.getInstance();
+                        String projectPath = e.getProject().getProjectFilePath().split(".idea")[0];
+                        progressIndicator.setIndeterminate(true);
+                        progressIndicator.setText(resourceLoader.get("load_assets"));
 
-  @Override
-  public void actionPerformed(@NotNull AnActionEvent e) {
-    ProgressManager.getInstance()
-        .run(
-            new Task.Backgroundable(e.getProject(), resourceLoader.get("start_apt")) {
-              public void run(@NotNull ProgressIndicator progressIndicator) {
-                ProtoCompiler protoCompiler = ProtoCompiler.getInstance();
-                String projectPath = e.getProject().getProjectFilePath().split(".idea")[0];
-                progressIndicator.setIndeterminate(true);
-                progressIndicator.setText(resourceLoader.get("load_assets"));
-
-                try {
-                  DataModelTransformer transformer = new DataModelTransformer(projectPath,
-                      protoCompiler);
-                  MessageDataModel annotationData = transformer.initAnnotationData();
-                  MessageDataModel fidelityTableData = transformer.initFidelityData();
-                  List<EnumDataModel> enumData = transformer.initEnumData();
-                  List<QualityDataModel> qualityData = transformer.initQualityData();
-                  Settings settingsData = transformer.initProtoSettings();
-                  SwingUtilities.invokeLater(() -> {
-                    MainDialogWrapper dialogWrapper = new MainDialogWrapper(e.getProject(),
-                        annotationData,
-                        fidelityTableData,
-                        enumData,
-                        qualityData,
-                        settingsData,
-                        protoCompiler);
-                    dialogWrapper.show();
-                    dialogWrapper.disposeIfNeeded();
-                  });
-                } catch (IOException | CompilationException ex) {
-                  ex.printStackTrace();
-                }
-              }
-            });
-  }
+                        try {
+                            DataModelTransformer transformer =
+                                    new DataModelTransformer(projectPath, protoCompiler);
+                            MessageDataModel annotationData = transformer.initAnnotationData();
+                            MessageDataModel fidelityTableData = transformer.initFidelityData();
+                            List<EnumDataModel> enumData = transformer.initEnumData();
+                            List<QualityDataModel> qualityData = transformer.initQualityData();
+                            Settings settingsData = transformer.initProtoSettings();
+                            SwingUtilities.invokeLater(() -> {
+                                MainDialogWrapper dialogWrapper = new MainDialogWrapper(
+                                        e.getProject(), annotationData, fidelityTableData, enumData,
+                                        qualityData, settingsData, protoCompiler);
+                                dialogWrapper.show();
+                                dialogWrapper.disposeIfNeeded();
+                            });
+                        } catch (IOException | CompilationException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                });
+    }
 }

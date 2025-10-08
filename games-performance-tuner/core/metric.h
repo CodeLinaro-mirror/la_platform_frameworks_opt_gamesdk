@@ -24,14 +24,14 @@
 namespace tuningfork {
 
 struct Metric {
-  enum Type : uint8_t {
-    FRAME_TIME = 0,
-    LOADING_TIME = 1,
-    MEMORY = 2,
-    BATTERY = 3,
-    THERMAL = 4,
-    ERROR = 0xff
-  };
+    enum Type : uint8_t {
+        FRAME_TIME = 0,
+        LOADING_TIME = 1,
+        MEMORY = 2,
+        BATTERY = 3,
+        THERMAL = 4,
+        ERROR = 0xff
+    };
 };
 
 /*
@@ -40,70 +40,72 @@ struct Metric {
  * detail field.
  */
 struct MetricId {
-  union {
-    uint64_t base;
-    struct {
-      uint32_t annotation;
-      union {
+    union {
+        uint64_t base;
         struct {
-          uint16_t ikey;
-        } frame_time;
-        struct {
-          uint16_t metadata;
-        } loading_time;
-        struct {
-          uint8_t record_type;
-        } memory;
-      };
-      Metric::Type type;
-    } detail;
-  };
-  MetricId(uint64_t base_in = 0) : base(base_in) {}
-  bool operator==(const MetricId& x) const { return base == x.base; }
+            uint32_t annotation;
+            union {
+                struct {
+                    uint16_t ikey;
+                } frame_time;
+                struct {
+                    uint16_t metadata;
+                } loading_time;
+                struct {
+                    uint8_t record_type;
+                } memory;
+            };
+            Metric::Type type;
+        } detail;
+    };
+    MetricId(uint64_t base_in = 0) : base(base_in) {}
+    bool operator==(const MetricId& x) const {
+        return base == x.base;
+    }
 
-  static MetricId FrameTime(AnnotationId aid, uint16_t ikey) {
-    MetricId id;
-    id.detail.type = Metric::FRAME_TIME;
-    id.detail.frame_time.ikey = ikey;
-    id.detail.annotation = aid;
-    return id;
-  }
-  static MetricId LoadingTime(AnnotationId aid, LoadingTimeMetadataId mid) {
-    MetricId id;
-    id.detail.type = Metric::LOADING_TIME;
-    id.detail.annotation = aid;
-    id.detail.loading_time.metadata = mid;
-    return id;
-  }
-  static MetricId Memory(AnnotationId aid) {
-    MetricId id;
-    id.detail.type = Metric::MEMORY;
-    id.detail.annotation = aid;
-    return id;
-  }
-  static MetricId Battery(AnnotationId aid) {
-    MetricId id;
-    id.detail.type = Metric::BATTERY;
-    id.detail.annotation = aid;
-    return id;
-  }
-  static MetricId Thermal(AnnotationId aid) {
-    MetricId id;
-    id.detail.type = Metric::THERMAL;
-    id.detail.annotation = aid;
-    return id;
-  }
+    static MetricId FrameTime(AnnotationId aid, uint16_t ikey) {
+        MetricId id;
+        id.detail.type = Metric::FRAME_TIME;
+        id.detail.frame_time.ikey = ikey;
+        id.detail.annotation = aid;
+        return id;
+    }
+    static MetricId LoadingTime(AnnotationId aid, LoadingTimeMetadataId mid) {
+        MetricId id;
+        id.detail.type = Metric::LOADING_TIME;
+        id.detail.annotation = aid;
+        id.detail.loading_time.metadata = mid;
+        return id;
+    }
+    static MetricId Memory(AnnotationId aid) {
+        MetricId id;
+        id.detail.type = Metric::MEMORY;
+        id.detail.annotation = aid;
+        return id;
+    }
+    static MetricId Battery(AnnotationId aid) {
+        MetricId id;
+        id.detail.type = Metric::BATTERY;
+        id.detail.annotation = aid;
+        return id;
+    }
+    static MetricId Thermal(AnnotationId aid) {
+        MetricId id;
+        id.detail.type = Metric::THERMAL;
+        id.detail.annotation = aid;
+        return id;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork
 
 // Define hash function for MetricId
 namespace std {
 template <>
 class hash<tuningfork::MetricId> {
- public:
-  size_t operator()(const tuningfork::MetricId& x) const {
-    return hash<uint64_t>()(x.base);
-  }
+public:
+    size_t operator()(const tuningfork::MetricId& x) const {
+        return hash<uint64_t>()(x.base);
+    }
 };
-}  // namespace std
+} // namespace std

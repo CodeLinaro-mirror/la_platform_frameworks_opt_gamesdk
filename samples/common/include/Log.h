@@ -24,6 +24,5 @@
 #ifdef NDEBUG
 #define ALOGV(...)
 #else
-#define ALOGV(...) \
-  __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__);
+#define ALOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__);
 #endif

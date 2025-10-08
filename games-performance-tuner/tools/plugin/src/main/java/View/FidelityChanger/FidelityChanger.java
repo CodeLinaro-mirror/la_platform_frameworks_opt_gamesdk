@@ -39,83 +39,79 @@ import org.jdesktop.swingx.VerticalLayout;
 import org.jetbrains.annotations.NotNull;
 
 public class FidelityChanger extends TabLayout {
+    private final JLabel experimentalLabel = new JLabel("Fidelity Changer");
+    private final FidelityChangerController controller;
+    private final Dimension treePanelDimension = new Dimension(300, 200);
+    private JTree jTree;
+    private JPanel decoratorPanel;
 
-  private final JLabel experimentalLabel = new JLabel("Fidelity Changer");
-  private final FidelityChangerController controller;
-  private final Dimension treePanelDimension = new Dimension(300, 200);
-  private JTree jTree;
-  private JPanel decoratorPanel;
-
-  public FidelityChanger(FidelityChangerController controller) {
-    this.controller = controller;
-    this.setLayout(new VerticalLayout());
-    initComponents();
-    addComponents();
-  }
-
-  private void initComponents() {
-    jTree = new Tree(controller.getQualityAsTree());
-    jTree.setRootVisible(false);
-    jTree.setSelectionModel(new NonLeafSelection());
-    jTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-    experimentalLabel.setFont(getMainFont());
-    decoratorPanel = ToolbarDecorator.createDecorator(jTree)
-        .addExtraAction(new ChangeButton())
-        .addExtraAction(new RefreshButton())
-        .setPreferredSize(treePanelDimension)
-        .createPanel();
-    decoratorPanel.setBorder(BorderFactory.createTitledBorder("Fidelity Changer"));
-    jTree.setBackground(UIUtil.getWindowColor());
-  }
-
-  private void addComponents() {
-    this.add(experimentalLabel);
-    this.add(decoratorPanel);
-  }
-
-  public void reloadTree(JTree jTree) {
-    UIUtils.reloadTreeAndKeepState(jTree, controller.getQualityAsTree());
-  }
-
-  private final class RefreshButton extends AnActionButton {
-
-    public RefreshButton() {
-      super("Refresh", AllIcons.Actions.Refresh);
+    public FidelityChanger(FidelityChangerController controller) {
+        this.controller = controller;
+        this.setLayout(new VerticalLayout());
+        initComponents();
+        addComponents();
     }
 
-    @Override
-    public void updateButton(@NotNull AnActionEvent e) {
-      e.getPresentation().setEnabled(false);
+    private void initComponents() {
+        jTree = new Tree(controller.getQualityAsTree());
+        jTree.setRootVisible(false);
+        jTree.setSelectionModel(new NonLeafSelection());
+        jTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+        experimentalLabel.setFont(getMainFont());
+        decoratorPanel = ToolbarDecorator.createDecorator(jTree)
+                                 .addExtraAction(new ChangeButton())
+                                 .addExtraAction(new RefreshButton())
+                                 .setPreferredSize(treePanelDimension)
+                                 .createPanel();
+        decoratorPanel.setBorder(BorderFactory.createTitledBorder("Fidelity Changer"));
+        jTree.setBackground(UIUtil.getWindowColor());
     }
 
-    @Override
-    public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
-      reloadTree(jTree);
-    }
-  }
-
-  private final class ChangeButton extends AnActionButton {
-
-    public ChangeButton() {
-      super("Set Fidelity", AllIcons.Actions.SetDefault);
+    private void addComponents() {
+        this.add(experimentalLabel);
+        this.add(decoratorPanel);
     }
 
-    @Override
-    public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
-      DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) Objects
-          .requireNonNull(jTree.getSelectionPath())
-          .getLastPathComponent();
-      int qualityIndex = treeNode.getParent().getIndex(treeNode);
-      controller.setCurrentByteString(
-          controller.getQualityAsByteString(qualityIndex));
-      RequestServer.getInstance().setFidelitySupplier(
-          () -> controller.getQualityAsByteString(qualityIndex));
-      reloadTree(jTree);
+    public void reloadTree(JTree jTree) {
+        UIUtils.reloadTreeAndKeepState(jTree, controller.getQualityAsTree());
     }
 
-    @Override
-    public void updateButton(@NotNull AnActionEvent e) {
-      e.getPresentation().setEnabled(jTree.getSelectionPath() != null);
+    private final class RefreshButton extends AnActionButton {
+        public RefreshButton() {
+            super("Refresh", AllIcons.Actions.Refresh);
+        }
+
+        @Override
+        public void updateButton(@NotNull AnActionEvent e) {
+            e.getPresentation().setEnabled(false);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
+            reloadTree(jTree);
+        }
     }
-  }
+
+    private final class ChangeButton extends AnActionButton {
+        public ChangeButton() {
+            super("Set Fidelity", AllIcons.Actions.SetDefault);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
+            DefaultMutableTreeNode treeNode =
+                    (DefaultMutableTreeNode) Objects.requireNonNull(jTree.getSelectionPath())
+                            .getLastPathComponent();
+            int qualityIndex = treeNode.getParent().getIndex(treeNode);
+            controller.setCurrentByteString(controller.getQualityAsByteString(qualityIndex));
+            RequestServer.getInstance().setFidelitySupplier(
+                    () -> controller.getQualityAsByteString(qualityIndex));
+            reloadTree(jTree);
+        }
+
+        @Override
+        public void updateButton(@NotNull AnActionEvent e) {
+            e.getPresentation().setEnabled(jTree.getSelectionPath() != null);
+        }
+    }
 }

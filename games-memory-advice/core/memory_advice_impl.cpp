@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "jni/jnictx.h"
 #include "memory_advice_impl.h"
 
 #include <algorithm>
 #include <chrono>
 
+#include "jni/jnictx.h"
 #include "memory_advice_utils.h"
 #include "system_utils.h"
 
@@ -27,19 +27,16 @@ namespace memory_advice {
 
 using namespace json11;
 
-
 namespace {
-    template <typename T> T Clamp(T val, T min, T max) {
-        return (val < min ? min : (val > max ? max : val));
-    }
+template <typename T>
+T Clamp(T val, T min, T max) {
+    return (val < min ? min : (val > max ? max : val));
 }
+} // namespace
 
-MemoryAdviceImpl::MemoryAdviceImpl(const char* params,
-                                   IMetricsProvider* metrics_provider,
-                                   IPredictor* realtime_predictor,
-                                   IPredictor* available_predictor)
-    : metrics_provider_(metrics_provider),
-      available_predictor_(available_predictor) {
+MemoryAdviceImpl::MemoryAdviceImpl(const char* params, IMetricsProvider* metrics_provider,
+                                   IPredictor* realtime_predictor, IPredictor* available_predictor)
+      : metrics_provider_(metrics_provider), available_predictor_(available_predictor) {
     if (metrics_provider_ == nullptr) {
         default_metrics_provider_ = std::make_unique<DefaultMetricsProvider>();
         metrics_provider_ = default_metrics_provider_.get();
@@ -49,8 +46,8 @@ MemoryAdviceImpl::MemoryAdviceImpl(const char* params,
         available_predictor_ = default_available_predictor_.get();
     }
 
-    initialization_error_code_ = available_predictor_->Init(
-        "available.tflite", "available_features.json");
+    initialization_error_code_ =
+            available_predictor_->Init("available.tflite", "available_features.json");
     if (initialization_error_code_ != MEMORYADVICE_ERROR_OK) {
         return;
     }
@@ -63,8 +60,7 @@ MemoryAdviceImpl::MemoryAdviceImpl(const char* params,
     build_ = utils::GetBuildInfo();
 }
 
-MemoryAdvice_ErrorCode MemoryAdviceImpl::ProcessAdvisorParameters(
-    const char* parameters) {
+MemoryAdvice_ErrorCode MemoryAdviceImpl::ProcessAdvisorParameters(const char* parameters) {
     std::string err;
     advisor_parameters_ = Json::parse(parameters, err).object_items();
     if (!err.empty()) {
@@ -97,8 +93,7 @@ float MemoryAdviceImpl::GetPercentageAvailableMemory() {
     if (advice.find("metrics") != advice.end()) {
         Json::object metrics = advice["metrics"].object_items();
         if (metrics.find("predictedAvailable") != metrics.end()) {
-            return static_cast<float>(
-                metrics["predictedAvailable"].number_value()) * 100.0f;
+            return static_cast<float>(metrics["predictedAvailable"].number_value()) * 100.0f;
         }
     }
     return 0.0f;
@@ -106,11 +101,11 @@ float MemoryAdviceImpl::GetPercentageAvailableMemory() {
 
 int64_t MemoryAdviceImpl::GetTotalMemory() {
     return static_cast<int64_t>(baseline_.at("constant")
-                                    .object_items()
-                                    .at("MemoryInfo")
-                                    .object_items()
-                                    .at("totalMem")
-                                    .number_value());
+                                        .object_items()
+                                        .at("MemoryInfo")
+                                        .object_items()
+                                        .at("totalMem")
+                                        .number_value());
 }
 
 Json::object MemoryAdviceImpl::GetAdvice() {
@@ -125,10 +120,8 @@ Json::object MemoryAdviceImpl::GetAdvice() {
     double start_time = MillisecondsSinceEpoch();
     Json::object advice;
     Json::object data;
-    Json::object variable_spec = advisor_parameters_.at("metrics")
-                                     .object_items()
-                                     .at("variable")
-                                     .object_items();
+    Json::object variable_spec =
+            advisor_parameters_.at("metrics").object_items().at("variable").object_items();
     Json::object variable_metrics = GenerateVariableMetrics();
 
     data["baseline"] = baseline_;
@@ -138,11 +131,10 @@ Json::object MemoryAdviceImpl::GetAdvice() {
     if (variable_spec.find("availableRealtime") != variable_spec.end() &&
         variable_spec.at("availableRealtime").bool_value()) {
         variable_metrics["predictedAvailable"] =
-            Json(Clamp(available_predictor_->Predict(data), 0.0f, 1.0f));
+                Json(Clamp(available_predictor_->Predict(data), 0.0f, 1.0f));
     }
     Json::array warnings;
-    Json::object heuristics =
-        advisor_parameters_.at("heuristics").object_items();
+    Json::object heuristics = advisor_parameters_.at("heuristics").object_items();
 
     if (heuristics.find("formulas") != heuristics.end()) {
         for (auto& entry : heuristics["formulas"].object_items()) {
@@ -193,8 +185,8 @@ Json::object MemoryAdviceImpl::GenerateMetricsFromFields(Json::object fields) {
     return metrics;
 }
 
-Json::object MemoryAdviceImpl::ExtractValues(
-    IMetricsProvider::MetricsFunction metrics_function, Json fields) {
+Json::object MemoryAdviceImpl::ExtractValues(IMetricsProvider::MetricsFunction metrics_function,
+                                             Json fields) {
     double start_time = MillisecondsSinceEpoch();
     Json::object metrics = (metrics_provider_->*metrics_function)();
     Json::object extracted_metrics;
@@ -202,56 +194,46 @@ Json::object MemoryAdviceImpl::ExtractValues(
         extracted_metrics = metrics;
     } else {
         for (auto& it : fields.object_items()) {
-            if (it.second.bool_value() &&
-                metrics.find(it.first) != metrics.end()) {
+            if (it.second.bool_value() && metrics.find(it.first) != metrics.end()) {
                 extracted_metrics[it.first] = metrics[it.first];
             }
         }
     }
 
-    extracted_metrics["_meta"] = {
-        {"duration", Json(MillisecondsSinceEpoch() - start_time)}};
+    extracted_metrics["_meta"] = {{"duration", Json(MillisecondsSinceEpoch() - start_time)}};
     return extracted_metrics;
 }
 
 double MemoryAdviceImpl::MillisecondsSinceEpoch() {
     using namespace std::chrono;
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch())
-        .count();
+    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
 
 Json::object MemoryAdviceImpl::GenerateVariableMetrics() {
-    return GenerateMetricsFromFields(advisor_parameters_.at("metrics")
-                                         .object_items()
-                                         .at("variable")
-                                         .object_items());
+    return GenerateMetricsFromFields(
+            advisor_parameters_.at("metrics").object_items().at("variable").object_items());
 }
 
 Json::object MemoryAdviceImpl::GenerateBaselineMetrics() {
-    return GenerateMetricsFromFields(advisor_parameters_.at("metrics")
-                                         .object_items()
-                                         .at("baseline")
-                                         .object_items());
+    return GenerateMetricsFromFields(
+            advisor_parameters_.at("metrics").object_items().at("baseline").object_items());
 }
 
 Json::object MemoryAdviceImpl::GenerateConstantMetrics() {
-    return GenerateMetricsFromFields(advisor_parameters_.at("metrics")
-                                         .object_items()
-                                         .at("constant")
-                                         .object_items());
+    return GenerateMetricsFromFields(
+            advisor_parameters_.at("metrics").object_items().at("constant").object_items());
 }
 
-MemoryAdvice_ErrorCode MemoryAdviceImpl::RegisterWatcher(
-    uint64_t intervalMillis, MemoryAdvice_WatcherCallback callback,
-    void* user_data) {
+MemoryAdvice_ErrorCode MemoryAdviceImpl::RegisterWatcher(uint64_t intervalMillis,
+                                                         MemoryAdvice_WatcherCallback callback,
+                                                         void* user_data) {
     std::lock_guard<std::mutex> guard(active_watchers_mutex_);
-    active_watchers_.push_back(std::make_unique<StateWatcher>(
-        this, callback, user_data, intervalMillis));
+    active_watchers_.push_back(
+            std::make_unique<StateWatcher>(this, callback, user_data, intervalMillis));
     return MEMORYADVICE_ERROR_OK;
 }
 
-MemoryAdvice_ErrorCode MemoryAdviceImpl::UnregisterWatcher(
-    MemoryAdvice_WatcherCallback callback) {
+MemoryAdvice_ErrorCode MemoryAdviceImpl::UnregisterWatcher(MemoryAdvice_WatcherCallback callback) {
     // We can't simply erase the watcher because the callback thread might still
     // be running which would mean blocking here for it to finish. So signal to
     // the thread to exit and put the StateWatcher object on a cancelled list
@@ -259,8 +241,7 @@ MemoryAdvice_ErrorCode MemoryAdviceImpl::UnregisterWatcher(
     std::lock_guard<std::mutex> guard(active_watchers_mutex_);
     std::vector<WatcherContainer::iterator> to_move;
     // Search for watchers with the same callback.
-    for (auto it = active_watchers_.begin(); it != active_watchers_.end();
-         ++it) {
+    for (auto it = active_watchers_.begin(); it != active_watchers_.end(); ++it) {
         if ((*it)->Callback() == callback) {
             to_move.push_back(it);
         }
@@ -271,8 +252,7 @@ MemoryAdvice_ErrorCode MemoryAdviceImpl::UnregisterWatcher(
     std::lock_guard<std::mutex> guard2(cancelled_watchers_mutex_);
     for (auto it : to_move) {
         (*it)->Cancel();
-        cancelled_watchers_.push_back(
-            std::move(*it));  // Put StateWatcher on cancelled list.
+        cancelled_watchers_.push_back(std::move(*it)); // Put StateWatcher on cancelled list.
         active_watchers_.erase(it);
     }
     return MEMORYADVICE_ERROR_OK;
@@ -283,11 +263,10 @@ void MemoryAdviceImpl::CheckCancelledWatchers() {
     auto it = cancelled_watchers_.begin();
     while (it != cancelled_watchers_.end()) {
         if (!(*it)->ThreadRunning())
-            it = cancelled_watchers_.erase(
-                it);  // Calls destructor on StateWatcher
+            it = cancelled_watchers_.erase(it); // Calls destructor on StateWatcher
         else
             ++it;
     }
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

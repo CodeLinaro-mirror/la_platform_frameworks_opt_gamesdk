@@ -34,32 +34,33 @@
 namespace tuningfork {
 
 struct ThermalMetric {
-  IBatteryProvider::ThermalState thermal_state_;
-  Duration time_since_process_start_;
+    IBatteryProvider::ThermalState thermal_state_;
+    Duration time_since_process_start_;
 
-  ThermalMetric(IBatteryProvider::ThermalState thermal_state,
-                Duration time_since_process_start)
-      : thermal_state_(thermal_state),
-        time_since_process_start_(time_since_process_start) {}
+    ThermalMetric(IBatteryProvider::ThermalState thermal_state, Duration time_since_process_start)
+          : thermal_state_(thermal_state), time_since_process_start_(time_since_process_start) {}
 };
 
 struct ThermalMetricData : public MetricData {
-  MetricId metric_id_;
-  std::vector<ThermalMetric> data_;
+    MetricId metric_id_;
+    std::vector<ThermalMetric> data_;
 
-  ThermalMetricData(MetricId metric_id)
-      : MetricData(MetricType()), metric_id_(metric_id) {}
+    ThermalMetricData(MetricId metric_id) : MetricData(MetricType()), metric_id_(metric_id) {}
 
-  void Record(Duration time_since_process_start,
-              IBatteryProvider* battery_provider) {
-    ThermalMetric metric(battery_provider->GetCurrentThermalStatus(),
-                         time_since_process_start);
-    data_.push_back(metric);
-  }
+    void Record(Duration time_since_process_start, IBatteryProvider* battery_provider) {
+        ThermalMetric metric(battery_provider->GetCurrentThermalStatus(), time_since_process_start);
+        data_.push_back(metric);
+    }
 
-  virtual void Clear() override { data_.erase(data_.begin(), data_.end()); }
-  virtual size_t Count() const override { return data_.size(); }
-  static Metric::Type MetricType() { return Metric::Type::THERMAL; }
+    virtual void Clear() override {
+        data_.erase(data_.begin(), data_.end());
+    }
+    virtual size_t Count() const override {
+        return data_.size();
+    }
+    static Metric::Type MetricType() {
+        return Metric::Type::THERMAL;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

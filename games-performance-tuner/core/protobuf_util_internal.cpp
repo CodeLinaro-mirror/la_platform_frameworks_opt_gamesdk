@@ -33,7 +33,7 @@ namespace tuningfork {
 namespace file_descriptor {
 
 static EnumField DeserializeFieldDescriptorProto(
-    google::protobuf::FieldDescriptorProto field_descriptor_proto) {
+        google::protobuf::FieldDescriptorProto field_descriptor_proto) {
     EnumField enum_field;
     enum_field.number = field_descriptor_proto.number();
     enum_field.name = field_descriptor_proto.name();
@@ -41,27 +41,26 @@ static EnumField DeserializeFieldDescriptorProto(
     return enum_field;
 }
 
-static MessageType DeserializeDescriptorProto(
-    google::protobuf::DescriptorProto descriptor_proto) {
+static MessageType DeserializeDescriptorProto(google::protobuf::DescriptorProto descriptor_proto) {
     MessageType message_type;
     message_type.name = descriptor_proto.name();
     for (int i = 0; i < descriptor_proto.field_size(); i++) {
         if (descriptor_proto.field(i).type() ==
             google::protobuf::FieldDescriptorProto_Type_TYPE_ENUM) {
             message_type.fields.push_back(
-                DeserializeFieldDescriptorProto(descriptor_proto.field(i)));
+                    DeserializeFieldDescriptorProto(descriptor_proto.field(i)));
         }
     }
     return message_type;
 }
 
 static EnumType DeserializeEnumDescriptorProto(
-    google::protobuf::EnumDescriptorProto enum_descriptor_proto) {
+        google::protobuf::EnumDescriptorProto enum_descriptor_proto) {
     EnumType enum_type;
     enum_type.name = enum_descriptor_proto.name();
     for (int i = 0; i < enum_descriptor_proto.value_size(); i++) {
-        enum_type.value.push_back({enum_descriptor_proto.value(i).name(),
-                                   enum_descriptor_proto.value(i).number()});
+        enum_type.value.push_back(
+                {enum_descriptor_proto.value(i).name(), enum_descriptor_proto.value(i).number()});
     }
     return enum_type;
 }
@@ -74,8 +73,8 @@ ProtobufSerialization* GetTuningForkFileDescriptorSerialization() {
     if (descriptor_ser_cache.size() != 0) {
         return &descriptor_ser_cache;
     } else {
-        if (apk_utils::GetAssetAsSerialization(
-                "tuningfork/dev_tuningfork.descriptor", descriptor_ser_cache))
+        if (apk_utils::GetAssetAsSerialization("tuningfork/dev_tuningfork.descriptor",
+                                               descriptor_ser_cache))
             return &descriptor_ser_cache;
         else {
             return nullptr;
@@ -91,23 +90,21 @@ File* GetTuningForkFileDescriptor() {
     static File cached_file{};
     std::lock_guard<std::mutex> lock(cache_mutex);
     if (read_status == ReadStatus::UNREAD) {
-        ProtobufSerialization* descriptor_ser =
-            GetTuningForkFileDescriptorSerialization();
+        ProtobufSerialization* descriptor_ser = GetTuningForkFileDescriptorSerialization();
         if (descriptor_ser == nullptr) return nullptr;
         google::protobuf::FileDescriptorSet descriptor;
-        if (!Deserialize(*descriptor_ser, descriptor) ||
-            descriptor.file_size() == 0) {
+        if (!Deserialize(*descriptor_ser, descriptor) || descriptor.file_size() == 0) {
             read_status = ReadStatus::READ_WITH_ERROR;
             return nullptr;
         }
         cached_file.package = descriptor.file(0).package();
         for (int i = 0; i < descriptor.file(0).message_type_size(); i++) {
             cached_file.message_type.push_back(
-                DeserializeDescriptorProto(descriptor.file(0).message_type(i)));
+                    DeserializeDescriptorProto(descriptor.file(0).message_type(i)));
         }
         for (int i = 0; i < descriptor.file(0).enum_type_size(); i++) {
-            cached_file.enum_type.push_back(DeserializeEnumDescriptorProto(
-                descriptor.file(0).enum_type(i)));
+            cached_file.enum_type.push_back(
+                    DeserializeEnumDescriptorProto(descriptor.file(0).enum_type(i)));
         }
     }
     if (read_status == ReadStatus::READ_OK)
@@ -116,6 +113,6 @@ File* GetTuningForkFileDescriptor() {
         return nullptr;
 }
 
-}  // namespace file_descriptor
+} // namespace file_descriptor
 
-}  // namespace tuningfork
+} // namespace tuningfork

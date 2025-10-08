@@ -22,13 +22,10 @@
 
 // constexpr struct last_spec {} last{};
 
-#include "date.h"
-
 #include <type_traits>
+
+#include "date.h"
 
 static_assert(std::is_same<decltype(date::last), const date::last_spec>{}, "");
 
-int
-main()
-{
-}
+int main() {}

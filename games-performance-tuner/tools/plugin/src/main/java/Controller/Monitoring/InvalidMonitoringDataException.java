@@ -17,8 +17,7 @@
 package Controller.Monitoring;
 
 public class InvalidMonitoringDataException extends Exception {
-
-  public InvalidMonitoringDataException() {
-    super();
-  }
+    public InvalidMonitoringDataException() {
+        super();
+    }
 }

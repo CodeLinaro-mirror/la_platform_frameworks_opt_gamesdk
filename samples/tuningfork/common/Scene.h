@@ -24,82 +24,78 @@
 namespace samples {
 
 struct Color {
-  Color(GLfloat r, GLfloat g, GLfloat b) : r(r), g(g), b(b) {}
+    Color(GLfloat r, GLfloat g, GLfloat b) : r(r), g(g), b(b) {}
 
-  union {
-    std::array<GLfloat, 3> values;
-    struct {
-      GLfloat r;
-      GLfloat g;
-      GLfloat b;
+    union {
+        std::array<GLfloat, 3> values;
+        struct {
+            GLfloat r;
+            GLfloat g;
+            GLfloat b;
+        };
     };
-  };
 };
 struct Vector3 {
-  Vector3(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
+    Vector3(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
 
-  union {
-    std::array<GLfloat, 3> values;
-    struct {
-      GLfloat x;
-      GLfloat y;
-      GLfloat z;
+    union {
+        std::array<GLfloat, 3> values;
+        struct {
+            GLfloat x;
+            GLfloat y;
+            GLfloat z;
+        };
     };
-  };
 };
 struct Quaternion {
-  Quaternion(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
-      : x(x), y(y), z(z), w(w) {}
-  union {
-    std::array<GLfloat, 4> values;
-    struct {
-      GLfloat x;
-      GLfloat y;
-      GLfloat z;
-      GLfloat w;
+    Quaternion(GLfloat x, GLfloat y, GLfloat z, GLfloat w) : x(x), y(y), z(z), w(w) {}
+    union {
+        std::array<GLfloat, 4> values;
+        struct {
+            GLfloat x;
+            GLfloat y;
+            GLfloat z;
+            GLfloat w;
+        };
     };
-  };
 };
 struct Object3D {
-  Vector3 pos;
-  Quaternion rot;
-  Vector3 velocity;
-  Vector3 angular_velocity;
+    Vector3 pos;
+    Quaternion rot;
+    Vector3 velocity;
+    Vector3 angular_velocity;
 };
 struct Sphere : Object3D {
-  Sphere(const Color& color = {1, 0, 0}, float radius = 1,
-         const Vector3& pos = {0, 0, 0}, const Quaternion& rot = {0, 0, 0, 1},
-         const Vector3& velocity = {0, 0, 0},
-         const Vector3& angular_velocity = {0, 0, 0})
-      : Object3D({pos, rot, velocity, angular_velocity}),
-        color(color),
-        radius(radius) {};
+    Sphere(const Color& color = {1, 0, 0}, float radius = 1, const Vector3& pos = {0, 0, 0},
+           const Quaternion& rot = {0, 0, 0, 1}, const Vector3& velocity = {0, 0, 0},
+           const Vector3& angular_velocity = {0, 0, 0})
+          : Object3D({pos, rot, velocity, angular_velocity}), color(color), radius(radius) {};
 
-  static void draw(float aspectRatio, const std::vector<Sphere>& spheres,
-                   int nSpheres, int workload);
+    static void draw(float aspectRatio, const std::vector<Sphere>& spheres, int nSpheres,
+                     int workload);
 
-  static int numVerticesForWorkload(int workload, int& nPhi, int& nTheta);
-  static int numVerticesForWorkload(int workload);
-  static std::vector<GLfloat> initializeVertices(int workload);
+    static int numVerticesForWorkload(int workload, int& nPhi, int& nTheta);
+    static int numVerticesForWorkload(int workload);
+    static std::vector<GLfloat> initializeVertices(int workload);
 
-  static const long MAX_PHI = 200;
-  static const long MAX_THETA = 100;
-  static const long MIN_PHI = 4;
-  static const long MIN_THETA = 3;
+    static const long MAX_PHI = 200;
+    static const long MAX_THETA = 100;
+    static const long MIN_PHI = 4;
+    static const long MIN_THETA = 3;
 
-  static std::vector<GLfloat>& getVertices(int);
+    static std::vector<GLfloat>& getVertices(int);
 
-  const Color color;
-  const float radius;
+    const Color color;
+    const float radius;
 };
 
 class Scene {
- public:
-  Scene(int nSpheres);
-  void draw(float aspectRatio, int workload);
-  void tick(float deltaSeconds);
-  std::vector<Sphere> spheres;
-  int nSpheres = 20;  // How many to draw
+public:
+    Scene(int nSpheres);
+    void draw(float aspectRatio, int workload);
+    void tick(float deltaSeconds);
+    std::vector<Sphere> spheres;
+    int nSpheres = 20; // How many to draw
 };
 
-}  // namespace samples
+} // namespace samples

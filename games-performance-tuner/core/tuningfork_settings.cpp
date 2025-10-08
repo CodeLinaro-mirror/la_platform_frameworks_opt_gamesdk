@@ -35,14 +35,12 @@ namespace tuningfork {
 
 static FileCache sFileCache;
 
-constexpr char kPerformanceParametersBaseUri[] =
-    "https://performanceparameters.googleapis.com/v1/";
+constexpr char kPerformanceParametersBaseUri[] = "https://performanceparameters.googleapis.com/v1/";
 
 constexpr uint64_t kDefaultFrameTimeAnnotationCombinationLimit = 64;
 
 // Use the default persister if the one passed in is null
-static void CheckPersister(const TuningFork_Cache*& persister,
-                           std::string save_dir) {
+static void CheckPersister(const TuningFork_Cache*& persister, std::string save_dir) {
     if (persister == nullptr) {
         if (save_dir.empty()) {
             save_dir = DefaultTuningForkSaveDirectory();
@@ -58,8 +56,7 @@ void Settings::Check(const std::string& save_dir) {
     if (base_uri.empty()) base_uri = kPerformanceParametersBaseUri;
     if (base_uri.back() != '/') base_uri += '/';
     if (aggregation_strategy.intervalms_or_count == 0) {
-        aggregation_strategy.method =
-            Settings::AggregationStrategy::Submission::TIME_BASED;
+        aggregation_strategy.method = Settings::AggregationStrategy::Submission::TIME_BASED;
 #ifndef NDEBUG
         // For debug builds, upload every 10 seconds
         aggregation_strategy.intervalms_or_count = 10000;
@@ -73,27 +70,19 @@ void Settings::Check(const std::string& save_dir) {
 
     if (c_settings.max_num_metrics.frame_time == 0) {
         auto num_annotation_combinations = NumAnnotationCombinations();
-        if (num_annotation_combinations >
-            kDefaultFrameTimeAnnotationCombinationLimit)
-            ALOGI(
-                "You have a large number of annotation combinations. Check "
-                "that %" PRIu64
-                " is enough for a typical session. If not, set "
-                "Settings.max_num_metrics.frame_time.",
-                kDefaultFrameTimeAnnotationCombinationLimit);
+        if (num_annotation_combinations > kDefaultFrameTimeAnnotationCombinationLimit)
+            ALOGI("You have a large number of annotation combinations. Check "
+                  "that %" PRIu64 " is enough for a typical session. If not, set "
+                  "Settings.max_num_metrics.frame_time.",
+                  kDefaultFrameTimeAnnotationCombinationLimit);
         c_settings.max_num_metrics.frame_time =
-            std::min(kDefaultFrameTimeAnnotationCombinationLimit,
-                     num_annotation_combinations) *
-            aggregation_strategy.max_instrumentation_keys;
+                std::min(kDefaultFrameTimeAnnotationCombinationLimit, num_annotation_combinations) *
+                aggregation_strategy.max_instrumentation_keys;
     }
-    if (c_settings.max_num_metrics.loading_time == 0)
-        c_settings.max_num_metrics.loading_time = 32;
-    if (c_settings.max_num_metrics.memory == 0)
-        c_settings.max_num_metrics.memory = 15;
-    if (c_settings.max_num_metrics.battery == 0)
-        c_settings.max_num_metrics.battery = 32;
-    if (c_settings.max_num_metrics.thermal == 0)
-        c_settings.max_num_metrics.thermal = 32;
+    if (c_settings.max_num_metrics.loading_time == 0) c_settings.max_num_metrics.loading_time = 32;
+    if (c_settings.max_num_metrics.memory == 0) c_settings.max_num_metrics.memory = 15;
+    if (c_settings.max_num_metrics.battery == 0) c_settings.max_num_metrics.battery = 32;
+    if (c_settings.max_num_metrics.thermal == 0) c_settings.max_num_metrics.thermal = 32;
 }
 
 uint64_t Settings::NumAnnotationCombinations() {
@@ -108,72 +97,61 @@ uint64_t Settings::NumAnnotationCombinations() {
 }
 
 /*static*/ TuningFork_ErrorCode Settings::DeserializeSettings(
-    const ProtobufSerialization& settings_ser, Settings* settings) {
+        const ProtobufSerialization& settings_ser, Settings* settings) {
     com::google::tuningfork::Settings pbsettings;
     if (!Deserialize(settings_ser, pbsettings)) {
         return TUNINGFORK_ERROR_BAD_SETTINGS;
     }
     if (pbsettings.aggregation_strategy().method() ==
-        com::google::tuningfork::
-            Settings_AggregationStrategy_Submission_TICK_BASED)
+        com::google::tuningfork::Settings_AggregationStrategy_Submission_TICK_BASED)
         settings->aggregation_strategy.method =
-            Settings::AggregationStrategy::Submission::TICK_BASED;
+                Settings::AggregationStrategy::Submission::TICK_BASED;
     else
         settings->aggregation_strategy.method =
-            Settings::AggregationStrategy::Submission::TIME_BASED;
+                Settings::AggregationStrategy::Submission::TIME_BASED;
     settings->aggregation_strategy.intervalms_or_count =
-        pbsettings.aggregation_strategy().intervalms_or_count();
+            pbsettings.aggregation_strategy().intervalms_or_count();
     settings->aggregation_strategy.max_instrumentation_keys =
-        pbsettings.aggregation_strategy().max_instrumentation_keys();
-    settings->initial_request_timeout_ms =
-        pbsettings.initial_request_timeout_ms();
-    settings->ultimate_request_timeout_ms =
-        pbsettings.ultimate_request_timeout_ms();
+            pbsettings.aggregation_strategy().max_instrumentation_keys();
+    settings->initial_request_timeout_ms = pbsettings.initial_request_timeout_ms();
+    settings->ultimate_request_timeout_ms = pbsettings.ultimate_request_timeout_ms();
     settings->base_uri = pbsettings.base_uri();
     settings->api_key = pbsettings.api_key();
     settings->default_fidelity_parameters_filename =
-        pbsettings.default_fidelity_parameters_filename();
+            pbsettings.default_fidelity_parameters_filename();
 
     // Convert from 1-based to 0 based indices (-1 = not present)
-    settings->loading_annotation_index =
-        pbsettings.loading_annotation_index() - 1;
+    settings->loading_annotation_index = pbsettings.loading_annotation_index() - 1;
     settings->level_annotation_index = pbsettings.level_annotation_index() - 1;
 
     for (int i = 0; i < pbsettings.histograms_size(); i++) {
         settings->histograms.push_back(
-            {pbsettings.histograms(i).instrument_key(),
-             pbsettings.histograms(i).bucket_min(),
-             pbsettings.histograms(i).bucket_max(),
-             pbsettings.histograms(i).n_buckets()});
+                {pbsettings.histograms(i).instrument_key(), pbsettings.histograms(i).bucket_min(),
+                 pbsettings.histograms(i).bucket_max(), pbsettings.histograms(i).n_buckets()});
     }
-    for (int i = 0;
-         i < pbsettings.aggregation_strategy().annotation_enum_size_size();
-         i++) {
+    for (int i = 0; i < pbsettings.aggregation_strategy().annotation_enum_size_size(); i++) {
         settings->aggregation_strategy.annotation_enum_size.push_back(
-            pbsettings.aggregation_strategy().annotation_enum_size(i));
+                pbsettings.aggregation_strategy().annotation_enum_size(i));
     }
 
     // Override API key if passed from c_settings.
-    if (settings->c_settings.api_key != nullptr)
-        settings->api_key = settings->c_settings.api_key;
+    if (settings->c_settings.api_key != nullptr) settings->api_key = settings->c_settings.api_key;
     return TUNINGFORK_ERROR_OK;
 }
 
 TuningFork_ErrorCode Settings::FindInApk(Settings* settings) {
     if (settings) {
         ProtobufSerialization settings_ser;
-        if (apk_utils::GetAssetAsSerialization(
-                "tuningfork/tuningfork_settings.bin", settings_ser)) {
+        if (apk_utils::GetAssetAsSerialization("tuningfork/tuningfork_settings.bin",
+                                               settings_ser)) {
             ALOGI("Got settings from tuningfork/tuningfork_settings.bin");
-            TuningFork_ErrorCode err =
-                DeserializeSettings(settings_ser, settings);
+            TuningFork_ErrorCode err = DeserializeSettings(settings_ser, settings);
             if (err != TUNINGFORK_ERROR_OK) return err;
-            if (settings->aggregation_strategy.annotation_enum_size.size() ==
-                0) {
+            if (settings->aggregation_strategy.annotation_enum_size.size() == 0) {
                 // If enum sizes are missing, use the descriptor in
                 // dev_tuningfork.descriptor
                 if (!annotation_util::GetEnumSizesFromDescriptors(
-                        settings->aggregation_strategy.annotation_enum_size)) {
+                            settings->aggregation_strategy.annotation_enum_size)) {
                     return TUNINGFORK_ERROR_NO_SETTINGS_ANNOTATION_ENUM_SIZES;
                 }
             }
@@ -188,8 +166,7 @@ TuningFork_ErrorCode Settings::FindInApk(Settings* settings) {
 
 // Default histogram, used e.g. for TF Scaled or when a histogram is missing in
 // the settings.
-/*static*/ Settings::Histogram Settings::DefaultHistogram(
-    InstrumentationKey ikey) {
+/*static*/ Settings::Histogram Settings::DefaultHistogram(InstrumentationKey ikey) {
     Settings::Histogram default_histogram;
     if (ikey == TFTICK_RAW_FRAME_TIME || ikey == TFTICK_PACED_FRAME_TIME) {
         default_histogram.bucket_min = 6.54f;
@@ -209,4 +186,4 @@ TuningFork_ErrorCode Settings::FindInApk(Settings* settings) {
     return default_histogram;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

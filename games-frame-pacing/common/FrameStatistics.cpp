@@ -26,11 +26,9 @@ namespace swappy {
 // NB This is only needed for C++14
 constexpr std::chrono::nanoseconds FrameStatistics::LOG_EVERY_N_NS;
 
-int32_t FrameStatistics::getFrameDelta(int64_t deltaTimeNS,
-                                       uint64_t refreshPeriod) {
+int32_t FrameStatistics::getFrameDelta(int64_t deltaTimeNS, uint64_t refreshPeriod) {
     int32_t numFrames = deltaTimeNS / refreshPeriod;
-    numFrames = std::max(
-        0, std::min(numFrames, static_cast<int32_t>(MAX_FRAME_BUCKETS) - 1));
+    numFrames = std::max(0, std::min(numFrames, static_cast<int32_t>(MAX_FRAME_BUCKETS) - 1));
     return numFrames;
 }
 
@@ -46,21 +44,20 @@ void FrameStatistics::clearStats() {
     }
 }
 
-void FrameStatistics::invalidateLastFrame() { mLast = {0, 0, 0, 0}; }
+void FrameStatistics::invalidateLastFrame() {
+    mLast = {0, 0, 0, 0};
+}
 
-void FrameStatistics::updateFrameStats(FrameTimings current,
-                                       uint64_t refreshPeriod) {
+void FrameStatistics::updateFrameStats(FrameTimings current, uint64_t refreshPeriod) {
     std::lock_guard<std::mutex> lock(mMutex);
     // Latency is always collected
-    int latency = getFrameDelta(
-        current.actualPresentTime - current.startFrameTime, refreshPeriod);
+    int latency = getFrameDelta(current.actualPresentTime - current.startFrameTime, refreshPeriod);
 
     // Use incoming frame timings to build the histogram.
     if (mFullStatsEnabled) {
         int idle = getFrameDelta(current.presentMargin, refreshPeriod);
-        int late = getFrameDelta(
-            current.actualPresentTime - current.desiredPresentTime,
-            refreshPeriod);
+        int late = getFrameDelta(current.actualPresentTime - current.desiredPresentTime,
+                                 refreshPeriod);
 
         mStats.totalFrames++;
         mStats.idleFrames[idle]++;
@@ -69,9 +66,8 @@ void FrameStatistics::updateFrameStats(FrameTimings current,
 
         // Update the previous frame only if last frame has valid data
         if (mLast.actualPresentTime) {
-            int offset = getFrameDelta(
-                current.actualPresentTime - mLast.actualPresentTime,
-                refreshPeriod);
+            int offset = getFrameDelta(current.actualPresentTime - mLast.actualPresentTime,
+                                       refreshPeriod);
 
             mStats.offsetFromPreviousFrame[offset]++;
         }
@@ -93,8 +89,7 @@ void FrameStatistics::logFrames() {
     SWAPPY_LOGI("== Frame statistics ==");
     SWAPPY_LOGI("total frames: %" PRIu64, mStats.totalFrames);
     message += "Buckets:                    ";
-    for (int i = 0; i < MAX_FRAME_BUCKETS; i++)
-        message += "\t[" + swappy::to_string(i) + "]";
+    for (int i = 0; i < MAX_FRAME_BUCKETS; i++) message += "\t[" + swappy::to_string(i) + "]";
     SWAPPY_LOGI("%s", message.c_str());
 
     message = "";
@@ -124,11 +119,13 @@ void FrameStatistics::logFrames() {
     previousLogTime = std::chrono::steady_clock::now();
 }
 
-void FrameStatistics::enableStats(bool enabled) { mFullStatsEnabled = enabled; }
+void FrameStatistics::enableStats(bool enabled) {
+    mFullStatsEnabled = enabled;
+}
 
 SwappyStats FrameStatistics::getStats() {
     std::lock_guard<std::mutex> lock(mMutex);
     return mStats;
 }
 
-}  // namespace swappy
+} // namespace swappy

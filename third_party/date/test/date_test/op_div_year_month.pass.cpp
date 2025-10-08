@@ -25,11 +25,9 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    static_assert(2015_y/aug == year_month{year{2015}, aug}, "");
-    static_assert(2015_y/8   == year_month{year{2015}, aug}, "");
+    static_assert(2015_y / aug == year_month{year{2015}, aug}, "");
+    static_assert(2015_y / 8 == year_month{year{2015}, aug}, "");
 }

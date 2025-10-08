@@ -23,11 +23,9 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 TuningForkLogEvent TestEndToEnd() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
-                     NTICKS - 1, 1, {});
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
+                                 NTICKS - 1, 1, {});
     TuningForkTest test(settings);
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < NTICKS; ++i) {
@@ -35,9 +33,8 @@ TuningForkLogEvent TestEndToEnd() {
         tf::FrameTick(TFTICK_RAW_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -47,8 +44,9 @@ TEST(EndToEndTest, Base) {
     TuningForkLogEvent expected = R"TF(
 {
   "name": "applications//apks/0",
-  "session_context":)TF" + session_context +
-                                  R"TF(,
+  "session_context":)TF" +
+            session_context +
+            R"TF(,
   "telemetry": [{
     "context": {
       "annotations": "",
@@ -79,4 +77,4 @@ TEST(EndToEndTest, Base) {
     CheckStrings("Base", result, expected);
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

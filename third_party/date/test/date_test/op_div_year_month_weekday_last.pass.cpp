@@ -20,22 +20,31 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// constexpr year_month_weekday_last operator/(const year_month& ym, const weekday_last& wdl) noexcept;
-// constexpr year_month_weekday_last operator/(const year& y, const month_weekday_last& mwdl) noexcept;
-// constexpr year_month_weekday_last operator/(int y, const month_weekday_last& mwdl) noexcept;
-// constexpr year_month_weekday_last operator/(const month_weekday_last& mwdl, const year& y) noexcept;
-// constexpr year_month_weekday_last operator/(const month_weekday_last& mwdl, int y) noexcept;
+// constexpr year_month_weekday_last operator/(const year_month& ym, const weekday_last& wdl)
+// noexcept; constexpr year_month_weekday_last operator/(const year& y, const month_weekday_last&
+// mwdl) noexcept; constexpr year_month_weekday_last operator/(int y, const month_weekday_last&
+// mwdl) noexcept; constexpr year_month_weekday_last operator/(const month_weekday_last& mwdl, const
+// year& y) noexcept; constexpr year_month_weekday_last operator/(const month_weekday_last& mwdl,
+// int y) noexcept;
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    static_assert(   2015_y/aug/fri[last]       == year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}}, "");
-    static_assert(       2015_y/(aug/fri[last]) == year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}}, "");
-    static_assert(         2015/(aug/fri[last]) == year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}}, "");
-    static_assert(aug/fri[last]/2015_y          == year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}}, "");
-    static_assert(aug/fri[last]/2015            == year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}}, "");
+    static_assert(2015_y / aug / fri[last] ==
+                          year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}},
+                  "");
+    static_assert(2015_y / (aug / fri[last]) ==
+                          year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}},
+                  "");
+    static_assert(2015 / (aug / fri[last]) ==
+                          year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}},
+                  "");
+    static_assert(aug / fri[last] / 2015_y ==
+                          year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}},
+                  "");
+    static_assert(aug / fri[last] / 2015 ==
+                          year_month_weekday_last{year{2015}, month{8}, weekday_last{weekday{5u}}},
+                  "");
 }

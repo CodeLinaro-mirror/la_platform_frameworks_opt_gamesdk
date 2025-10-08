@@ -23,43 +23,42 @@
 namespace samples {
 
 struct Circle {
-  struct Color {
-    Color(GLfloat r, GLfloat g, GLfloat b) : r(r), g(g), b(b) {}
+    struct Color {
+        Color(GLfloat r, GLfloat g, GLfloat b) : r(r), g(g), b(b) {}
 
-    union {
-      std::array<GLfloat, 3> values;
-      struct {
-        GLfloat r;
-        GLfloat g;
-        GLfloat b;
-      };
+        union {
+            std::array<GLfloat, 3> values;
+            struct {
+                GLfloat r;
+                GLfloat g;
+                GLfloat b;
+            };
+        };
     };
-  };
 
-  Circle(const Color &color, float radius, float x, float y)
-      : color(color), radius(radius), x(x), y(y) {};
+    Circle(const Color& color, float radius, float x, float y)
+          : color(color), radius(radius), x(x), y(y) {};
 
-  static void draw(float aspectRatio, const std::vector<Circle> &circles,
-                   int workload);
+    static void draw(float aspectRatio, const std::vector<Circle>& circles, int workload);
 
-  static int getSegmentsForWorkload(int workload) {
-    float loadF = workload / 100.0f;
+    static int getSegmentsForWorkload(int workload) {
+        float loadF = workload / 100.0f;
 
-    int num_segmets = (MAX_SEGMENTS - MIN_SEGMENTS) * loadF + MIN_SEGMENTS;
-    // make sure we get full triangles
-    num_segmets = (num_segmets / 3) * 3;
-    return num_segmets;
-  }
+        int num_segmets = (MAX_SEGMENTS - MIN_SEGMENTS) * loadF + MIN_SEGMENTS;
+        // make sure we get full triangles
+        num_segmets = (num_segmets / 3) * 3;
+        return num_segmets;
+    }
 
-  static const long MAX_SEGMENTS = 5000000;
-  static const long MIN_SEGMENTS = 36;
+    static const long MAX_SEGMENTS = 5000000;
+    static const long MIN_SEGMENTS = 36;
 
-  static std::vector<GLfloat> &getVertices(int);
+    static std::vector<GLfloat>& getVertices(int);
 
-  const Color color;
-  const float radius;
-  const float x;
-  const float y;
+    const Color color;
+    const float radius;
+    const float x;
+    const float y;
 };
 
-}  // namespace samples
+} // namespace samples

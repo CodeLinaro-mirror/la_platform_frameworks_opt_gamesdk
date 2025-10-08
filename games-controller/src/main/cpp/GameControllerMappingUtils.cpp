@@ -25,32 +25,30 @@ uint32_t Paddleboat_getVersion();
 namespace paddleboat {
 
 MappingTableSearch::MappingTableSearch()
-        : mappingRoot(nullptr),
-          vendorId(0),
-          productId(0),
-          minApi(0),
-          maxApi(0),
-          tableIndex(0),
-          mapEntryCount(0),
-          tableEntryCount(0),
-          tableMaxEntryCount(GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {}
+      : mappingRoot(nullptr),
+        vendorId(0),
+        productId(0),
+        minApi(0),
+        maxApi(0),
+        tableIndex(0),
+        mapEntryCount(0),
+        tableEntryCount(0),
+        tableMaxEntryCount(GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {}
 
-MappingTableSearch::MappingTableSearch(
-        Paddleboat_Controller_Mapping_File_Controller_Entry *mapRoot, int32_t entryCount)
-        : mappingRoot(mapRoot),
-          vendorId(0),
-          productId(0),
-          minApi(0),
-          maxApi(0),
-          tableIndex(0),
-          mapEntryCount(0),
-          tableEntryCount(entryCount),
-          tableMaxEntryCount(GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {}
+MappingTableSearch::MappingTableSearch(Paddleboat_Controller_Mapping_File_Controller_Entry* mapRoot,
+                                       int32_t entryCount)
+      : mappingRoot(mapRoot),
+        vendorId(0),
+        productId(0),
+        minApi(0),
+        maxApi(0),
+        tableIndex(0),
+        mapEntryCount(0),
+        tableEntryCount(entryCount),
+        tableMaxEntryCount(GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {}
 
-void MappingTableSearch::initSearchParameters(const int32_t newVendorId,
-                                              const int32_t newProductId,
-                                              const int32_t newMinApi,
-                                              const int32_t newMaxApi) {
+void MappingTableSearch::initSearchParameters(const int32_t newVendorId, const int32_t newProductId,
+                                              const int32_t newMinApi, const int32_t newMaxApi) {
     vendorId = newVendorId;
     productId = newProductId;
     minApi = newMinApi;
@@ -58,19 +56,16 @@ void MappingTableSearch::initSearchParameters(const int32_t newVendorId,
     tableIndex = 0;
 }
 
-bool GameControllerMappingUtils::findMatchingMapEntry(
-        MappingTableSearch *searchEntry) {
+bool GameControllerMappingUtils::findMatchingMapEntry(MappingTableSearch* searchEntry) {
     int32_t currentIndex = 0;
 
     // Starting out with a linear search. Updating the map table is something
     // that should only ever be done once at startup, if it actually takes an
     // appreciable time to execute when working with a big remap dictionary,
     // this is low-hanging fruit to optimize.
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *mapRoot =
-            searchEntry->mappingRoot;
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* mapRoot = searchEntry->mappingRoot;
     while (currentIndex < searchEntry->tableEntryCount) {
-        const Paddleboat_Controller_Mapping_File_Controller_Entry &mapEntry =
-                mapRoot[currentIndex];
+        const Paddleboat_Controller_Mapping_File_Controller_Entry& mapEntry = mapRoot[currentIndex];
         if (mapEntry.vendorId > searchEntry->vendorId) {
             // Passed by the search vendorId value, so we don't already exist in
             // the table, set the current index as the insert point and bail
@@ -87,8 +82,7 @@ bool GameControllerMappingUtils::findMatchingMapEntry(
                 // Any overlap of the min/max API range is treated as matching
                 // an existing entry
                 if ((searchEntry->minApi >= mapEntry.minimumEffectiveApiLevel &&
-                     searchEntry->minApi <=
-                     mapEntry.maximumEffectiveApiLevel) ||
+                     searchEntry->minApi <= mapEntry.maximumEffectiveApiLevel) ||
                     (searchEntry->minApi >= mapEntry.minimumEffectiveApiLevel &&
                      mapEntry.maximumEffectiveApiLevel == 0)) {
                     searchEntry->tableIndex = currentIndex;
@@ -103,16 +97,15 @@ bool GameControllerMappingUtils::findMatchingMapEntry(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::insertMapEntry(
-        const Paddleboat_Controller_Mapping_File_Controller_Entry *mappingData,
-        MappingTableSearch *searchEntry,
-        const IndexTableRemap *axisRemapTable,
-        const IndexTableRemap *buttonRemapTable) {
+        const Paddleboat_Controller_Mapping_File_Controller_Entry* mappingData,
+        MappingTableSearch* searchEntry, const IndexTableRemap* axisRemapTable,
+        const IndexTableRemap* buttonRemapTable) {
     Paddleboat_ErrorCode result = PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED;
     bool doCopy = false;
 
     // If min/max match exactly on the same device, just replace inline instead of inserting
     // otherwise verify there is room in the table for another entry
-    Paddleboat_Controller_Mapping_File_Controller_Entry &indexEntry =
+    Paddleboat_Controller_Mapping_File_Controller_Entry& indexEntry =
             searchEntry->mappingRoot[searchEntry->tableIndex];
     const bool sameDevice = (mappingData->productId == indexEntry.productId &&
                              mappingData->vendorId == indexEntry.vendorId);
@@ -126,10 +119,10 @@ Paddleboat_ErrorCode GameControllerMappingUtils::insertMapEntry(
         // same device, we may need to 'patch' the max API of the insert point and do the actual
         // insert one index higher.
         if (sameDevice &&
-           ((mappingData->minimumEffectiveApiLevel >= indexEntry.minimumEffectiveApiLevel &&
-             mappingData->minimumEffectiveApiLevel <= indexEntry.maximumEffectiveApiLevel) ||
-            (mappingData->minimumEffectiveApiLevel >= indexEntry.minimumEffectiveApiLevel &&
-             indexEntry.maximumEffectiveApiLevel == 0))) {
+            ((mappingData->minimumEffectiveApiLevel >= indexEntry.minimumEffectiveApiLevel &&
+              mappingData->minimumEffectiveApiLevel <= indexEntry.maximumEffectiveApiLevel) ||
+             (mappingData->minimumEffectiveApiLevel >= indexEntry.minimumEffectiveApiLevel &&
+              indexEntry.maximumEffectiveApiLevel == 0))) {
             indexEntry.maximumEffectiveApiLevel = mappingData->minimumEffectiveApiLevel - 1;
             searchEntry->tableIndex += 1;
         }
@@ -139,21 +132,18 @@ Paddleboat_ErrorCode GameControllerMappingUtils::insertMapEntry(
         // index.
         if (!(searchEntry->tableEntryCount == 0 ||
               searchEntry->tableIndex == searchEntry->tableEntryCount)) {
-            const size_t copySize =
-                    (searchEntry->tableEntryCount - searchEntry->tableIndex) *
+            const size_t copySize = (searchEntry->tableEntryCount - searchEntry->tableIndex) *
                     sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry);
             memmove(&searchEntry->mappingRoot[searchEntry->tableIndex + 1],
-                    &searchEntry->mappingRoot[searchEntry->tableIndex],
-                    copySize);
+                    &searchEntry->mappingRoot[searchEntry->tableIndex], copySize);
         }
         doCopy = true;
     }
     if (doCopy) {
         // Copy the new data
-        Paddleboat_Controller_Mapping_File_Controller_Entry *newEntry =
+        Paddleboat_Controller_Mapping_File_Controller_Entry* newEntry =
                 &searchEntry->mappingRoot[searchEntry->tableIndex];
-        memcpy(newEntry, mappingData,
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+        memcpy(newEntry, mappingData, sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
         // Fix up the axis and button indices using the remap tables
         const uint32_t newAxisIndex = axisRemapTable[newEntry->axisTableIndex].newIndex;
         newEntry->axisTableIndex = newAxisIndex;
@@ -164,9 +154,9 @@ Paddleboat_ErrorCode GameControllerMappingUtils::insertMapEntry(
     return result;
 }
 
-const Paddleboat_Controller_Mapping_File_Controller_Entry *
-        GameControllerMappingUtils::validateMapTable(
-        const Paddleboat_Controller_Mapping_File_Controller_Entry *mappingRoot,
+const Paddleboat_Controller_Mapping_File_Controller_Entry*
+GameControllerMappingUtils::validateMapTable(
+        const Paddleboat_Controller_Mapping_File_Controller_Entry* mappingRoot,
         const int32_t tableEntryCount) {
     // The map table is always assumed to be sorted by increasing vendorId. Each
     // sequence of entries with the same vendorId are sorted by increasing
@@ -184,27 +174,21 @@ const Paddleboat_Controller_Mapping_File_Controller_Entry *
         }
 
         int32_t previousProductId = mappingRoot[currentIndex].productId;
-        int32_t previousMinApi =
-                mappingRoot[currentIndex].minimumEffectiveApiLevel;
-        int32_t previousMaxApi =
-                mappingRoot[currentIndex].maximumEffectiveApiLevel;
+        int32_t previousMinApi = mappingRoot[currentIndex].minimumEffectiveApiLevel;
+        int32_t previousMaxApi = mappingRoot[currentIndex].maximumEffectiveApiLevel;
         previousVendorId = mappingRoot[currentIndex++].vendorId;
 
         while (currentIndex < tableEntryCount &&
                mappingRoot[currentIndex].vendorId == previousVendorId) {
             while (currentIndex < tableEntryCount &&
                    mappingRoot[currentIndex].productId == previousProductId) {
-                if (mappingRoot[currentIndex].minimumEffectiveApiLevel <
-                    previousMinApi ||
-                    mappingRoot[currentIndex].minimumEffectiveApiLevel <
-                    previousMaxApi) {
+                if (mappingRoot[currentIndex].minimumEffectiveApiLevel < previousMinApi ||
+                    mappingRoot[currentIndex].minimumEffectiveApiLevel < previousMaxApi) {
                     // failure in API order, return the offending entry
                     return &mappingRoot[currentIndex];
                 }
-                previousMinApi =
-                        mappingRoot[currentIndex].minimumEffectiveApiLevel;
-                previousMaxApi =
-                        mappingRoot[currentIndex++].maximumEffectiveApiLevel;
+                previousMinApi = mappingRoot[currentIndex].minimumEffectiveApiLevel;
+                previousMaxApi = mappingRoot[currentIndex++].maximumEffectiveApiLevel;
             }
             if (mappingRoot[currentIndex].productId < previousProductId) {
                 // failure in productId order, return the offending entry
@@ -219,8 +203,8 @@ const Paddleboat_Controller_Mapping_File_Controller_Entry *
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::validateMapFile(
-            const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-            const size_t mappingFileBufferSize) {
+        const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+        const size_t mappingFileBufferSize) {
     if (mappingFileHeader->fileIdentifier != PADDLEBOAT_MAPPING_FILE_IDENTIFIER) {
         return PADDLEBOAT_INVALID_MAPPING_DATA;
     }
@@ -244,23 +228,23 @@ Paddleboat_ErrorCode GameControllerMappingUtils::validateMapFile(
     const uint8_t* fileStart = reinterpret_cast<const uint8_t*>(mappingFileHeader);
     const ptrdiff_t maxSize = mappingFileBufferSize;
 
-    const uint8_t *endAxis = fileStart + mappingFileHeader->axisTableOffset +
-        (mappingFileHeader->axisTableEntryCount *
-        sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
+    const uint8_t* endAxis = fileStart + mappingFileHeader->axisTableOffset +
+            (mappingFileHeader->axisTableEntryCount *
+             sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
     if ((endAxis - fileStart) > maxSize) {
         return PADDLEBOAT_INVALID_MAPPING_DATA;
     }
 
-    const uint8_t *endButton = fileStart + mappingFileHeader->buttonTableOffset +
-        (mappingFileHeader->buttonTableEntryCount *
-        sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
+    const uint8_t* endButton = fileStart + mappingFileHeader->buttonTableOffset +
+            (mappingFileHeader->buttonTableEntryCount *
+             sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
     if ((endButton - fileStart) > maxSize) {
         return PADDLEBOAT_INVALID_MAPPING_DATA;
     }
 
-    const uint8_t *endString = fileStart + mappingFileHeader->stringTableOffset +
-        (mappingFileHeader->stringTableEntryCount *
-        sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+    const uint8_t* endString = fileStart + mappingFileHeader->stringTableOffset +
+            (mappingFileHeader->stringTableEntryCount *
+             sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     if ((endString - fileStart) > maxSize) {
         return PADDLEBOAT_INVALID_MAPPING_DATA;
     }
@@ -268,12 +252,10 @@ Paddleboat_ErrorCode GameControllerMappingUtils::validateMapFile(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::mergeStringTable(
-        const Paddleboat_Controller_Mapping_File_String_Entry *newStrings,
+        const Paddleboat_Controller_Mapping_File_String_Entry* newStrings,
         const uint32_t newStringCount,
-        Paddleboat_Controller_Mapping_File_String_Entry *stringEntries,
-        uint32_t *stringEntryCount,
-        const uint32_t maxStringEntryCount,
-        IndexTableRemap *remapTable) {
+        Paddleboat_Controller_Mapping_File_String_Entry* stringEntries, uint32_t* stringEntryCount,
+        const uint32_t maxStringEntryCount, IndexTableRemap* remapTable) {
     Paddleboat_ErrorCode result = PADDLEBOAT_NO_ERROR;
 
     // Check to see if a string in the incoming table already exists in the
@@ -308,13 +290,10 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeStringTable(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::mergeAxisTable(
-        const Paddleboat_Controller_Mapping_File_Axis_Entry *newAxis,
-        const uint32_t newAxisCount,
-        Paddleboat_Controller_Mapping_File_Axis_Entry *axisEntries,
-        uint32_t *axisEntryCount,
-        const uint32_t maxAxisEntryCount,
-        const IndexTableRemap *stringRemapTable,
-        IndexTableRemap *axisRemapTable) {
+        const Paddleboat_Controller_Mapping_File_Axis_Entry* newAxis, const uint32_t newAxisCount,
+        Paddleboat_Controller_Mapping_File_Axis_Entry* axisEntries, uint32_t* axisEntryCount,
+        const uint32_t maxAxisEntryCount, const IndexTableRemap* stringRemapTable,
+        IndexTableRemap* axisRemapTable) {
     Paddleboat_ErrorCode result = PADDLEBOAT_NO_ERROR;
 
     // Check if an axis table already exists in the existing table or if it needs to be added.
@@ -351,13 +330,11 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeAxisTable(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::mergeButtonTable(
-        const Paddleboat_Controller_Mapping_File_Button_Entry *newButton,
+        const Paddleboat_Controller_Mapping_File_Button_Entry* newButton,
         const uint32_t newButtonCount,
-        Paddleboat_Controller_Mapping_File_Button_Entry *buttonEntries,
-        uint32_t *buttonEntryCount,
-        const uint32_t maxButtonEntryCount,
-        const IndexTableRemap *stringRemapTable,
-        IndexTableRemap *buttonRemapTable) {
+        Paddleboat_Controller_Mapping_File_Button_Entry* buttonEntries, uint32_t* buttonEntryCount,
+        const uint32_t maxButtonEntryCount, const IndexTableRemap* stringRemapTable,
+        IndexTableRemap* buttonRemapTable) {
     Paddleboat_ErrorCode result = PADDLEBOAT_NO_ERROR;
 
     // Check if a button table already exists in the existing table or if it needs to be added.
@@ -371,7 +348,7 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeButtonTable(
                 stringRemapTable[newButton[newIndex].buttonNameStringTableIndex].newIndex;
         for (uint32_t existingIndex = 0; existingIndex < existingButtonCount; ++existingIndex) {
             if (buttonEntries[existingIndex].buttonNameStringTableIndex ==
-                    newButtonStringTableIndex) {
+                newButtonStringTableIndex) {
                 buttonRemapTable[newIndex].newIndex = existingIndex;
                 foundExistingMatch = true;
                 break;
@@ -396,59 +373,58 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeButtonTable(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::mergeControllerRemapData(
-        const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-        const size_t mappingFileBufferSize,
-        GameControllerMappingInfo &mappingInfo) {
+        const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+        const size_t mappingFileBufferSize, GameControllerMappingInfo& mappingInfo) {
     Paddleboat_ErrorCode mergeResult = PADDLEBOAT_NO_ERROR;
     // The incoming file has its own internal indexes for its axis, button and
     // string table entries. These indices will need to be remapped after this data is merged
     // into the existing internal arrays. Allocate an array of remap structures large
     // enough for all required indices and section it by index category.
     const size_t totalIndexCount = mappingFileHeader->axisTableEntryCount +
-                                   mappingFileHeader->buttonTableEntryCount +
-                                   mappingFileHeader->stringTableEntryCount;
+            mappingFileHeader->buttonTableEntryCount + mappingFileHeader->stringTableEntryCount;
     std::unique_ptr<IndexTableRemap[]> remapTable =
             std::make_unique<IndexTableRemap[]>(totalIndexCount);
-    IndexTableRemap *axisIndexTableRemap = remapTable.get();
-    IndexTableRemap *buttonIndexTableRemap = axisIndexTableRemap +
-                                             mappingFileHeader->axisTableEntryCount;
-    IndexTableRemap *stringIndexTableRemap = buttonIndexTableRemap +
-                                             mappingFileHeader->buttonTableEntryCount;
+    IndexTableRemap* axisIndexTableRemap = remapTable.get();
+    IndexTableRemap* buttonIndexTableRemap =
+            axisIndexTableRemap + mappingFileHeader->axisTableEntryCount;
+    IndexTableRemap* stringIndexTableRemap =
+            buttonIndexTableRemap + mappingFileHeader->buttonTableEntryCount;
 
     // Merge the string, axis, and button tables from the file into the internal tables
-    const uint8_t *fileStart = reinterpret_cast<const uint8_t*>(mappingFileHeader);
+    const uint8_t* fileStart = reinterpret_cast<const uint8_t*>(mappingFileHeader);
     // Merge string table first since axis and button depend on it
-    const Paddleboat_Controller_Mapping_File_String_Entry *fileStringTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_String_Entry *>(
+    const Paddleboat_Controller_Mapping_File_String_Entry* fileStringTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_String_Entry*>(
                     fileStart + mappingFileHeader->stringTableOffset);
-    mergeResult = GameControllerMappingUtils::mergeStringTable(
-            fileStringTable, mappingFileHeader->stringTableEntryCount,
-            mappingInfo.mStringTable, &mappingInfo.mStringTableEntryCount,
-            GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringIndexTableRemap);
+    mergeResult = GameControllerMappingUtils::
+            mergeStringTable(fileStringTable, mappingFileHeader->stringTableEntryCount,
+                             mappingInfo.mStringTable, &mappingInfo.mStringTableEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE,
+                             stringIndexTableRemap);
     if (mergeResult != PADDLEBOAT_NO_ERROR) {
         return mergeResult;
     }
     // Axis table
-    const Paddleboat_Controller_Mapping_File_Axis_Entry *fileAxisTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Axis_Entry *>(
+    const Paddleboat_Controller_Mapping_File_Axis_Entry* fileAxisTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Axis_Entry*>(
                     fileStart + mappingFileHeader->axisTableOffset);
-    mergeResult = GameControllerMappingUtils::mergeAxisTable(
-            fileAxisTable, mappingFileHeader->axisTableEntryCount,
-            mappingInfo.mAxisTable, &mappingInfo.mAxisTableEntryCount,
-            GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringIndexTableRemap,
-            axisIndexTableRemap);
+    mergeResult = GameControllerMappingUtils::
+            mergeAxisTable(fileAxisTable, mappingFileHeader->axisTableEntryCount,
+                           mappingInfo.mAxisTable, &mappingInfo.mAxisTableEntryCount,
+                           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringIndexTableRemap,
+                           axisIndexTableRemap);
     if (mergeResult != PADDLEBOAT_NO_ERROR) {
         return mergeResult;
     }
     // Button table
-    const Paddleboat_Controller_Mapping_File_Button_Entry *fileButtonTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Button_Entry *>(
+    const Paddleboat_Controller_Mapping_File_Button_Entry* fileButtonTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Button_Entry*>(
                     fileStart + mappingFileHeader->buttonTableOffset);
-    mergeResult = GameControllerMappingUtils::mergeButtonTable(
-            fileButtonTable, mappingFileHeader->buttonTableEntryCount,
-            mappingInfo.mButtonTable, &mappingInfo.mButtonTableEntryCount,
-            GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringIndexTableRemap,
-            buttonIndexTableRemap);
+    mergeResult = GameControllerMappingUtils::
+            mergeButtonTable(fileButtonTable, mappingFileHeader->buttonTableEntryCount,
+                             mappingInfo.mButtonTable, &mappingInfo.mButtonTableEntryCount,
+                             GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE,
+                             stringIndexTableRemap, buttonIndexTableRemap);
     if (mergeResult != PADDLEBOAT_NO_ERROR) {
         return mergeResult;
     }
@@ -456,8 +432,8 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeControllerRemapData(
     // Loop through the controller list in the file and merge them into the internal
     // table.
     for (uint32_t i = 0; i < mappingFileHeader->controllerTableEntryCount; ++i) {
-        const Paddleboat_Controller_Mapping_File_Controller_Entry *fileControllerTable =
-                reinterpret_cast<const Paddleboat_Controller_Mapping_File_Controller_Entry *>(
+        const Paddleboat_Controller_Mapping_File_Controller_Entry* fileControllerTable =
+                reinterpret_cast<const Paddleboat_Controller_Mapping_File_Controller_Entry*>(
                         fileStart + mappingFileHeader->controllerTableOffset);
         MappingTableSearch mapSearch(mappingInfo.mControllerTable,
                                      mappingInfo.mControllerTableEntryCount);
@@ -467,8 +443,7 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeControllerRemapData(
                                        fileControllerTable[i].maximumEffectiveApiLevel);
         GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
         mergeResult = GameControllerMappingUtils::insertMapEntry(&fileControllerTable[i],
-                                                                 &mapSearch,
-                                                                 axisIndexTableRemap,
+                                                                 &mapSearch, axisIndexTableRemap,
                                                                  buttonIndexTableRemap);
         if (mergeResult != PADDLEBOAT_NO_ERROR) {
             break;
@@ -479,57 +454,54 @@ Paddleboat_ErrorCode GameControllerMappingUtils::mergeControllerRemapData(
 }
 
 Paddleboat_ErrorCode GameControllerMappingUtils::overwriteControllerRemapData(
-        const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-        const size_t mappingFileBufferSize,
-        GameControllerMappingInfo &mappingInfo) {
-
+        const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+        const size_t mappingFileBufferSize, GameControllerMappingInfo& mappingInfo) {
     // Bounds check of internal buffers
     if (mappingFileHeader->stringTableEntryCount >
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE ||
+                GameControllerMappingInfo::MAX_STRING_TABLE_SIZE ||
         mappingFileHeader->buttonTableEntryCount >
-        GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE ||
-        mappingFileHeader->axisTableEntryCount >
-        GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE ||
+                GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE ||
+        mappingFileHeader->axisTableEntryCount > GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE ||
         mappingFileHeader->controllerTableEntryCount >
-        GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {
+                GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE) {
         return PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED;
     }
 
-    const uint8_t *fileStart = reinterpret_cast<const uint8_t*>(mappingFileHeader);
+    const uint8_t* fileStart = reinterpret_cast<const uint8_t*>(mappingFileHeader);
 
-    const Paddleboat_Controller_Mapping_File_String_Entry *fileStringTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_String_Entry *>(
+    const Paddleboat_Controller_Mapping_File_String_Entry* fileStringTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_String_Entry*>(
                     fileStart + mappingFileHeader->stringTableOffset);
     memcpy(mappingInfo.mStringTable, fileStringTable,
            mappingFileHeader->stringTableEntryCount *
-           sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     mappingInfo.mStringTableEntryCount = mappingFileHeader->stringTableEntryCount;
 
-    const Paddleboat_Controller_Mapping_File_Axis_Entry *fileAxisTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Axis_Entry *>(
+    const Paddleboat_Controller_Mapping_File_Axis_Entry* fileAxisTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Axis_Entry*>(
                     fileStart + mappingFileHeader->axisTableOffset);
     memcpy(mappingInfo.mAxisTable, fileAxisTable,
            mappingFileHeader->axisTableEntryCount *
-           sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
     mappingInfo.mAxisTableEntryCount = mappingFileHeader->axisTableEntryCount;
 
-    const Paddleboat_Controller_Mapping_File_Button_Entry *fileButtonTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Button_Entry *>(
+    const Paddleboat_Controller_Mapping_File_Button_Entry* fileButtonTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Button_Entry*>(
                     fileStart + mappingFileHeader->buttonTableOffset);
     memcpy(mappingInfo.mButtonTable, fileButtonTable,
            mappingFileHeader->buttonTableEntryCount *
-           sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
     mappingInfo.mButtonTableEntryCount = mappingFileHeader->buttonTableEntryCount;
 
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *fileControllerTable =
-            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Controller_Entry *>(
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* fileControllerTable =
+            reinterpret_cast<const Paddleboat_Controller_Mapping_File_Controller_Entry*>(
                     fileStart + mappingFileHeader->controllerTableOffset);
     memcpy(mappingInfo.mControllerTable, fileControllerTable,
            mappingFileHeader->controllerTableEntryCount *
-           sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     mappingInfo.mControllerTableEntryCount = mappingFileHeader->controllerTableEntryCount;
 
     return PADDLEBOAT_NO_ERROR;
 }
 
-}  // namespace paddleboat
+} // namespace paddleboat

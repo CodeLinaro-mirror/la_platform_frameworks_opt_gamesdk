@@ -71,7 +71,7 @@ public class ProtoCompilerTest {
         Descriptor anotherDesc = stdoutDescriptor.findMessageTypeByName("AnotherMessage");
         FileDescriptorSet fileSet = FileDescriptorSet.parseFrom(Files.toByteArray(outFile));
         FileDescriptor outFileDescriptor = FileDescriptor.buildFrom(
-            Iterables.getOnlyElement(fileSet.getFileList()), new FileDescriptor[] {});
+                Iterables.getOnlyElement(fileSet.getFileList()), new FileDescriptor[] {});
 
         assertThat(messageDesc).isNotNull();
         assertThat(anotherDesc).isNotNull();
@@ -83,20 +83,20 @@ public class ProtoCompilerTest {
     public void compileInvalid() throws Exception {
         File file = helper.getFile("compile_invalid.proto");
         CompilationException expected = assertThrows(
-            CompilationException.class, () -> compiler.compile(file, Optional.empty()));
+                CompilationException.class, () -> compiler.compile(file, Optional.empty()));
 
         assertThat(expected).hasMessageThat().isEqualTo(
-            "Descriptor for [compile_invalid.proto] does not exist.");
+                "Descriptor for [compile_invalid.proto] does not exist.");
     }
 
     @Test
     public void compileWithDeps() throws Exception {
         File file = helper.getFile("compile_with_deps.proto");
         CompilationException expected = assertThrows(
-            CompilationException.class, () -> compiler.compile(file, Optional.empty()));
+                CompilationException.class, () -> compiler.compile(file, Optional.empty()));
 
         assertThat(expected).hasMessageThat().isEqualTo(
-            "Descriptor for [compile_with_deps.proto] does not exist.");
+                "Descriptor for [compile_with_deps.proto] does not exist.");
     }
 
     @Test
@@ -122,12 +122,12 @@ public class ProtoCompilerTest {
         Optional<File> errorFile = Optional.of(tempFolder.newFile("errors.txt"));
         String root = tempFolder.getRoot().getAbsolutePath();
         compiler.encodeFromTextprotoFile(fidelityDescriptor.getFullName(), protoFile,
-            originalTextString, root + "/dev_tuningfork_fidelityparams_1.bin", errorFile);
+                originalTextString, root + "/dev_tuningfork_fidelityparams_1.bin", errorFile);
         byte[] error = Files.toByteArray(errorFile.get());
         System.out.println(new String(error, UTF_8));
         assertThat(error).isEqualTo(new byte[0]);
         byte[] dataFile =
-            Files.toByteArray(new File(root + "/dev_tuningfork_fidelityparams_1.bin"));
+                Files.toByteArray(new File(root + "/dev_tuningfork_fidelityparams_1.bin"));
         DynamicMessage fidelityMessage = compiler.decodeFromBinary(fidelityDescriptor, dataFile);
         assertThat(error).isEqualTo(new byte[0]);
         assertThat(originalTextString).isEqualTo(fidelityMessage.toString().trim());

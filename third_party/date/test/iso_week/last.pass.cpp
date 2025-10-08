@@ -22,13 +22,10 @@
 
 // constexpr struct last_spec {} last{};
 
-#include "iso_week.h"
-
 #include <type_traits>
+
+#include "iso_week.h"
 
 static_assert(std::is_same<decltype(iso_week::last), const iso_week::last_week>{}, "");
 
-int
-main()
-{
-}
+int main() {}

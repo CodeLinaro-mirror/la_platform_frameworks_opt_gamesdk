@@ -24,40 +24,40 @@
 
 /* Loader Scene, displays load progress at startup */
 class LoaderScene : public UiScene {
- private:
-  class TextureLoader;
+private:
+    class TextureLoader;
 
- protected:
-  // text to be shown
-  const char *mLoadingText;
+protected:
+    // text to be shown
+    const char* mLoadingText;
 
-  // Widget for the loading text
-  UiWidget *mLoadingWidget;
+    // Widget for the loading text
+    UiWidget* mLoadingWidget;
 
-  // ID for the loading text
-  int mTextBoxId;
+    // ID for the loading text
+    int mTextBoxId;
 
-  uint64_t mStartTime;
+    uint64_t mStartTime;
 
-  std::unique_ptr<TextureLoader> mTextureLoader;
+    std::unique_ptr<TextureLoader> mTextureLoader;
 
-  virtual void OnCreateWidgets() override;
+    virtual void OnCreateWidgets() override;
 
-  virtual void RenderBackground() override;
+    virtual void RenderBackground() override;
 
-  DataLoaderStateMachine *mDataStateMachine;
+    DataLoaderStateMachine* mDataStateMachine;
 
- public:
-  LoaderScene();
+public:
+    LoaderScene();
 
-  ~LoaderScene();
+    ~LoaderScene();
 
-  virtual void DoFrame() override;
+    virtual void DoFrame() override;
 
-  LoaderScene *SetText(const char *text) {
-    mLoadingText = text;
-    return this;
-  }
+    LoaderScene* SetText(const char* text) {
+        mLoadingText = text;
+        return this;
+    }
 };
 
 #endif

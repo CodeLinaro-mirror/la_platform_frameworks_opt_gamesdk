@@ -70,10 +70,11 @@ extern "C" {
  *                    char* strings (i.e. the same as
  *                    VkDeviceCreateInfo::ppEnabledExtensionNames).
  */
-void SwappyVk_determineDeviceExtensions(
-    VkPhysicalDevice physicalDevice, uint32_t availableExtensionCount,
-    VkExtensionProperties* pAvailableExtensions,
-    uint32_t* pRequiredExtensionCount, char** pRequiredExtensions);
+void SwappyVk_determineDeviceExtensions(VkPhysicalDevice physicalDevice,
+                                        uint32_t availableExtensionCount,
+                                        VkExtensionProperties* pAvailableExtensions,
+                                        uint32_t* pRequiredExtensionCount,
+                                        char** pRequiredExtensions);
 
 /**
  * @brief Tell Swappy the queueFamilyIndex used to create a specific VkQueue
@@ -87,8 +88,7 @@ void SwappyVk_determineDeviceExtensions(
  * VkQueue.
  *
  */
-void SwappyVk_setQueueFamilyIndex(VkDevice device, VkQueue queue,
-                                  uint32_t queueFamilyIndex);
+void SwappyVk_setQueueFamilyIndex(VkDevice device, VkQueue queue, uint32_t queueFamilyIndex);
 
 // TBD: For now, SwappyVk assumes only one VkSwapchainKHR per VkDevice, and that
 // applications don't re-create swapchains.  Is this long-term sufficient?
@@ -98,9 +98,10 @@ void SwappyVk_setQueueFamilyIndex(VkDevice device, VkQueue queue,
  * See SwappyVk_initAndGetRefreshCycleDuration instead.
  * @private
  */
-bool SwappyVk_initAndGetRefreshCycleDuration_internal(
-    JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
-    VkDevice device, VkSwapchainKHR swapchain, uint64_t* pRefreshDuration);
+bool SwappyVk_initAndGetRefreshCycleDuration_internal(JNIEnv* env, jobject jactivity,
+                                                      VkPhysicalDevice physicalDevice,
+                                                      VkDevice device, VkSwapchainKHR swapchain,
+                                                      uint64_t* pRefreshDuration);
 
 /**
  * @brief Initialize SwappyVk for a given device and swapchain, and obtain the
@@ -134,10 +135,8 @@ bool SwappyVk_initAndGetRefreshCycleDuration_internal(
  * valid, otherwise false if an error.
  */
 bool SwappyVk_initAndGetRefreshCycleDuration(JNIEnv* env, jobject jactivity,
-                                             VkPhysicalDevice physicalDevice,
-                                             VkDevice device,
-                                             VkSwapchainKHR swapchain,
-                                             uint64_t* pRefreshDuration);
+                                             VkPhysicalDevice physicalDevice, VkDevice device,
+                                             VkSwapchainKHR swapchain, uint64_t* pRefreshDuration);
 
 /**
  * @brief Tell Swappy which ANativeWindow to use when calling to ANativeWindow_*
@@ -148,8 +147,7 @@ bool SwappyVk_initAndGetRefreshCycleDuration(JNIEnv* env, jobject jactivity,
  * @param[in]  window    - The ANativeWindow that was used to create the
  * VkSwapchainKHR
  */
-void SwappyVk_setWindow(VkDevice device, VkSwapchainKHR swapchain,
-                        ANativeWindow* window);
+void SwappyVk_setWindow(VkDevice device, VkSwapchainKHR swapchain, ANativeWindow* window);
 
 /**
  * @brief Tell Swappy the duration of that each presented image should be
@@ -164,8 +162,7 @@ void SwappyVk_setWindow(VkDevice device, VkSwapchainKHR swapchain,
  * @param[in]  swap_ns   - The duration of that each presented image should be
  *                    visible in nanoseconds
  */
-void SwappyVk_setSwapIntervalNS(VkDevice device, VkSwapchainKHR swapchain,
-                                uint64_t swap_ns);
+void SwappyVk_setSwapIntervalNS(VkDevice device, VkSwapchainKHR swapchain, uint64_t swap_ns);
 
 /**
  * @brief Tell Swappy to present one or more images to corresponding swapchains.
@@ -185,8 +182,7 @@ void SwappyVk_setSwapIntervalNS(VkDevice device, VkSwapchainKHR swapchain,
  *                    information about what image(s) to present on which
  *                    swapchain(s).
  */
-VkResult SwappyVk_queuePresent(VkQueue queue,
-                               const VkPresentInfoKHR* pPresentInfo);
+VkResult SwappyVk_queuePresent(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
 
 /**
  * @brief Destroy the SwappyVk instance associated with a swapchain.
@@ -281,30 +277,30 @@ void SwappyVk_uninjectTracer(const SwappyTracer* tracer);
  * Usage of this functionality is optional.
  */
 typedef struct SwappyVkFunctionProvider {
-  /**
-   * @brief Callback to initialize the function provider.
-   *
-   * This function is called by Swappy before any functions are requested.
-   * E.g. so you can call dlopen on the Vulkan library.
-   */
-  bool (*init)();
+    /**
+     * @brief Callback to initialize the function provider.
+     *
+     * This function is called by Swappy before any functions are requested.
+     * E.g. so you can call dlopen on the Vulkan library.
+     */
+    bool (*init)();
 
-  /**
-   * @brief Callback to get the address of a function.
-   *
-   * This function is called by Swappy to get the address of a Vulkan
-   * function.
-   * @param name The null-terminated name of the function.
-   */
-  void* (*getProcAddr)(const char* name);
+    /**
+     * @brief Callback to get the address of a function.
+     *
+     * This function is called by Swappy to get the address of a Vulkan
+     * function.
+     * @param name The null-terminated name of the function.
+     */
+    void* (*getProcAddr)(const char* name);
 
-  /**
-   * @brief Callback to close any resources owned by the function provider.
-   *
-   * This function is called by Swappy when no more functions will be
-   * requested, e.g. so you can call dlclose on the Vulkan library.
-   */
-  void (*close)();
+    /**
+     * @brief Callback to close any resources owned by the function provider.
+     *
+     * This function is called by Swappy when no more functions will be
+     * requested, e.g. so you can call dlclose on the Vulkan library.
+     */
+    void (*close)();
 } SwappyVkFunctionProvider;
 
 /**
@@ -320,8 +316,7 @@ typedef struct SwappyVkFunctionProvider {
  *
  * @param[in] provider - provider object
  */
-void SwappyVk_setFunctionProvider(
-    const SwappyVkFunctionProvider* pSwappyVkFunctionProvider);
+void SwappyVk_setFunctionProvider(const SwappyVkFunctionProvider* pSwappyVkFunctionProvider);
 
 /**
  * @brief Get the swap interval value, in nanoseconds, for a given swapchain.
@@ -337,8 +332,7 @@ uint64_t SwappyVk_getSwapIntervalNS(VkSwapchainKHR swapchain);
  * an array of size equal to allocated_entries that will be filled with the
  * refresh periods.
  */
-int SwappyVk_getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates,
-                                          int allocated_entries,
+int SwappyVk_getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries,
                                           VkSwapchainKHR swapchain);
 /**
  * @brief Check if Swappy is enabled for the specified swapchain.
@@ -384,8 +378,7 @@ void SwappyVk_enableStats(VkSwapchainKHR swapchain, bool enabled);
 
  * @see SwappyVk_enableStats.
  */
-void SwappyVk_recordFrameStart(VkQueue queue, VkSwapchainKHR swapchain,
-                               uint32_t image);
+void SwappyVk_recordFrameStart(VkQueue queue, VkSwapchainKHR swapchain, uint32_t image);
 
 /**
  * @brief Returns the stats collected, if statistics collection was toggled on.
@@ -467,7 +460,7 @@ void SwappyVk_enableFramePacing(VkSwapchainKHR swapchain, bool enable);
 void SwappyVk_enableBlockingWait(VkSwapchainKHR swapchain, bool enable);
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
 /** @} */

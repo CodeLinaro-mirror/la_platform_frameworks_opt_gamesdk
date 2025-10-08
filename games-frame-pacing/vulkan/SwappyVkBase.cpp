@@ -44,93 +44,87 @@ PFN_vkQueueSubmit vkQueueSubmit = nullptr;
 void LoadVulkanFunctions(const SwappyVkFunctionProvider* pFunctionProvider) {
     if (vkCreateCommandPool == nullptr) {
         vkCreateCommandPool = reinterpret_cast<PFN_vkCreateCommandPool>(
-            pFunctionProvider->getProcAddr("vkCreateCommandPool"));
+                pFunctionProvider->getProcAddr("vkCreateCommandPool"));
         vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(
-            pFunctionProvider->getProcAddr("vkDestroyCommandPool"));
+                pFunctionProvider->getProcAddr("vkDestroyCommandPool"));
         vkCreateFence = reinterpret_cast<PFN_vkCreateFence>(
-            pFunctionProvider->getProcAddr("vkCreateFence"));
+                pFunctionProvider->getProcAddr("vkCreateFence"));
         vkDestroyFence = reinterpret_cast<PFN_vkDestroyFence>(
-            pFunctionProvider->getProcAddr("vkDestroyFence"));
+                pFunctionProvider->getProcAddr("vkDestroyFence"));
         vkWaitForFences = reinterpret_cast<PFN_vkWaitForFences>(
-            pFunctionProvider->getProcAddr("vkWaitForFences"));
+                pFunctionProvider->getProcAddr("vkWaitForFences"));
         vkGetFenceStatus = reinterpret_cast<PFN_vkGetFenceStatus>(
-            pFunctionProvider->getProcAddr("vkGetFenceStatus"));
+                pFunctionProvider->getProcAddr("vkGetFenceStatus"));
         vkResetFences = reinterpret_cast<PFN_vkResetFences>(
-            pFunctionProvider->getProcAddr("vkResetFences"));
+                pFunctionProvider->getProcAddr("vkResetFences"));
         vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(
-            pFunctionProvider->getProcAddr("vkCreateSemaphore"));
+                pFunctionProvider->getProcAddr("vkCreateSemaphore"));
         vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(
-            pFunctionProvider->getProcAddr("vkDestroySemaphore"));
+                pFunctionProvider->getProcAddr("vkDestroySemaphore"));
         vkCreateEvent = reinterpret_cast<PFN_vkCreateEvent>(
-            pFunctionProvider->getProcAddr("vkCreateEvent"));
+                pFunctionProvider->getProcAddr("vkCreateEvent"));
         vkDestroyEvent = reinterpret_cast<PFN_vkDestroyEvent>(
-            pFunctionProvider->getProcAddr("vkDestroyEvent"));
+                pFunctionProvider->getProcAddr("vkDestroyEvent"));
         vkCmdSetEvent = reinterpret_cast<PFN_vkCmdSetEvent>(
-            pFunctionProvider->getProcAddr("vkCmdSetEvent"));
-        vkAllocateCommandBuffers =
-            reinterpret_cast<PFN_vkAllocateCommandBuffers>(
+                pFunctionProvider->getProcAddr("vkCmdSetEvent"));
+        vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(
                 pFunctionProvider->getProcAddr("vkAllocateCommandBuffers"));
         vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(
-            pFunctionProvider->getProcAddr("vkFreeCommandBuffers"));
+                pFunctionProvider->getProcAddr("vkFreeCommandBuffers"));
         vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer>(
-            pFunctionProvider->getProcAddr("vkBeginCommandBuffer"));
+                pFunctionProvider->getProcAddr("vkBeginCommandBuffer"));
         vkEndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer>(
-            pFunctionProvider->getProcAddr("vkEndCommandBuffer"));
+                pFunctionProvider->getProcAddr("vkEndCommandBuffer"));
         vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit>(
-            pFunctionProvider->getProcAddr("vkQueueSubmit"));
+                pFunctionProvider->getProcAddr("vkQueueSubmit"));
     }
 }
 
-SwappyVkBase::SwappyVkBase(JNIEnv* env, jobject jactivity,
-                           VkPhysicalDevice physicalDevice, VkDevice device,
-                           const SwappyVkFunctionProvider* pFunctionProvider)
-    : mCommonBase(env, jactivity),
-      mPhysicalDevice(physicalDevice),
-      mDevice(device),
-      mpFunctionProvider(pFunctionProvider),
-      mInitialized(false),
-      mEnabled(false) {
+SwappyVkBase::SwappyVkBase(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
+                           VkDevice device, const SwappyVkFunctionProvider* pFunctionProvider)
+      : mCommonBase(env, jactivity),
+        mPhysicalDevice(physicalDevice),
+        mDevice(device),
+        mpFunctionProvider(pFunctionProvider),
+        mInitialized(false),
+        mEnabled(false) {
     if (!mCommonBase.isValid()) {
         SWAPPY_LOGE("SwappyCommon could not initialize correctly.");
         return;
     }
 
     mpfnGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(
-        mpFunctionProvider->getProcAddr("vkGetDeviceProcAddr"));
+            mpFunctionProvider->getProcAddr("vkGetDeviceProcAddr"));
     mpfnQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(
-        mpfnGetDeviceProcAddr(mDevice, "vkQueuePresentKHR"));
+            mpfnGetDeviceProcAddr(mDevice, "vkQueuePresentKHR"));
 
     initGoogExtension();
 
-    mEnabled =
-        !gamesdk::GetSystemPropAsBool(SWAPPY_SYSTEM_PROP_KEY_DISABLE, false);
+    mEnabled = !gamesdk::GetSystemPropAsBool(SWAPPY_SYSTEM_PROP_KEY_DISABLE, false);
 }
 
 void SwappyVkBase::initGoogExtension() {
 #if (not defined ANDROID_NDK_VERSION) || ANDROID_NDK_VERSION >= 15
-    mpfnGetRefreshCycleDurationGOOGLE =
-        reinterpret_cast<PFN_vkGetRefreshCycleDurationGOOGLE>(
+    mpfnGetRefreshCycleDurationGOOGLE = reinterpret_cast<PFN_vkGetRefreshCycleDurationGOOGLE>(
             mpfnGetDeviceProcAddr(mDevice, "vkGetRefreshCycleDurationGOOGLE"));
-    mpfnGetPastPresentationTimingGOOGLE =
-        reinterpret_cast<PFN_vkGetPastPresentationTimingGOOGLE>(
-            mpfnGetDeviceProcAddr(mDevice,
-                                  "vkGetPastPresentationTimingGOOGLE"));
+    mpfnGetPastPresentationTimingGOOGLE = reinterpret_cast<PFN_vkGetPastPresentationTimingGOOGLE>(
+            mpfnGetDeviceProcAddr(mDevice, "vkGetPastPresentationTimingGOOGLE"));
 #endif
 }
 
-SwappyVkBase::~SwappyVkBase() { destroyVkSyncObjects(); }
+SwappyVkBase::~SwappyVkBase() {
+    destroyVkSyncObjects();
+}
 
 void SwappyVkBase::doSetWindow(ANativeWindow* window) {
     mCommonBase.setANativeWindow(window);
 }
 
-void SwappyVkBase::doSetSwapInterval(VkSwapchainKHR swapchain,
-                                     uint64_t swapNs) {
+void SwappyVkBase::doSetSwapInterval(VkSwapchainKHR swapchain, uint64_t swapNs) {
     Settings::getInstance()->setSwapDuration(swapNs);
 }
 
-VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue,
-                                               uint32_t queueFamilyIndex) {
+VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue, uint32_t queueFamilyIndex) {
     if (mCommandPool.find(queue) != mCommandPool.end()) {
         return VK_SUCCESS;
     }
@@ -138,59 +132,55 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue,
     VkSync sync;
 
     const VkCommandPoolCreateInfo cmd_pool_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .queueFamilyIndex = queueFamilyIndex,
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .queueFamilyIndex = queueFamilyIndex,
     };
 
-    VkResult res = vkCreateCommandPool(mDevice, &cmd_pool_info, NULL,
-                                       &mCommandPool[queue]);
+    VkResult res = vkCreateCommandPool(mDevice, &cmd_pool_info, NULL, &mCommandPool[queue]);
     if (res) {
         SWAPPY_LOGE("vkCreateCommandPool failed %d", res);
         return res;
     }
     const VkCommandBufferAllocateInfo present_cmd_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = NULL,
-        .commandPool = mCommandPool[queue],
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext = NULL,
+            .commandPool = mCommandPool[queue],
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
     };
 
     for (int i = 0; i < MAX_PENDING_FENCES; i++) {
-        VkFenceCreateInfo fence_ci = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+        VkFenceCreateInfo fence_ci = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                                      .pNext = NULL,
+                                      .flags = VK_FENCE_CREATE_SIGNALED_BIT};
         res = vkCreateFence(mDevice, &fence_ci, NULL, &sync.fence);
         if (res) {
             SWAPPY_LOGE("failed to create fence: %d", res);
             return res;
         }
 
-        VkSemaphoreCreateInfo semaphore_ci = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0};
+        VkSemaphoreCreateInfo semaphore_ci = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                                              .pNext = NULL,
+                                              .flags = 0};
         res = vkCreateSemaphore(mDevice, &semaphore_ci, NULL, &sync.semaphore);
         if (res) {
             SWAPPY_LOGE("failed to create semaphore: %d", res);
             return res;
         }
 
-        res =
-            vkAllocateCommandBuffers(mDevice, &present_cmd_info, &sync.command);
+        res = vkAllocateCommandBuffers(mDevice, &present_cmd_info, &sync.command);
         if (res) {
             SWAPPY_LOGE("vkAllocateCommandBuffers failed %d", res);
             return res;
         }
 
         const VkCommandBufferBeginInfo cmd_buf_info = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .pNext = NULL,
-            .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-            .pInheritanceInfo = NULL,
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .pNext = NULL,
+                .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+                .pInheritanceInfo = NULL,
         };
         res = vkBeginCommandBuffer(sync.command, &cmd_buf_info);
         if (res) {
@@ -199,9 +189,9 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue,
         }
 
         VkEventCreateInfo event_info = {
-            .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
-            .pNext = NULL,
-            .flags = 0,
+                .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
         };
         res = vkCreateEvent(mDevice, &event_info, NULL, &sync.event);
         if (res) {
@@ -209,8 +199,7 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue,
             return res;
         }
 
-        vkCmdSetEvent(sync.command, sync.event,
-                      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        vkCmdSetEvent(sync.command, sync.event, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
         res = vkEndCommandBuffer(sync.command);
         if (res) {
@@ -222,14 +211,12 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue,
     }
 
     // Create a thread that will wait for the fences
-    auto emplaceResult =
-        mThreads.emplace(queue, std::make_unique<ThreadContext>(queue));
+    auto emplaceResult = mThreads.emplace(queue, std::make_unique<ThreadContext>(queue));
     auto& threadContext = emplaceResult.first->second;
 
     // Start the thread
     std::lock_guard<std::mutex> lock(threadContext->lock);
-    threadContext->thread =
-        Thread([&]() { waitForFenceThreadMain(*threadContext); });
+    threadContext->thread = Thread([&]() { waitForFenceThreadMain(*threadContext); });
     return VK_SUCCESS;
 }
 
@@ -268,8 +255,7 @@ void SwappyVkBase::destroyVkSyncObjects() {
         while (syncList.size() > 0) {
             VkSync sync = syncList.front();
             syncList.pop_front();
-            vkFreeCommandBuffers(mDevice, mCommandPool[it->first], 1,
-                                 &sync.command);
+            vkFreeCommandBuffers(mDevice, mCommandPool[it->first], 1, &sync.command);
             vkDestroyEvent(mDevice, sync.event, NULL);
             vkDestroySemaphore(mDevice, sync.semaphore, NULL);
             vkResetFences(mDevice, 1, &sync.fence);
@@ -306,16 +292,14 @@ bool SwappyVkBase::lastFrameIsCompleted(VkQueue queue) {
     return mWaitingSyncs[queue].empty();
 }
 
-VkResult SwappyVkBase::injectFence(VkQueue queue,
-                                   const VkPresentInfoKHR* pPresentInfo,
+VkResult SwappyVkBase::injectFence(VkQueue queue, const VkPresentInfoKHR* pPresentInfo,
                                    VkSemaphore* pSemaphore) {
     reclaimSignaledFences(queue);
 
     // If we cross the swap interval threshold, we don't pace at all.
     // In this case we might not have a free fence, so just don't use the fence.
     if (mFreeSyncPool[queue].empty() ||
-        vkGetFenceStatus(mDevice, mFreeSyncPool[queue].front().fence) !=
-            VK_SUCCESS) {
+        vkGetFenceStatus(mDevice, mFreeSyncPool[queue].front().fence) != VK_SUCCESS) {
         *pSemaphore = VK_NULL_HANDLE;
         return VK_SUCCESS;
     }
@@ -381,16 +365,15 @@ void SwappyVkBase::waitForFenceThreadMain(ThreadContext& thread) {
 
         while (!waitingSyncsEmpty) {
             VkSync sync;
-            {  // Get the sync object with a lock
+            { // Get the sync object with a lock
                 std::lock_guard<std::mutex> lock(thread.lock);
                 sync = mWaitingSyncs[thread.queue].front();
             }
 
             gamesdk::ScopedTrace tracer("Swappy: GPU frame time");
             const auto startTime = std::chrono::steady_clock::now();
-            VkResult result =
-                vkWaitForFences(mDevice, 1, &sync.fence, VK_TRUE,
-                                mCommonBase.getFenceTimeout().count());
+            VkResult result = vkWaitForFences(mDevice, 1, &sync.fence, VK_TRUE,
+                                              mCommonBase.getFenceTimeout().count());
             if (result) {
                 SWAPPY_LOGW_ONCE("Failed to wait for fence %d", result);
             }
@@ -432,13 +415,13 @@ void SwappyVkBase::removeTracer(const SwappyTracer* tracer) {
     mCommonBase.removeTracerCallbacks(*tracer);
 }
 
-int SwappyVkBase::getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates,
-                                               int allocated_entries) {
-    return mCommonBase.getSupportedRefreshPeriodsNS(out_refreshrates,
-                                                    allocated_entries);
+int SwappyVkBase::getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries) {
+    return mCommonBase.getSupportedRefreshPeriodsNS(out_refreshrates, allocated_entries);
 }
 
-void SwappyVkBase::resetFramePacing() { mCommonBase.resetFramePacing(); }
+void SwappyVkBase::resetFramePacing() {
+    mCommonBase.resetFramePacing();
+}
 
 void SwappyVkBase::enableFramePacing(bool enable) {
     mCommonBase.enableFramePacing(enable);
@@ -448,4 +431,4 @@ void SwappyVkBase::enableBlockingWait(bool enable) {
     mCommonBase.enableBlockingWait(enable);
 }
 
-}  // namespace swappy
+} // namespace swappy

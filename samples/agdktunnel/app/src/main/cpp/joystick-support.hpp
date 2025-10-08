@@ -18,7 +18,7 @@
 #define agdktunnel_joystick_support_hpp
 
 // A few declarations we need for NDK joystick support as of NDK release 9
-typedef float (*_getAxisValue_sig)(const AInputEvent *, int32_t, size_t);
+typedef float (*_getAxisValue_sig)(const AInputEvent*, int32_t, size_t);
 
 static const int AXIS_HAT_X = 15, AXIS_HAT_Y = 16;
 static const int SOURCE_CLASS_JOYSTICK = 16;

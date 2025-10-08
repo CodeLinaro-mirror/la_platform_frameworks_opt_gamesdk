@@ -35,80 +35,73 @@ import java.util.stream.IntStream;
 import org.apache.commons.io.FileUtils;
 
 public class AssetsWriter {
+    private final String assetsDirectory;
+    private static final String AUTO_GENERATED_PROTO =
+            "// This file is auto generated -- DO NOT EDIT\n";
+    private static final String AUTO_GENERATED_TEXT =
+            "# This file is auto generated -- DO NOT EDIT\n";
 
-  private final String assetsDirectory;
-  private static final String AUTO_GENERATED_PROTO =
-      "// This file is auto generated -- DO NOT EDIT\n";
-  private static final String AUTO_GENERATED_TEXT =
-      "# This file is auto generated -- DO NOT EDIT\n";
-
-  public AssetsWriter(String assetsDirectory) {
-    this.assetsDirectory = assetsDirectory;
-  }
-
-  public boolean saveDevTuningForkProto(
-      List<EnumDataModel> enums,
-      MessageDataModel annotationMessage,
-      MessageDataModel fidelityMessage) {
-    File file = new File(assetsDirectory, DEV_TUNINGFORK_PROTO);
-    try (FileWriter fileWriter = new FileWriter(file)) {
-      fileWriter.write(AUTO_GENERATED_PROTO);
-      fileWriter.write("syntax = \"proto3\";\n\n");
-      fileWriter.write("package com.google.tuningfork;\n\n");
-      for (EnumDataModel enumDataModel : enums) {
-        fileWriter.write(enumDataModel.toString());
-      }
-      fileWriter.write(annotationMessage.toString());
-      fileWriter.write(fidelityMessage.toString());
-      fileWriter.write(AUTO_GENERATED_PROTO);
-    } catch (IOException e) {
-      e.printStackTrace();
+    public AssetsWriter(String assetsDirectory) {
+        this.assetsDirectory = assetsDirectory;
     }
-    File descriptorFile = new File(assetsDirectory, DEV_TUNINGFORK_DESCRIPTOR);
-    try {
-      ProtoCompiler.getInstance().compile(file, Optional.of(descriptorFile));
-      return true;
-    } catch (IOException | CompilationException e) {
-      e.printStackTrace();
-    }
-    return false;
-  }
 
-  public boolean saveDevFidelityParams(ProtoCompiler compiler,
-      List<QualityDataModel> qualityDataModel) {
-    return IntStream.range(0, qualityDataModel.size())
-        .filter(i -> {
-          try {
-            saveDevFidelityParams(compiler,
-                qualityDataModel.get(i), i + 1);
-          } catch (IOException | CompilationException e) {
+    public boolean saveDevTuningForkProto(List<EnumDataModel> enums,
+            MessageDataModel annotationMessage, MessageDataModel fidelityMessage) {
+        File file = new File(assetsDirectory, DEV_TUNINGFORK_PROTO);
+        try (FileWriter fileWriter = new FileWriter(file)) {
+            fileWriter.write(AUTO_GENERATED_PROTO);
+            fileWriter.write("syntax = \"proto3\";\n\n");
+            fileWriter.write("package com.google.tuningfork;\n\n");
+            for (EnumDataModel enumDataModel : enums) {
+                fileWriter.write(enumDataModel.toString());
+            }
+            fileWriter.write(annotationMessage.toString());
+            fileWriter.write(fidelityMessage.toString());
+            fileWriter.write(AUTO_GENERATED_PROTO);
+        } catch (IOException e) {
             e.printStackTrace();
-          }
-          return true;
-        })
-        .count()
-        == qualityDataModel.size();
-  }
-
-  public void saveDevFidelityParams(ProtoCompiler compiler,
-      QualityDataModel qualityDataModel, int fileNumber) throws IOException, CompilationException {
-    File devTuningfork = new File(assetsDirectory, DEV_TUNINGFORK_PROTO);
-    String filePath = assetsDirectory + "/dev_tuningfork_fidelityparams_" + fileNumber + ".bin";
-    compiler.encodeFromTextprotoFile("com.google.tuningfork.FidelityParams", devTuningfork,
-        qualityDataModel.toString(),
-        filePath,
-        Optional.empty());
-  }
-
-  public boolean saveInstrumentationSettings(
-      Settings settings) {
-    File file = new File(assetsDirectory, TUNINGFORK_SETTINGS_BINARY);
-    try {
-      FileUtils.writeByteArrayToFile(file, settings.toByteArray());
-      return true;
-    } catch (IOException e) {
-      e.printStackTrace();
+        }
+        File descriptorFile = new File(assetsDirectory, DEV_TUNINGFORK_DESCRIPTOR);
+        try {
+            ProtoCompiler.getInstance().compile(file, Optional.of(descriptorFile));
+            return true;
+        } catch (IOException | CompilationException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
-    return false;
-  }
+
+    public boolean saveDevFidelityParams(
+            ProtoCompiler compiler, List<QualityDataModel> qualityDataModel) {
+        return IntStream.range(0, qualityDataModel.size())
+                       .filter(i -> {
+                           try {
+                               saveDevFidelityParams(compiler, qualityDataModel.get(i), i + 1);
+                           } catch (IOException | CompilationException e) {
+                               e.printStackTrace();
+                           }
+                           return true;
+                       })
+                       .count()
+                == qualityDataModel.size();
+    }
+
+    public void saveDevFidelityParams(ProtoCompiler compiler, QualityDataModel qualityDataModel,
+            int fileNumber) throws IOException, CompilationException {
+        File devTuningfork = new File(assetsDirectory, DEV_TUNINGFORK_PROTO);
+        String filePath = assetsDirectory + "/dev_tuningfork_fidelityparams_" + fileNumber + ".bin";
+        compiler.encodeFromTextprotoFile("com.google.tuningfork.FidelityParams", devTuningfork,
+                qualityDataModel.toString(), filePath, Optional.empty());
+    }
+
+    public boolean saveInstrumentationSettings(Settings settings) {
+        File file = new File(assetsDirectory, TUNINGFORK_SETTINGS_BINARY);
+        try {
+            FileUtils.writeByteArrayToFile(file, settings.toByteArray());
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

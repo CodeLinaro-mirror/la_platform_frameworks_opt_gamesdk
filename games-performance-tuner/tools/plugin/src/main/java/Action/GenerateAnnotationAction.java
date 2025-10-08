@@ -16,7 +16,6 @@
 
 package Action;
 
-
 import Model.MessageDataModel;
 import Utils.DataModelTransformer;
 import Utils.Generation.TuningForkMethodsGeneration;
@@ -45,85 +44,81 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class GenerateAnnotationAction extends AnAction {
+    private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
+    private final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup(
+            resourceLoader.get("android_performance_tuner"), NotificationDisplayType.BALLOON, true);
 
-  private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
-  private final NotificationGroup NOTIFICATION_GROUP =
-      new NotificationGroup(resourceLoader.get("android_performance_tuner"),
-          NotificationDisplayType.BALLOON, true);
-
-  @Override
-  public void update(@NotNull AnActionEvent e) {
-    final Project project = e.getProject();
-    final Editor editor = e.getData(CommonDataKeys.EDITOR);
-    if (project == null || editor == null) {
-      e.getPresentation().setEnabledAndVisible(false);
-      return;
-    }
-    final Document document = editor.getDocument();
-    PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
-    if (!(psiFile instanceof OCFile)) {
-      e.getPresentation().setEnabledAndVisible(false);
-      return;
-    }
-    e.getPresentation().setEnabledAndVisible(true);
-  }
-
-  @Override
-  public void actionPerformed(@NotNull AnActionEvent actionEvent) {
-    final Editor editor = actionEvent.getRequiredData(CommonDataKeys.EDITOR);
-    final Project project = actionEvent.getRequiredData(CommonDataKeys.PROJECT);
-    final Document document = editor.getDocument();
-    PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
-    if (psiFile == null) {
-      Notification notification = NOTIFICATION_GROUP.createNotification(
-          resourceLoader.get("identify_file_error"),
-          NotificationType.INFORMATION);
-      notification.notify(project);
-      return;
-    }
-    ProgressManager.getInstance()
-        .run(new GenerationTask(project, resourceLoader.get("loading_apt"), psiFile));
-  }
-
-
-  private void generateCode(MessageDataModel annotationData, MessageDataModel fidelityData,
-      TuningForkMethodsGeneration tuningForkMethodsGeneration, Project project) {
-
-    WriteCommandAction.runWriteCommandAction(project, () -> tuningForkMethodsGeneration
-        .generateTuningForkCode(annotationData, fidelityData));
-  }
-
-  private final class GenerationTask extends Task.Backgroundable {
-
-    final Project project;
-    final PsiFile psiFile;
-
-    public GenerationTask(@Nullable Project project, @NotNull String title, PsiFile psiFile) {
-      super(project, title);
-      this.project = project;
-      this.psiFile = psiFile;
+    @Override
+    public void update(@NotNull AnActionEvent e) {
+        final Project project = e.getProject();
+        final Editor editor = e.getData(CommonDataKeys.EDITOR);
+        if (project == null || editor == null) {
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
+        }
+        final Document document = editor.getDocument();
+        PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
+        if (!(psiFile instanceof OCFile)) {
+            e.getPresentation().setEnabledAndVisible(false);
+            return;
+        }
+        e.getPresentation().setEnabledAndVisible(true);
     }
 
     @Override
-    public void run(@NotNull ProgressIndicator progressIndicator) {
-      progressIndicator.setIndeterminate(true);
-      ProtoCompiler protoCompiler = ProtoCompiler.getInstance();
-      String projectPath = project.getProjectFilePath().split(".idea")[0];
-      try {
-        DataModelTransformer transformer = new DataModelTransformer(projectPath,
-            protoCompiler);
-        MessageDataModel annotationData = transformer.initAnnotationData();
-        MessageDataModel fidelityData = transformer.initFidelityData();
-        TuningForkMethodsGeneration tuningForkMethodsGeneration
-            = new TuningForkMethodsGeneration(psiFile, project);
-        progressIndicator.setText(resourceLoader.get("generation_writing_method"));
-        generateCode(annotationData, fidelityData, tuningForkMethodsGeneration, project);
-        progressIndicator.setText(resourceLoader.get("generation_brush_imports"));
-        WriteCommandAction
-            .runWriteCommandAction(project, tuningForkMethodsGeneration::generateImports);
-      } catch (IOException | CompilationException e1) {
-        e1.printStackTrace();
-      }
+    public void actionPerformed(@NotNull AnActionEvent actionEvent) {
+        final Editor editor = actionEvent.getRequiredData(CommonDataKeys.EDITOR);
+        final Project project = actionEvent.getRequiredData(CommonDataKeys.PROJECT);
+        final Document document = editor.getDocument();
+        PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
+        if (psiFile == null) {
+            Notification notification = NOTIFICATION_GROUP.createNotification(
+                    resourceLoader.get("identify_file_error"), NotificationType.INFORMATION);
+            notification.notify(project);
+            return;
+        }
+        ProgressManager.getInstance().run(
+                new GenerationTask(project, resourceLoader.get("loading_apt"), psiFile));
     }
-  }
+
+    private void generateCode(MessageDataModel annotationData, MessageDataModel fidelityData,
+            TuningForkMethodsGeneration tuningForkMethodsGeneration, Project project) {
+        WriteCommandAction.runWriteCommandAction(project,
+                ()
+                        -> tuningForkMethodsGeneration.generateTuningForkCode(
+                                annotationData, fidelityData));
+    }
+
+    private final class GenerationTask extends Task.Backgroundable {
+        final Project project;
+        final PsiFile psiFile;
+
+        public GenerationTask(@Nullable Project project, @NotNull String title, PsiFile psiFile) {
+            super(project, title);
+            this.project = project;
+            this.psiFile = psiFile;
+        }
+
+        @Override
+        public void run(@NotNull ProgressIndicator progressIndicator) {
+            progressIndicator.setIndeterminate(true);
+            ProtoCompiler protoCompiler = ProtoCompiler.getInstance();
+            String projectPath = project.getProjectFilePath().split(".idea")[0];
+            try {
+                DataModelTransformer transformer =
+                        new DataModelTransformer(projectPath, protoCompiler);
+                MessageDataModel annotationData = transformer.initAnnotationData();
+                MessageDataModel fidelityData = transformer.initFidelityData();
+                TuningForkMethodsGeneration tuningForkMethodsGeneration =
+                        new TuningForkMethodsGeneration(psiFile, project);
+                progressIndicator.setText(resourceLoader.get("generation_writing_method"));
+                generateCode(annotationData, fidelityData, tuningForkMethodsGeneration, project);
+                progressIndicator.setText(resourceLoader.get("generation_brush_imports"));
+                WriteCommandAction.runWriteCommandAction(
+                        project, tuningForkMethodsGeneration::generateImports);
+            } catch (IOException | CompilationException e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
 }

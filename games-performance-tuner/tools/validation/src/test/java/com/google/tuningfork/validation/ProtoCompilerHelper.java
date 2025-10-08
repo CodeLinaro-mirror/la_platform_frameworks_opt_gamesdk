@@ -26,21 +26,20 @@ import org.junit.rules.TemporaryFolder;
 
 /** Base class for tests that need to create proto Descriptors */
 public class ProtoCompilerHelper {
+    private static final File PROTOC_BINARY = ProtocBinary.get();
+    private static final ExternalProtoCompiler compiler = new ExternalProtoCompiler(PROTOC_BINARY);
+    private final TestdataHelper testdata;
 
-  private static final File PROTOC_BINARY = ProtocBinary.get();
-  private static final ExternalProtoCompiler compiler = new ExternalProtoCompiler(PROTOC_BINARY);
-  private final TestdataHelper testdata;
+    public ProtoCompilerHelper(TemporaryFolder tempFolder) {
+        this.testdata = new TestdataHelper(tempFolder);
+    }
 
-  public ProtoCompilerHelper(TemporaryFolder tempFolder) {
-    this.testdata = new TestdataHelper(tempFolder);
-  }
-
-  public Descriptor getDescriptor(String fileName, String message, String descName)
-      throws Exception {
-    File file = testdata.getFile(fileName);
-    FileDescriptor fDesc = compiler.compile(file, Optional.empty());
-    assertThat(fDesc).isNotNull();
-    Descriptor desc = fDesc.findMessageTypeByName(descName);
-    return desc;
-  }
+    public Descriptor getDescriptor(String fileName, String message, String descName)
+            throws Exception {
+        File file = testdata.getFile(fileName);
+        FileDescriptor fDesc = compiler.compile(file, Optional.empty());
+        assertThat(fDesc).isNotNull();
+        Descriptor desc = fDesc.findMessageTypeByName(descName);
+        return desc;
+    }
 }

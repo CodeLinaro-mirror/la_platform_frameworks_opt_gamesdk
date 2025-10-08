@@ -30,7 +30,7 @@ public class AssetsFinderTest {
     public void directoryFound() throws IOException {
         testFolder.newFolder("assets", "tuningfork");
         Optional<File> assetsDirectory =
-            Optional.of(AssetsFinder.findAssets(testFolder.getRoot().getAbsolutePath()));
+                Optional.of(AssetsFinder.findAssets(testFolder.getRoot().getAbsolutePath()));
         Assert.assertTrue(assetsDirectory.isPresent());
         Assert.assertTrue(assetsDirectory.get().getAbsolutePath().endsWith("assets/tuningfork"));
     }

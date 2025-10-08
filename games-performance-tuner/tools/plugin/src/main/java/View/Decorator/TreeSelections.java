@@ -22,58 +22,55 @@ import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreePath;
 
 public class TreeSelections {
+    public static class NonLeafSelection extends DefaultTreeSelectionModel {
+        private TreePath[] getLeafs(TreePath[] fullPaths) {
+            ArrayList<TreePath> paths = new ArrayList<>();
 
-  public static class NonLeafSelection extends DefaultTreeSelectionModel {
+            for (TreePath fullPath : fullPaths) {
+                if (!((DefaultMutableTreeNode) fullPath.getLastPathComponent()).isLeaf()) {
+                    paths.add(fullPath);
+                }
+            }
 
-    private TreePath[] getLeafs(TreePath[] fullPaths) {
-      ArrayList<TreePath> paths = new ArrayList<>();
-
-      for (TreePath fullPath : fullPaths) {
-        if (!((DefaultMutableTreeNode) fullPath.getLastPathComponent()).isLeaf()) {
-          paths.add(fullPath);
+            return paths.toArray(fullPaths);
         }
-      }
 
-      return paths.toArray(fullPaths);
-    }
-
-    @Override
-    public void setSelectionPaths(TreePath[] treePaths) {
-      super.setSelectionPaths(getLeafs(treePaths));
-    }
-
-    @Override
-    public void addSelectionPaths(TreePath[] treePaths) {
-      super.addSelectionPaths(getLeafs(treePaths));
-    }
-  }
-
-  public static class FirstNodeSelection extends DefaultTreeSelectionModel {
-
-    private TreePath[] getFullPaths(TreePath[] fullPaths) {
-      ArrayList<TreePath> paths = new ArrayList<>();
-
-      for (TreePath fullPath : fullPaths) {
-        /*
-         * Always skipping the main root which is invisible.
-         * so the first visible roots are on index 2
-         */
-        if (fullPath.getPathCount() == 2) {
-          paths.add(fullPath);
+        @Override
+        public void setSelectionPaths(TreePath[] treePaths) {
+            super.setSelectionPaths(getLeafs(treePaths));
         }
-      }
 
-      return paths.toArray(fullPaths);
+        @Override
+        public void addSelectionPaths(TreePath[] treePaths) {
+            super.addSelectionPaths(getLeafs(treePaths));
+        }
     }
 
-    @Override
-    public void setSelectionPaths(TreePath[] treePaths) {
-      super.setSelectionPaths(getFullPaths(treePaths));
-    }
+    public static class FirstNodeSelection extends DefaultTreeSelectionModel {
+        private TreePath[] getFullPaths(TreePath[] fullPaths) {
+            ArrayList<TreePath> paths = new ArrayList<>();
 
-    @Override
-    public void addSelectionPaths(TreePath[] treePaths) {
-      super.addSelectionPaths(getFullPaths(treePaths));
+            for (TreePath fullPath : fullPaths) {
+                /*
+                 * Always skipping the main root which is invisible.
+                 * so the first visible roots are on index 2
+                 */
+                if (fullPath.getPathCount() == 2) {
+                    paths.add(fullPath);
+                }
+            }
+
+            return paths.toArray(fullPaths);
+        }
+
+        @Override
+        public void setSelectionPaths(TreePath[] treePaths) {
+            super.setSelectionPaths(getFullPaths(treePaths));
+        }
+
+        @Override
+        public void addSelectionPaths(TreePath[] treePaths) {
+            super.addSelectionPaths(getFullPaths(treePaths));
+        }
     }
-  }
 }

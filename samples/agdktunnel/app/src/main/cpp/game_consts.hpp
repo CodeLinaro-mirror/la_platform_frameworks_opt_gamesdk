@@ -128,22 +128,20 @@
 #define BONUS_POINTS 50
 
 // roll speeds for each level (how fast the chamber turns)
-#define ROLL_SPEEDS \
-  { 0.0f, 0.1f, 0.0f, -0.1f, 0.0f, 0.2f, 0.0f, -0.2f }
+#define ROLL_SPEEDS {0.0f, 0.1f, 0.0f, -0.1f, 0.0f, 0.2f, 0.0f, -0.2f}
 
 // recipes for synthesizing our very advanced sound effects:
 #define TONE_LEVEL_UP "d100 f500. f600. f700. f600. f700. f800."
-#define TONE_CRASHED \
-  "a100 d15 f0. a40 d75 f0. a30 f0. a20 f0. a70 d100 f400. a0. a70. a0. a70."
-#define TONE_GAME_OVER                                                     \
-  "a100 d15 f0. a40 d75 f0. a30 f0. a20 f0. a70 d200 f400. a0. f350 a70. " \
-  "a0. f300 a70. a0. f250 a70. a0. f200 a70."
+#define TONE_CRASHED "a100 d15 f0. a40 d75 f0. a30 f0. a20 f0. a70 d100 f400. a0. a70. a0. a70."
+#define TONE_GAME_OVER                                                       \
+    "a100 d15 f0. a40 d75 f0. a30 f0. a20 f0. a70 d200 f400. a0. f350 a70. " \
+    "a0. f300 a70. a0. f250 a70. a0. f200 a70."
 #define TONE_AMBIENT_0 "d100 f300."
 #define TONE_AMBIENT_1 "d100 f200."
 
 // player's acceleration, in units per second squared
-#define PLAYER_ACCELERATION_NEGATIVE_SPEED 10.0f  // used when speed is negative
-#define PLAYER_ACCELERATION_POSITIVE_SPEED 40.0f  // used when speed is positive
+#define PLAYER_ACCELERATION_NEGATIVE_SPEED 10.0f // used when speed is negative
+#define PLAYER_ACCELERATION_POSITIVE_SPEED 40.0f // used when speed is positive
 
 // the speed after colliding with an obstacle
 #define PLAYER_SPEED_AFTER_COLLISION -20.0f

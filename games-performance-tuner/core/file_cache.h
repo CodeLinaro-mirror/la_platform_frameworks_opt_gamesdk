@@ -26,30 +26,32 @@
 namespace tuningfork {
 
 class FileCache {
-  std::string path_;
-  TuningFork_Cache c_cache_;
-  std::mutex mutex_;
+    std::string path_;
+    TuningFork_Cache c_cache_;
+    std::mutex mutex_;
 
- public:
-  explicit FileCache(const std::string& path = "");
+public:
+    explicit FileCache(const std::string& path = "");
 
-  FileCache(const FileCache&) = delete;
-  FileCache& operator=(const FileCache&) = delete;
+    FileCache(const FileCache&) = delete;
+    FileCache& operator=(const FileCache&) = delete;
 
-  void SetDir(const std::string& path = "") { path_ = path; }
+    void SetDir(const std::string& path = "") {
+        path_ = path;
+    }
 
-  const TuningFork_Cache* GetCCache() const { return &c_cache_; }
+    const TuningFork_Cache* GetCCache() const {
+        return &c_cache_;
+    }
 
-  TuningFork_ErrorCode Get(uint64_t key,
-                           TuningFork_CProtobufSerialization* value);
-  TuningFork_ErrorCode Set(uint64_t key,
-                           const TuningFork_CProtobufSerialization* value);
-  TuningFork_ErrorCode Remove(uint64_t key);
+    TuningFork_ErrorCode Get(uint64_t key, TuningFork_CProtobufSerialization* value);
+    TuningFork_ErrorCode Set(uint64_t key, const TuningFork_CProtobufSerialization* value);
+    TuningFork_ErrorCode Remove(uint64_t key);
 
-  TuningFork_ErrorCode Clear();
+    TuningFork_ErrorCode Clear();
 
-  // Returns false if path is non-writeable
-  bool IsValid() const;
+    // Returns false if path is non-writeable
+    bool IsValid() const;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -22,25 +22,19 @@
 
 #include "tz.h"
 
-struct bad_clock
-{
-  using duration = std::chrono::system_clock::duration;
-  using rep = duration::rep;
-  using period = duration::period;
-  using time_point = std::chrono::time_point<bad_clock, duration>;
+struct bad_clock {
+    using duration = std::chrono::system_clock::duration;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<bad_clock, duration>;
 
-  template<typename Duration>
-  static
-  int
-  to_sys(std::chrono::time_point<bad_clock, Duration> const& tp)
-  {
-    return tp.time_since_epoch().count();
-  }
+    template <typename Duration>
+    static int to_sys(std::chrono::time_point<bad_clock, Duration> const& tp) {
+        return tp.time_since_epoch().count();
+    }
 };
 
-int
-main()
-{
+int main() {
     using namespace date;
     using sys_clock = std::chrono::system_clock;
 

@@ -22,24 +22,34 @@
 namespace tuningfork_test {
 
 class TestBatteryProvider : public tf::IBatteryProvider {
-  bool enabled_;
+    bool enabled_;
 
- public:
-  TestBatteryProvider(bool enabled) : enabled_(enabled) {}
+public:
+    TestBatteryProvider(bool enabled) : enabled_(enabled) {}
 
-  int32_t GetBatteryPercentage() override { return 70; }
+    int32_t GetBatteryPercentage() override {
+        return 70;
+    }
 
-  int32_t GetBatteryCharge() override { return 1234; }
+    int32_t GetBatteryCharge() override {
+        return 1234;
+    }
 
-  tf::IBatteryProvider::ThermalState GetCurrentThermalStatus() override {
-    return tf::IBatteryProvider::THERMAL_STATE_MODERATE;
-  }
+    tf::IBatteryProvider::ThermalState GetCurrentThermalStatus() override {
+        return tf::IBatteryProvider::THERMAL_STATE_MODERATE;
+    }
 
-  bool IsBatteryCharging() override { return true; }
+    bool IsBatteryCharging() override {
+        return true;
+    }
 
-  bool IsPowerSaveModeEnabled() override { return true; }
+    bool IsPowerSaveModeEnabled() override {
+        return true;
+    }
 
-  bool IsBatteryReportingEnabled() override { return enabled_; }
+    bool IsBatteryReportingEnabled() override {
+        return enabled_;
+    }
 };
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

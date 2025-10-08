@@ -26,33 +26,32 @@ namespace androidgamesdk_deviceinfo {
 
 using StringVector = ProtoDataHolder::StringVector;
 
-BasicTextureRenderer::BasicTextureRenderer(StringVector &errors)
-    : positionLocation_(0),
-      texCoordLocation_(0),
-      samplerLocation_(0),
-      textureId_(0),
-      programObject_(0),
-      errors_(errors),
-      errorsCount_(0){};
+BasicTextureRenderer::BasicTextureRenderer(StringVector& errors)
+      : positionLocation_(0),
+        texCoordLocation_(0),
+        samplerLocation_(0),
+        textureId_(0),
+        programObject_(0),
+        errors_(errors),
+        errorsCount_(0) {};
 
 BasicTextureRenderer::~BasicTextureRenderer() {
     glDeleteTextures(1, &textureId_);
     glDeleteProgram(programObject_);
 }
 
-size_t BasicTextureRenderer::getGlErrorsCount() const { return errorsCount_; }
+size_t BasicTextureRenderer::getGlErrorsCount() const {
+    return errorsCount_;
+}
 
-GLuint BasicTextureRenderer::loadTexture(GLenum internalformat, GLsizei width,
-                                         GLsizei height, GLsizei imageSize,
-                                         const void *data) {
+GLuint BasicTextureRenderer::loadTexture(GLenum internalformat, GLsizei width, GLsizei height,
+                                         GLsizei imageSize, const void* data) {
     glGenTextures(1, &textureId_);
     glBindTexture(GL_TEXTURE_2D, textureId_);
 
     // Load the texture
-    glCompressedTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0,
-                           imageSize, data);
-    if (checkGlErrors("BasicTextureRenderer (glCompressedTexImage2D)"))
-        return false;
+    glCompressedTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, imageSize, data);
+    if (checkGlErrors("BasicTextureRenderer (glCompressedTexImage2D)")) return false;
 
     // Use nearest as filtering mode to get pixel colors without interpolation
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -63,22 +62,20 @@ GLuint BasicTextureRenderer::loadTexture(GLenum internalformat, GLsizei width,
 }
 
 GLuint BasicTextureRenderer::loadProgramObject() {
-    char vShaderStr[] =
-        "attribute vec4 a_position;   \n"
-        "attribute vec2 a_texCoord;   \n"
-        "varying vec2 v_texCoord;     \n"
-        "void main() {                \n"
-        "   gl_Position = a_position; \n"
-        "   v_texCoord = a_texCoord;  \n"
-        "}                            \n";
+    char vShaderStr[] = "attribute vec4 a_position;   \n"
+                        "attribute vec2 a_texCoord;   \n"
+                        "varying vec2 v_texCoord;     \n"
+                        "void main() {                \n"
+                        "   gl_Position = a_position; \n"
+                        "   v_texCoord = a_texCoord;  \n"
+                        "}                            \n";
 
-    char fShaderStr[] =
-        "precision mediump float;                            \n"
-        "varying vec2 v_texCoord;                            \n"
-        "uniform sampler2D s_texture;                        \n"
-        "void main() {                                       \n"
-        "  gl_FragColor = texture2D(s_texture, v_texCoord);  \n"
-        "}                                                   \n";
+    char fShaderStr[] = "precision mediump float;                            \n"
+                        "varying vec2 v_texCoord;                            \n"
+                        "uniform sampler2D s_texture;                        \n"
+                        "void main() {                                       \n"
+                        "  gl_FragColor = texture2D(s_texture, v_texCoord);  \n"
+                        "}                                                   \n";
 
     GLuint vertexShader = loadShader(GL_VERTEX_SHADER, vShaderStr);
     GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, fShaderStr);
@@ -95,8 +92,7 @@ GLuint BasicTextureRenderer::loadProgramObject() {
     }
 
     glAttachShader(programObject_, fragmentShader);
-    if (checkGlErrors(
-            "BasicTextureRenderer (glAttachShader, fragmentShader)")) {
+    if (checkGlErrors("BasicTextureRenderer (glAttachShader, fragmentShader)")) {
         return false;
     }
 
@@ -128,22 +124,19 @@ bool BasicTextureRenderer::draw(GLint width, GLint height) {
     // Create the rectangle
     GLfloat positionVertices[] = {-1.0f, -1.0f, 0.0f, -1.0f, 1.0f, 0.0f,
                                   1.0f,  -1.0f, 0.0f, 1.0f,  1.0f, 0.0f};
-    glVertexAttribPointer(positionLocation_, 3, GL_FLOAT, GL_FALSE, 0,
-                          positionVertices);
+    glVertexAttribPointer(positionLocation_, 3, GL_FLOAT, GL_FALSE, 0, positionVertices);
     glEnableVertexAttribArray(positionLocation_);
 
     // Coordinates in the texture for the rectangle
-    GLfloat textCoordVertices[] = {0.0f, 0.0f, 0.0f, 1.0f,
-                                   1.0f, 0.0f, 1.0f, 1.0f};
-    glVertexAttribPointer(texCoordLocation_, 2, GL_FLOAT, GL_FALSE, 0,
-                          textCoordVertices);
+    GLfloat textCoordVertices[] = {0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f};
+    glVertexAttribPointer(texCoordLocation_, 2, GL_FLOAT, GL_FALSE, 0, textCoordVertices);
     glEnableVertexAttribArray(texCoordLocation_);
 
     // Bind the texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureId_);
     glUniform1i(samplerLocation_,
-                0);  // Set the sampler texture unit to texture 0
+                0); // Set the sampler texture unit to texture 0
 
     // Draw the rectangle
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -151,7 +144,7 @@ bool BasicTextureRenderer::draw(GLint width, GLint height) {
     return true;
 }
 
-GLuint BasicTextureRenderer::loadShader(GLenum type, const char *shaderSrc) {
+GLuint BasicTextureRenderer::loadShader(GLenum type, const char* shaderSrc) {
     GLuint shader = glCreateShader(type);
     if (!shader) {
         errors_.addCopy("BasicTextureRenderer: glCreateShader failed");
@@ -178,7 +171,7 @@ GLuint BasicTextureRenderer::loadShader(GLenum type, const char *shaderSrc) {
     return shader;
 }
 
-bool BasicTextureRenderer::checkGlErrors(const char *title) {
+bool BasicTextureRenderer::checkGlErrors(const char* title) {
     size_t newErrors = 0;
     char buffer[1024];
     while (GLenum e = glGetError() != GL_NO_ERROR) {
@@ -191,4 +184,4 @@ bool BasicTextureRenderer::checkGlErrors(const char *title) {
     return newErrors != 0;
 }
 
-}  // namespace androidgamesdk_deviceinfo
+} // namespace androidgamesdk_deviceinfo

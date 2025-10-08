@@ -55,14 +55,14 @@ static uint32_t Murmur2Hash(const uint8_t* data, int len) {
     return h;
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 namespace tuningfork {
 
 AnnotationMap::AnnotationMap() : hash_table_(kHashTableSize) {}
 
-TuningFork_ErrorCode AnnotationMap::GetOrInsert(
-    const ProtobufSerialization& ser, AnnotationId& id) {
+TuningFork_ErrorCode AnnotationMap::GetOrInsert(const ProtobufSerialization& ser,
+                                                AnnotationId& id) {
     id = Murmur2Hash(ser.data(), ser.size());
     auto& ls = hash_table_[HashIndex(id)];
     for (auto& l : ls) {
@@ -72,8 +72,7 @@ TuningFork_ErrorCode AnnotationMap::GetOrInsert(
     return TUNINGFORK_ERROR_OK;
 }
 
-TuningFork_ErrorCode AnnotationMap::Get(AnnotationId id,
-                                        ProtobufSerialization& ser) {
+TuningFork_ErrorCode AnnotationMap::Get(AnnotationId id, ProtobufSerialization& ser) {
     auto& ls = hash_table_[HashIndex(id)];
     for (auto& l : ls) {
         if (l.first == id) {
@@ -84,4 +83,4 @@ TuningFork_ErrorCode AnnotationMap::Get(AnnotationId id,
     return TUNINGFORK_ERROR_INVALID_ANNOTATION;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

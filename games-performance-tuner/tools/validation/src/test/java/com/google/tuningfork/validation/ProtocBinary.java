@@ -16,18 +16,16 @@
 
 package com.google.tuningfork.validation;
 
-
 import java.io.File;
 
 /** Class to access protoc binary */
 public class ProtocBinary {
+    private static final File PROTOC_BINARY =
+            new File(ProtocBinary.class.getClassLoader().getResource("protoc").getFile());
 
-  private static final File PROTOC_BINARY =
-      new File(ProtocBinary.class.getClassLoader().getResource("protoc").getFile());
+    public static File get() {
+        return PROTOC_BINARY;
+    }
 
-  public static File get() {
-    return PROTOC_BINARY;
-  }
-
-  private ProtocBinary() {}
+    private ProtocBinary() {}
 }

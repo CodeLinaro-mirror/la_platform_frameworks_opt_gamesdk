@@ -16,44 +16,44 @@
 package Utils.Proto;
 
 public final class OsUtils {
+    private static OS os = null;
 
-  private static OS os = null;
-
-  public static OS getOS() {
-    if (os == null) {
-      String operSys = System.getProperty("os.name").toLowerCase();
-      if (operSys.contains("win")) {
-        os = OS.WINDOWS;
-      } else if (operSys.contains("nix") || operSys.contains("nux") || operSys.contains("aix")) {
-        os = OS.LINUX;
-      } else if (operSys.contains("mac")) {
-        os = OS.MAC;
-      } else {
-        os = OS.OTHER;
-      }
-    }
-    return os;
-  }
-
-  public enum OS {
-    WINDOWS("win", "protoc.exe"),
-    LINUX("linux-x86", "protoc"),
-    MAC("mac", "protoc"),
-    OTHER("other", "");
-    private final String osName;
-    private final String executableProtoFileName;
-
-    OS(String osName, String executableProtoFileName) {
-      this.osName = osName;
-      this.executableProtoFileName = executableProtoFileName;
+    public static OS getOS() {
+        if (os == null) {
+            String operSys = System.getProperty("os.name").toLowerCase();
+            if (operSys.contains("win")) {
+                os = OS.WINDOWS;
+            } else if (operSys.contains("nix") || operSys.contains("nux")
+                    || operSys.contains("aix")) {
+                os = OS.LINUX;
+            } else if (operSys.contains("mac")) {
+                os = OS.MAC;
+            } else {
+                os = OS.OTHER;
+            }
+        }
+        return os;
     }
 
-    public String getOsName() {
-      return osName;
-    }
+    public enum OS {
+        WINDOWS("win", "protoc.exe"),
+        LINUX("linux-x86", "protoc"),
+        MAC("mac", "protoc"),
+        OTHER("other", "");
+        private final String osName;
+        private final String executableProtoFileName;
 
-    public String getExecutableProtoFileName() {
-      return executableProtoFileName;
+        OS(String osName, String executableProtoFileName) {
+            this.osName = osName;
+            this.executableProtoFileName = executableProtoFileName;
+        }
+
+        public String getOsName() {
+            return osName;
+        }
+
+        public String getExecutableProtoFileName() {
+            return executableProtoFileName;
+        }
     }
-  }
 }

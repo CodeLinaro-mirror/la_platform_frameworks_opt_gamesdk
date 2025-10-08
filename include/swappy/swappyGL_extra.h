@@ -43,7 +43,7 @@ extern "C" {
 void SwappyGL_onChoreographer(int64_t frameTimeNanos);
 
 /** @brief Pass callbacks to be called each frame to trace execution. */
-void SwappyGL_injectTracer(const SwappyTracer *t);
+void SwappyGL_injectTracer(const SwappyTracer* t);
 
 /**
  * @brief Toggle auto-swap interval detection on/off
@@ -106,7 +106,7 @@ void SwappyGL_recordFrameStart(EGLDisplay display, EGLSurface surface);
  * @see SwappyStats
  * @see SwappyGL_enableStats
  */
-void SwappyGL_getStats(SwappyStats *swappyStats);
+void SwappyGL_getStats(SwappyStats* swappyStats);
 
 /**
  * @brief Clears the frame statistics collected so far.
@@ -118,7 +118,7 @@ void SwappyGL_clearStats(void);
 
 /** @brief Remove callbacks that were previously added using
  * SwappyGL_injectTracer. */
-void SwappyGL_uninjectTracer(const SwappyTracer *t);
+void SwappyGL_uninjectTracer(const SwappyTracer* t);
 
 /**
  * @brief Reset the swappy pacing mechanism

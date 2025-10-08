@@ -40,7 +40,7 @@ public class TestDataHelper {
 
     public static InputStream openStream(String fileName) {
         InputStream is =
-            TestDataHelper.class.getClassLoader().getResourceAsStream(FOLDER + fileName);
+                TestDataHelper.class.getClassLoader().getResourceAsStream(FOLDER + fileName);
         checkArgument(is != null, "Testdata file '%s' not found.", fileName);
         return is;
     }
@@ -51,7 +51,7 @@ public class TestDataHelper {
         } catch (IOException e) {
             // Throw an unchecked exception to allow usage in lambda expressions.
             throw new UncheckedIOException(
-                String.format("Failed to read contents of testdata file '%s'.", fileName), e);
+                    String.format("Failed to read contents of testdata file '%s'.", fileName), e);
         }
     }
 

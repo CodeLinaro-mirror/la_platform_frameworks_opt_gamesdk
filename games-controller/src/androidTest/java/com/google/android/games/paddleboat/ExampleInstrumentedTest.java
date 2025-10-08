@@ -31,7 +31,7 @@ public class ExampleInstrumentedTest {
     public void testAppContext() {
         // Context of the app under test.
         android.content.Context appContext =
-            InstrumentationRegistry.getInstrumentation().getTargetContext();
+                InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertEquals("com.google.android.games.paddleboat.test", appContext.getPackageName());
     }
 }

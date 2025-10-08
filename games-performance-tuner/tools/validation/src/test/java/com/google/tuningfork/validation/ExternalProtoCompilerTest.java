@@ -39,134 +39,120 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public final class ExternalProtoCompilerTest {
-  @Rule
-  // Override default behavior to allow overwriting files.
-  public TemporaryFolder tempFolder =
-      new TemporaryFolder() {
+    @Rule
+    // Override default behavior to allow overwriting files.
+    public TemporaryFolder tempFolder = new TemporaryFolder() {
         @Override
         public File newFile(String filename) {
-          return new File(getRoot(), filename);
+            return new File(getRoot(), filename);
         }
-      };
+    };
 
-  private static final File PROTOC_BINARY = ProtocBinary.get();
+    private static final File PROTOC_BINARY = ProtocBinary.get();
 
-  private static List<String> defaultCommandLine;
-  private final ExternalProtoCompiler compiler = new ExternalProtoCompiler(PROTOC_BINARY);
-  private final TestdataHelper helper = new TestdataHelper(tempFolder);
+    private static List<String> defaultCommandLine;
+    private final ExternalProtoCompiler compiler = new ExternalProtoCompiler(PROTOC_BINARY);
+    private final TestdataHelper helper = new TestdataHelper(tempFolder);
 
-  @Before
-  public void setUp() {
-    defaultCommandLine = Lists.newArrayList();
-    defaultCommandLine.add(PROTOC_BINARY.getAbsolutePath());
-    defaultCommandLine.add("-o");
-    defaultCommandLine.add("/dev/stdout");
-  }
+    @Before
+    public void setUp() {
+        defaultCommandLine = Lists.newArrayList();
+        defaultCommandLine.add(PROTOC_BINARY.getAbsolutePath());
+        defaultCommandLine.add("-o");
+        defaultCommandLine.add("/dev/stdout");
+    }
 
-  @Test
-  public void compileValid() throws Exception {
-    File file = helper.getFile("compile_valid.proto");
+    @Test
+    public void compileValid() throws Exception {
+        File file = helper.getFile("compile_valid.proto");
 
-    FileDescriptor fDesc = compiler.compile(file, Optional.empty());
+        FileDescriptor fDesc = compiler.compile(file, Optional.empty());
 
-    Descriptor messageDesc = fDesc.findMessageTypeByName("Message");
-    Descriptor anotherDesc = fDesc.findMessageTypeByName("AnotherMessage");
-    assertThat(messageDesc).isNotNull();
-    assertThat(anotherDesc).isNotNull();
-  }
+        Descriptor messageDesc = fDesc.findMessageTypeByName("Message");
+        Descriptor anotherDesc = fDesc.findMessageTypeByName("AnotherMessage");
+        assertThat(messageDesc).isNotNull();
+        assertThat(anotherDesc).isNotNull();
+    }
 
-  @Test
-  public void compareDescriptors() throws Exception {
-    File file = helper.getFile("compile_valid.proto");
-    File outFile = new File(tempFolder.getRoot(), "compile_valid.descriptor");
+    @Test
+    public void compareDescriptors() throws Exception {
+        File file = helper.getFile("compile_valid.proto");
+        File outFile = new File(tempFolder.getRoot(), "compile_valid.descriptor");
 
-    FileDescriptor stdoutDescriptor = compiler.compile(file, Optional.of(outFile));
+        FileDescriptor stdoutDescriptor = compiler.compile(file, Optional.of(outFile));
 
-    Descriptor messageDesc = stdoutDescriptor.findMessageTypeByName("Message");
-    Descriptor anotherDesc = stdoutDescriptor.findMessageTypeByName("AnotherMessage");
-    FileDescriptorSet fileSet = FileDescriptorSet.parseFrom(Files.toByteArray(outFile));
-    FileDescriptor outFileDescriptor =
-        FileDescriptor.buildFrom(
-            Iterables.getOnlyElement(fileSet.getFileList()), new FileDescriptor[] {});
+        Descriptor messageDesc = stdoutDescriptor.findMessageTypeByName("Message");
+        Descriptor anotherDesc = stdoutDescriptor.findMessageTypeByName("AnotherMessage");
+        FileDescriptorSet fileSet = FileDescriptorSet.parseFrom(Files.toByteArray(outFile));
+        FileDescriptor outFileDescriptor = FileDescriptor.buildFrom(
+                Iterables.getOnlyElement(fileSet.getFileList()), new FileDescriptor[] {});
 
-    assertThat(messageDesc).isNotNull();
-    assertThat(anotherDesc).isNotNull();
-    assertThat(outFile).isNotNull();
-    assertThat(stdoutDescriptor.toProto()).isEqualTo(outFileDescriptor.toProto());
-  }
+        assertThat(messageDesc).isNotNull();
+        assertThat(anotherDesc).isNotNull();
+        assertThat(outFile).isNotNull();
+        assertThat(stdoutDescriptor.toProto()).isEqualTo(outFileDescriptor.toProto());
+    }
 
-  @Test
-  public void compileInvalid() throws Exception {
-    File file = helper.getFile("compile_invalid.proto");
-    CompilationException expected =
-        assertThrows(CompilationException.class, () -> compiler.compile(file, Optional.empty()));
+    @Test
+    public void compileInvalid() throws Exception {
+        File file = helper.getFile("compile_invalid.proto");
+        CompilationException expected = assertThrows(
+                CompilationException.class, () -> compiler.compile(file, Optional.empty()));
 
-    assertThat(expected)
-        .hasMessageThat()
-        .isEqualTo("Descriptor for [compile_invalid.proto] does not exist.");
-  }
+        assertThat(expected).hasMessageThat().isEqualTo(
+                "Descriptor for [compile_invalid.proto] does not exist.");
+    }
 
-  @Test
-  public void compileWithDeps() throws Exception {
-    File file = helper.getFile("compile_with_deps.proto");
-    CompilationException expected =
-        assertThrows(CompilationException.class, () -> compiler.compile(file, Optional.empty()));
+    @Test
+    public void compileWithDeps() throws Exception {
+        File file = helper.getFile("compile_with_deps.proto");
+        CompilationException expected = assertThrows(
+                CompilationException.class, () -> compiler.compile(file, Optional.empty()));
 
-    assertThat(expected)
-        .hasMessageThat()
-        .isEqualTo("Descriptor for [compile_with_deps.proto] does not exist.");
-  }
+        assertThat(expected).hasMessageThat().isEqualTo(
+                "Descriptor for [compile_with_deps.proto] does not exist.");
+    }
 
-  @Test
-  public void compileDevTuningfork() throws Exception {
-    File file = helper.getFile("dev_tuningfork.proto");
+    @Test
+    public void compileDevTuningfork() throws Exception {
+        File file = helper.getFile("dev_tuningfork.proto");
 
-    FileDescriptor fDesc = compiler.compile(file, Optional.empty());
+        FileDescriptor fDesc = compiler.compile(file, Optional.empty());
 
-    Descriptor annotation = fDesc.findMessageTypeByName("Annotation");
-    Descriptor fidelityParams = fDesc.findMessageTypeByName("FidelityParams");
-    assertThat(annotation).isNotNull();
-    assertThat(fidelityParams).isNotNull();
-  }
+        Descriptor annotation = fDesc.findMessageTypeByName("Annotation");
+        Descriptor fidelityParams = fDesc.findMessageTypeByName("FidelityParams");
+        assertThat(annotation).isNotNull();
+        assertThat(fidelityParams).isNotNull();
+    }
 
-  @Test
-  public void encodeAndDecode() throws Exception {
-    String message = "com.google.tuningfork.FidelityParams";
-    File protoFile = helper.getFile("dev_tuningfork.proto");
-    File originalTextFile = helper.getFile("dev_tuningfork_fidelityparams_1.txt");
-    Optional<File> errorFile = Optional.of(tempFolder.newFile("errors.txt"));
-    String root = tempFolder.getRoot().getAbsolutePath();
-    File binaryFile =
-        compiler.encodeFromTextprotoFile(
-            message,
-            protoFile,
-            originalTextFile,
-            root + "/dev_tuningfork_fidelityparams_1.bin",
-            errorFile);
+    @Test
+    public void encodeAndDecode() throws Exception {
+        String message = "com.google.tuningfork.FidelityParams";
+        File protoFile = helper.getFile("dev_tuningfork.proto");
+        File originalTextFile = helper.getFile("dev_tuningfork_fidelityparams_1.txt");
+        Optional<File> errorFile = Optional.of(tempFolder.newFile("errors.txt"));
+        String root = tempFolder.getRoot().getAbsolutePath();
+        File binaryFile = compiler.encodeFromTextprotoFile(message, protoFile, originalTextFile,
+                root + "/dev_tuningfork_fidelityparams_1.bin", errorFile);
 
-    byte[] error = Files.toByteArray(errorFile.get());
-    assertThat(error).isEqualTo(new byte[0]);
+        byte[] error = Files.toByteArray(errorFile.get());
+        assertThat(error).isEqualTo(new byte[0]);
 
-    File decodedTextFile =
-        compiler.decodeToTextprotoFile(
-            message,
-            protoFile,
-            root + "/dev_tuningfork_fidelityparams_decoded.txt",
-            binaryFile,
-            errorFile);
+        File decodedTextFile = compiler.decodeToTextprotoFile(message, protoFile,
+                root + "/dev_tuningfork_fidelityparams_decoded.txt", binaryFile, errorFile);
 
-    String originalMessage = Files.asCharSource(originalTextFile, UTF_8).read();
-    String decodedMessage = Files.asCharSource(decodedTextFile, UTF_8).read();
-    error = Files.toByteArray(errorFile.get());
-    assertThat(error).isEqualTo(new byte[0]);
-    assertThat(decodedMessage).isEqualTo(originalMessage);
-  }
+        String originalMessage = Files.asCharSource(originalTextFile, UTF_8).read();
+        String decodedMessage = Files.asCharSource(decodedTextFile, UTF_8).read();
+        error = Files.toByteArray(errorFile.get());
+        assertThat(error).isEqualTo(new byte[0]);
+        assertThat(decodedMessage).isEqualTo(originalMessage);
+    }
 
-  @Test
-  public void runEchoCommand() throws Exception {
-    String expected = "Hello world";
-    ProcessBuilder builder = new ProcessBuilder(Arrays.asList("echo", expected));
-    String result = new String(compiler.runCommand(builder), UTF_8);
-    assertThat(result).startsWith(expected);
-  }
+    @Test
+    public void runEchoCommand() throws Exception {
+        String expected = "Hello world";
+        ProcessBuilder builder = new ProcessBuilder(Arrays.asList("echo", expected));
+        String result = new String(compiler.runCommand(builder), UTF_8);
+        assertThat(result).startsWith(expected);
+    }
 }

@@ -25,31 +25,28 @@
 namespace paddleboat {
 
 class GameControllerMappingInfo {
- public:
-  // Internal new table size limits
-  static constexpr int32_t MAX_CONTROLLER_TABLE_SIZE = 256;
-  static constexpr int32_t MAX_BUTTON_TABLE_SIZE = 32;
-  static constexpr int32_t MAX_AXIS_TABLE_SIZE = 32;
-  static constexpr int32_t MAX_STRING_TABLE_SIZE = 128;
+public:
+    // Internal new table size limits
+    static constexpr int32_t MAX_CONTROLLER_TABLE_SIZE = 256;
+    static constexpr int32_t MAX_BUTTON_TABLE_SIZE = 32;
+    static constexpr int32_t MAX_AXIS_TABLE_SIZE = 32;
+    static constexpr int32_t MAX_STRING_TABLE_SIZE = 128;
 
-  GameControllerMappingInfo() {
-    memset(mAxisTable, 0, sizeof(mAxisTable));
-    memset(mButtonTable, 0, sizeof(mButtonTable));
-    memset(mControllerTable, 0, sizeof(mControllerTable));
-    memset(mStringTable, 0, sizeof(mStringTable));
-  }
+    GameControllerMappingInfo() {
+        memset(mAxisTable, 0, sizeof(mAxisTable));
+        memset(mButtonTable, 0, sizeof(mButtonTable));
+        memset(mControllerTable, 0, sizeof(mControllerTable));
+        memset(mStringTable, 0, sizeof(mStringTable));
+    }
 
-  uint32_t mAxisTableEntryCount = 0;
-  uint32_t mButtonTableEntryCount = 0;
-  uint32_t mControllerTableEntryCount = 0;
-  uint32_t mStringTableEntryCount = 0;
-  Paddleboat_Controller_Mapping_File_Axis_Entry mAxisTable[MAX_AXIS_TABLE_SIZE];
-  Paddleboat_Controller_Mapping_File_Button_Entry
-      mButtonTable[MAX_BUTTON_TABLE_SIZE];
-  Paddleboat_Controller_Mapping_File_Controller_Entry
-      mControllerTable[MAX_CONTROLLER_TABLE_SIZE];
-  Paddleboat_Controller_Mapping_File_String_Entry
-      mStringTable[MAX_STRING_TABLE_SIZE];
+    uint32_t mAxisTableEntryCount = 0;
+    uint32_t mButtonTableEntryCount = 0;
+    uint32_t mControllerTableEntryCount = 0;
+    uint32_t mStringTableEntryCount = 0;
+    Paddleboat_Controller_Mapping_File_Axis_Entry mAxisTable[MAX_AXIS_TABLE_SIZE];
+    Paddleboat_Controller_Mapping_File_Button_Entry mButtonTable[MAX_BUTTON_TABLE_SIZE];
+    Paddleboat_Controller_Mapping_File_Controller_Entry mControllerTable[MAX_CONTROLLER_TABLE_SIZE];
+    Paddleboat_Controller_Mapping_File_String_Entry mStringTable[MAX_STRING_TABLE_SIZE];
 };
 
-}  // namespace paddleboat
+} // namespace paddleboat

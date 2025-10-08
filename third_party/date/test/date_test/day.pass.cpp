@@ -53,66 +53,64 @@
 // constexpr day operator "" _d(unsigned long long d) noexcept;
 // std::ostream& operator<<(std::ostream& os, const day& d);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::day>{}, "");
-static_assert( std::is_default_constructible<date::day>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::day>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::day>{}, "");
-static_assert( std::is_trivially_move_constructible<date::day>{}, "");
-static_assert( std::is_trivially_move_assignable<date::day>{}, "");
+#include "date.h"
 
-static_assert( std::is_nothrow_constructible<date::day, unsigned>{}, "");
-static_assert( std::is_nothrow_constructible<unsigned, date::day>{}, "");
+static_assert(std::is_trivially_destructible<date::day>{}, "");
+static_assert(std::is_default_constructible<date::day>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::day>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::day>{}, "");
+static_assert(std::is_trivially_move_constructible<date::day>{}, "");
+static_assert(std::is_trivially_move_assignable<date::day>{}, "");
+
+static_assert(std::is_nothrow_constructible<date::day, unsigned>{}, "");
+static_assert(std::is_nothrow_constructible<unsigned, date::day>{}, "");
 static_assert(!std::is_convertible<unsigned, date::day>{}, "");
 static_assert(!std::is_convertible<date::day, unsigned>{}, "");
 static_assert(static_cast<unsigned>(date::day{1}) == 1, "");
 
 static_assert(!date::day{0}.ok(), "");
-static_assert( date::day{1}.ok(), "");
-static_assert( date::day{2}.ok(), "");
-static_assert( date::day{3}.ok(), "");
-static_assert( date::day{29}.ok(), "");
-static_assert( date::day{30}.ok(), "");
-static_assert( date::day{31}.ok(), "");
+static_assert(date::day{1}.ok(), "");
+static_assert(date::day{2}.ok(), "");
+static_assert(date::day{3}.ok(), "");
+static_assert(date::day{29}.ok(), "");
+static_assert(date::day{30}.ok(), "");
+static_assert(date::day{31}.ok(), "");
 static_assert(!date::day{32}.ok(), "");
 
-int
-main()
-{
+int main() {
     using namespace date;
     static_assert(std::is_same<decltype(1_d), day>{}, "");
 
     static_assert(1_d == day{1}, "");
     static_assert(2_d == day{2}, "");
 
-    static_assert(  1_d == 1_d, "");
+    static_assert(1_d == 1_d, "");
     static_assert(!(1_d == 2_d), "");
     static_assert(!(2_d == 1_d), "");
 
     static_assert(!(1_d != 1_d), "");
-    static_assert(  1_d != 2_d, "");
-    static_assert(  2_d != 1_d, "");
+    static_assert(1_d != 2_d, "");
+    static_assert(2_d != 1_d, "");
 
-    static_assert(!(1_d <  1_d), "");
-    static_assert(  1_d <  2_d, "");
-    static_assert(!(2_d <  1_d), "");
+    static_assert(!(1_d < 1_d), "");
+    static_assert(1_d < 2_d, "");
+    static_assert(!(2_d < 1_d), "");
 
-    static_assert(  1_d <= 1_d, "");
-    static_assert(  1_d <= 2_d, "");
+    static_assert(1_d <= 1_d, "");
+    static_assert(1_d <= 2_d, "");
     static_assert(!(2_d <= 1_d), "");
 
-    static_assert(!(1_d >  1_d), "");
-    static_assert(!(1_d >  2_d), "");
-    static_assert(  2_d >  1_d, "");
+    static_assert(!(1_d > 1_d), "");
+    static_assert(!(1_d > 2_d), "");
+    static_assert(2_d > 1_d, "");
 
-    static_assert(  1_d >= 1_d, "");
+    static_assert(1_d >= 1_d, "");
     static_assert(!(1_d >= 2_d), "");
-    static_assert(  2_d >= 1_d, "");
+    static_assert(2_d >= 1_d, "");
 
     static_assert(3_d + days{7} == 10_d, "");
     static_assert(days{7} + 3_d == 10_d, "");

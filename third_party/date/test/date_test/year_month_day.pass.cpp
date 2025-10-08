@@ -57,50 +57,44 @@
 
 // std::ostream& operator<<(std::ostream& os, const year_month_day& ymd);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::year_month_day>{}, "");
-static_assert( std::is_default_constructible<date::year_month_day>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::year_month_day>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::year_month_day>{}, "");
-static_assert( std::is_trivially_move_constructible<date::year_month_day>{}, "");
-static_assert( std::is_trivially_move_assignable<date::year_month_day>{}, "");
+#include "date.h"
 
-static_assert(std::is_nothrow_constructible<date::year_month_day, date::year,
-                                                                  date::month,
-                                                                  date::day>{}, "");
-static_assert(std::is_nothrow_constructible<date::year_month_day,
-                                            date::year_month_day_last>{}, "");
+static_assert(std::is_trivially_destructible<date::year_month_day>{}, "");
+static_assert(std::is_default_constructible<date::year_month_day>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::year_month_day>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::year_month_day>{}, "");
+static_assert(std::is_trivially_move_constructible<date::year_month_day>{}, "");
+static_assert(std::is_trivially_move_assignable<date::year_month_day>{}, "");
+
+static_assert(
+        std::is_nothrow_constructible<date::year_month_day, date::year, date::month, date::day>{},
+        "");
+static_assert(std::is_nothrow_constructible<date::year_month_day, date::year_month_day_last>{}, "");
 static_assert(std::is_convertible<date::year_month_day_last, date::year_month_day>{}, "");
 static_assert(std::is_nothrow_constructible<date::year_month_day, date::sys_days>{}, "");
 static_assert(std::is_convertible<date::sys_days, date::year_month_day>{}, "");
 static_assert(std::is_nothrow_constructible<date::sys_days, date::year_month_day>{}, "");
 static_assert(std::is_convertible<date::year_month_day, date::sys_days>{}, "");
 
-void
-test_arithmetic()
-{
+void test_arithmetic() {
     using namespace date;
 
-    for (int y1 = 2010; y1 <= 2015; ++y1)
-    {
-        for (unsigned m1 = 1; m1 <= 12; ++m1)
-        {
+    for (int y1 = 2010; y1 <= 2015; ++y1) {
+        for (unsigned m1 = 1; m1 <= 12; ++m1) {
             year_month_day ymd1{year{y1}, month{m1}, 9_d};
             year_month_day ymd2 = ymd1 + months(24);
-            assert((ymd2 == year_month_day{year{y1+2}, ymd1.month(), ymd1.day()}));
+            assert((ymd2 == year_month_day{year{y1 + 2}, ymd1.month(), ymd1.day()}));
             ymd2 = ymd1 - months(24);
-            assert((ymd2 == year_month_day{year{y1-2}, ymd1.month(), ymd1.day()}));
-            for (int m2 = -24; m2 <= 24; ++m2)
-            {
+            assert((ymd2 == year_month_day{year{y1 - 2}, ymd1.month(), ymd1.day()}));
+            for (int m2 = -24; m2 <= 24; ++m2) {
                 months m{m2};
                 year_month_day ymd3 = ymd1 + m;
                 months dm = year_month{ymd3.year(), ymd3.month()} -
-                            year_month{ymd2.year(), ymd2.month()};
+                        year_month{ymd2.year(), ymd2.month()};
                 assert(dm == m + years{2});
                 assert(ymd3 - m == ymd1);
                 assert(ymd3 + -m == ymd1);
@@ -108,8 +102,7 @@ test_arithmetic()
                 assert((year_month_day{ymd1} += m) == ymd3);
                 assert((year_month_day{ymd3} -= m) == ymd1);
             }
-            for (int y2 = -2; y2 <= 5; ++y2)
-            {
+            for (int y2 = -2; y2 <= 5; ++y2) {
                 years y{y2};
                 year_month_day ymd3 = ymd1 + y;
                 years dy = floor<years>(year_month{ymd3.year(), ymd3.month()} -
@@ -125,22 +118,17 @@ test_arithmetic()
     }
 }
 
-void
-test_day_point_conversion()
-{
+void test_day_point_conversion() {
     using namespace date;
-    year y   = year{-1000};
-    year end =       3000_y;
+    year y = year{-1000};
+    year end = 3000_y;
     sys_days prev_dp = sys_days(year_month_day{y, jan, 1_d}) - days{1};
-    weekday   prev_wd = weekday{prev_dp};
-    for (; y <= end; ++y)
-    {
+    weekday prev_wd = weekday{prev_dp};
+    for (; y <= end; ++y) {
         month m = jan;
-        do
-        {
+        do {
             day last_day = year_month_day_last{y, month_day_last{m}}.day();
-            for (day d = 1_d; d <= last_day; ++d)
-            {
+            for (day d = 1_d; d <= last_day; ++d) {
                 year_month_day ymd = {y, m, d};
                 assert(ymd.ok());
                 sys_days dp = ymd;
@@ -157,9 +145,7 @@ test_day_point_conversion()
     }
 }
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     constexpr year_month_day ymd1 = {2015_y, aug, 9_d};
@@ -206,39 +192,39 @@ main()
     assert(os.str() == "2015-08-09");
 
 #if __cplusplus >= 201402
-    static_assert( (2000_y/feb/29).ok(), "");
-    static_assert(!(2000_y/feb/30).ok(), "");
-    static_assert( (2100_y/feb/28).ok(), "");
-    static_assert(!(2100_y/feb/29).ok(), "");
+    static_assert((2000_y / feb / 29).ok(), "");
+    static_assert(!(2000_y / feb / 30).ok(), "");
+    static_assert((2100_y / feb / 28).ok(), "");
+    static_assert(!(2100_y / feb / 29).ok(), "");
 
-    static_assert(sys_days(2100_y/feb/28) + days{1} == sys_days(2100_y/mar/1), "");
-    static_assert(sys_days(2000_y/mar/1) - sys_days(2000_y/feb/28) == days{2}, "");
-    static_assert(sys_days(2100_y/mar/1) - sys_days(2100_y/feb/28) == days{1}, "");
+    static_assert(sys_days(2100_y / feb / 28) + days{1} == sys_days(2100_y / mar / 1), "");
+    static_assert(sys_days(2000_y / mar / 1) - sys_days(2000_y / feb / 28) == days{2}, "");
+    static_assert(sys_days(2100_y / mar / 1) - sys_days(2100_y / feb / 28) == days{1}, "");
 
-    static_assert(jan/31/2015 == jan/last/2015, "");
-    static_assert(feb/28/2015 == feb/last/2015, "");
-    static_assert(mar/31/2015 == mar/last/2015, "");
-    static_assert(apr/30/2015 == apr/last/2015, "");
-    static_assert(may/31/2015 == may/last/2015, "");
-    static_assert(jun/30/2015 == jun/last/2015, "");
-    static_assert(jul/31/2015 == jul/last/2015, "");
-    static_assert(aug/31/2015 == aug/last/2015, "");
-    static_assert(sep/30/2015 == sep/last/2015, "");
-    static_assert(oct/31/2015 == oct/last/2015, "");
-    static_assert(nov/30/2015 == nov/last/2015, "");
-    static_assert(dec/31/2015 == dec/last/2015, "");
+    static_assert(jan / 31 / 2015 == jan / last / 2015, "");
+    static_assert(feb / 28 / 2015 == feb / last / 2015, "");
+    static_assert(mar / 31 / 2015 == mar / last / 2015, "");
+    static_assert(apr / 30 / 2015 == apr / last / 2015, "");
+    static_assert(may / 31 / 2015 == may / last / 2015, "");
+    static_assert(jun / 30 / 2015 == jun / last / 2015, "");
+    static_assert(jul / 31 / 2015 == jul / last / 2015, "");
+    static_assert(aug / 31 / 2015 == aug / last / 2015, "");
+    static_assert(sep / 30 / 2015 == sep / last / 2015, "");
+    static_assert(oct / 31 / 2015 == oct / last / 2015, "");
+    static_assert(nov / 30 / 2015 == nov / last / 2015, "");
+    static_assert(dec / 31 / 2015 == dec / last / 2015, "");
 
-    static_assert(jan/31/2016 == jan/last/2016, "");
-    static_assert(feb/29/2016 == feb/last/2016, "");
-    static_assert(mar/31/2016 == mar/last/2016, "");
-    static_assert(apr/30/2016 == apr/last/2016, "");
-    static_assert(may/31/2016 == may/last/2016, "");
-    static_assert(jun/30/2016 == jun/last/2016, "");
-    static_assert(jul/31/2016 == jul/last/2016, "");
-    static_assert(aug/31/2016 == aug/last/2016, "");
-    static_assert(sep/30/2016 == sep/last/2016, "");
-    static_assert(oct/31/2016 == oct/last/2016, "");
-    static_assert(nov/30/2016 == nov/last/2016, "");
-    static_assert(dec/31/2016 == dec/last/2016, "");
+    static_assert(jan / 31 / 2016 == jan / last / 2016, "");
+    static_assert(feb / 29 / 2016 == feb / last / 2016, "");
+    static_assert(mar / 31 / 2016 == mar / last / 2016, "");
+    static_assert(apr / 30 / 2016 == apr / last / 2016, "");
+    static_assert(may / 31 / 2016 == may / last / 2016, "");
+    static_assert(jun / 30 / 2016 == jun / last / 2016, "");
+    static_assert(jul / 31 / 2016 == jul / last / 2016, "");
+    static_assert(aug / 31 / 2016 == aug / last / 2016, "");
+    static_assert(sep / 30 / 2016 == sep / last / 2016, "");
+    static_assert(oct / 31 / 2016 == oct / last / 2016, "");
+    static_assert(nov / 30 / 2016 == nov / last / 2016, "");
+    static_assert(dec / 31 / 2016 == dec / last / 2016, "");
 #endif
 }

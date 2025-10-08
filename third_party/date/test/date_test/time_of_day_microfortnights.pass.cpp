@@ -50,23 +50,19 @@
 // std::ostream&
 // operator<<(std::ostream& os, const time_of_day<std::chrono::duration<Rep, Period>>& t);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
+#include "date.h"
+
 using fortnights = std::chrono::duration<date::weeks::rep,
-                                         std::ratio_multiply<std::ratio<2>,
-                                                             date::weeks::period>>;
+                                         std::ratio_multiply<std::ratio<2>, date::weeks::period>>;
 
-using microfortnights = std::chrono::duration<std::int64_t,
-                                              std::ratio_multiply<fortnights::period,
-                                                                  std::micro>>;
+using microfortnights =
+        std::chrono::duration<std::int64_t, std::ratio_multiply<fortnights::period, std::micro>>;
 
-int
-main()
-{
+int main() {
     using namespace date;
     using namespace std;
     using namespace std::chrono;
@@ -75,12 +71,12 @@ main()
 
     static_assert(is_same<tod::precision::period, ratio<1, 10000>>{}, "");
 
-    static_assert( is_trivially_destructible<tod>{}, "");
-    static_assert( is_default_constructible<tod>{}, "");
-    static_assert( is_trivially_copy_constructible<tod>{}, "");
-    static_assert( is_trivially_copy_assignable<tod>{}, "");
-    static_assert( is_trivially_move_constructible<tod>{}, "");
-    static_assert( is_trivially_move_assignable<tod>{}, "");
+    static_assert(is_trivially_destructible<tod>{}, "");
+    static_assert(is_default_constructible<tod>{}, "");
+    static_assert(is_trivially_copy_constructible<tod>{}, "");
+    static_assert(is_trivially_copy_assignable<tod>{}, "");
+    static_assert(is_trivially_move_constructible<tod>{}, "");
+    static_assert(is_trivially_move_assignable<tod>{}, "");
 
     static_assert(is_constructible<tod, microfortnights>{}, "");
     static_assert(!is_convertible<microfortnights, tod>{}, "");
@@ -94,8 +90,8 @@ main()
     static_assert(t1.seconds() == seconds{6}, "");
     static_assert(t1.subseconds() == tod::precision{480}, "");
 #if __cplusplus >= 201402
-    static_assert(static_cast<tod::precision>(t1) == hours{13} + minutes{7}
-                                                     + microfortnights{5}, "");
+    static_assert(static_cast<tod::precision>(t1) == hours{13} + minutes{7} + microfortnights{5},
+                  "");
     static_assert(t1.to_duration() == hours{13} + minutes{7} + microfortnights{5}, "");
 #endif
 

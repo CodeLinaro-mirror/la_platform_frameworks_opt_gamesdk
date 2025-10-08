@@ -30,23 +30,19 @@ const uint64_t kBytesInMegabyte = 1000000;
 // s1 can be used:
 // '[**]' is an array wildcard - it matches nested arrays.
 // '!REGEX(.*) will match the regex in brackets.
-bool CompareIgnoringWhitespace(std::string s0, std::string s1,
-                               std::string* error_msg = nullptr);
+bool CompareIgnoringWhitespace(std::string s0, std::string s1, std::string* error_msg = nullptr);
 
 // Compare the strings ignoring whitespace and EXPECT_TRUE that they're the
 // same.
-bool CheckStrings(const std::string& name, const std::string& result,
-                  const std::string& expected);
+bool CheckStrings(const std::string& name, const std::string& result, const std::string& expected);
 
 // Generates an advice string that satisfies the given parameters
-std::string GetAdviceString(const std::string& avail_mem,
-                            const std::string& predicted_avail,
-                            const std::string& oom_score,
-                            bool with_warnings = false);
+std::string GetAdviceString(const std::string& avail_mem, const std::string& predicted_avail,
+                            const std::string& oom_score, bool with_warnings = false);
 
 // Allocates a given number of bytes
 void AllocateMemory(uint64_t nbytes);
 
 // Deallocates all memory that has currently been allocated
 void DeallocateAllMemory();
-}  // namespace memory_advice_test
+} // namespace memory_advice_test

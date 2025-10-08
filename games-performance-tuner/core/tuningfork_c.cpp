@@ -32,8 +32,8 @@ namespace jni = gamesdk::jni;
 
 void TUNINGFORK_VERSION_SYMBOL();
 
-TuningFork_ErrorCode TuningFork_init(const TuningFork_Settings *c_settings_in,
-                                     JNIEnv *env, jobject context) {
+TuningFork_ErrorCode TuningFork_init(const TuningFork_Settings* c_settings_in, JNIEnv* env,
+                                     jobject context) {
     TUNINGFORK_VERSION_SYMBOL();
     tf::Settings settings{};
     if (c_settings_in != nullptr) {
@@ -45,8 +45,7 @@ TuningFork_ErrorCode TuningFork_init(const TuningFork_Settings *c_settings_in,
     TuningFork_ErrorCode err = tf::Settings::FindInApk(&settings);
     if (err != TUNINGFORK_ERROR_OK) return err;
     settings.Check();
-    err = tf::Init(settings, nullptr, nullptr, nullptr, nullptr, nullptr,
-                   first_run);
+    err = tf::Init(settings, nullptr, nullptr, nullptr, nullptr, nullptr, first_run);
     if (err != TUNINGFORK_ERROR_OK) return err;
     if (!(settings.default_fidelity_parameters_filename.empty() &&
           settings.c_settings.training_fidelity_params == nullptr)) {
@@ -60,24 +59,21 @@ TuningFork_ErrorCode TuningFork_init(const TuningFork_Settings *c_settings_in,
 // recorded
 //  as being associated with those parameters.
 TuningFork_ErrorCode TuningFork_getFidelityParameters(
-    const TuningFork_CProtobufSerialization *default_params,
-    TuningFork_CProtobufSerialization *params, uint32_t timeout_ms) {
+        const TuningFork_CProtobufSerialization* default_params,
+        TuningFork_CProtobufSerialization* params, uint32_t timeout_ms) {
     tf::ProtobufSerialization defaults;
     if (default_params) defaults = tf::ToProtobufSerialization(*default_params);
     tf::ProtobufSerialization s;
-    TuningFork_ErrorCode result =
-        tf::GetFidelityParameters(defaults, s, timeout_ms);
-    if (result == TUNINGFORK_ERROR_OK && params)
-        tf::ToCProtobufSerialization(s, *params);
+    TuningFork_ErrorCode result = tf::GetFidelityParameters(defaults, s, timeout_ms);
+    if (result == TUNINGFORK_ERROR_OK && params) tf::ToCProtobufSerialization(s, *params);
     return result;
 }
 
 // Protobuf serialization of the current annotation
 TuningFork_ErrorCode TuningFork_setCurrentAnnotation(
-    const TuningFork_CProtobufSerialization *annotation) {
+        const TuningFork_CProtobufSerialization* annotation) {
     if (annotation != nullptr)
-        return tf::SetCurrentAnnotation(
-            tf::ToProtobufSerialization(*annotation));
+        return tf::SetCurrentAnnotation(tf::ToProtobufSerialization(*annotation));
     else
         return TUNINGFORK_ERROR_INVALID_ANNOTATION;
 }
@@ -97,7 +93,7 @@ TuningFork_ErrorCode TuningFork_frameDeltaTimeNanos(TuningFork_InstrumentKey id,
 
 // Start a trace segment
 TuningFork_ErrorCode TuningFork_startTrace(TuningFork_InstrumentKey key,
-                                           TuningFork_TraceHandle *handle) {
+                                           TuningFork_TraceHandle* handle) {
     if (handle == nullptr) return TUNINGFORK_ERROR_INVALID_TRACE_HANDLE;
     return tf::StartTrace(key, *handle);
 }
@@ -107,7 +103,9 @@ TuningFork_ErrorCode TuningFork_endTrace(TuningFork_TraceHandle h) {
     return tf::EndTrace(h);
 }
 
-TuningFork_ErrorCode TuningFork_flush() { return tf::Flush(true); }
+TuningFork_ErrorCode TuningFork_flush() {
+    return tf::Flush(true);
+}
 
 TuningFork_ErrorCode TuningFork_destroy() {
     tf::KillDownloadThreads();
@@ -115,7 +113,7 @@ TuningFork_ErrorCode TuningFork_destroy() {
 }
 
 TuningFork_ErrorCode TuningFork_setFidelityParameters(
-    const TuningFork_CProtobufSerialization *params) {
+        const TuningFork_CProtobufSerialization* params) {
     if (params != nullptr)
         return tf::SetFidelityParameters(tf::ToProtobufSerialization(*params));
     else
@@ -143,71 +141,61 @@ TuningFork_ErrorCode TuningFork_resumeFrameTimeLogging() {
 // Currently tf::LoadingTimeMetadata is typedefed to
 // TuningFork_LoadingTimeMetadata so this does nothing.
 static TuningFork_ErrorCode CheckLoadingMetaData(
-    const TuningFork_LoadingTimeMetadata *eventMetadata_in,
-    uint32_t eventMetadataSize, tf::LoadingTimeMetadata &eventMetadata) {
-    if (eventMetadata_in == nullptr ||
-        eventMetadataSize != sizeof(TuningFork_LoadingTimeMetadata))
+        const TuningFork_LoadingTimeMetadata* eventMetadata_in, uint32_t eventMetadataSize,
+        tf::LoadingTimeMetadata& eventMetadata) {
+    if (eventMetadata_in == nullptr || eventMetadataSize != sizeof(TuningFork_LoadingTimeMetadata))
         return TUNINGFORK_ERROR_BAD_PARAMETER;
     eventMetadata = *eventMetadata_in;
     return TUNINGFORK_ERROR_OK;
 }
 
 TuningFork_ErrorCode TuningFork_recordLoadingTime(
-    uint64_t time_ns, const TuningFork_LoadingTimeMetadata *eventMetadata_in,
-    uint32_t eventMetadataSize,
-    const TuningFork_CProtobufSerialization *annotation) {
+        uint64_t time_ns, const TuningFork_LoadingTimeMetadata* eventMetadata_in,
+        uint32_t eventMetadataSize, const TuningFork_CProtobufSerialization* annotation) {
     tf::LoadingTimeMetadata eventMetadata;
-    auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize,
-                                    eventMetadata);
+    auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize, eventMetadata);
     if (err != TUNINGFORK_ERROR_OK) return err;
-    return tf::RecordLoadingTime(std::chrono::nanoseconds(time_ns),
-                                 eventMetadata,
+    return tf::RecordLoadingTime(std::chrono::nanoseconds(time_ns), eventMetadata,
                                  tf::ToProtobufSerialization(*annotation));
 }
 
 TuningFork_ErrorCode TuningFork_startRecordingLoadingTime(
-    const TuningFork_LoadingTimeMetadata *eventMetadata_in,
-    uint32_t eventMetadataSize,
-    const TuningFork_CProtobufSerialization *annotation,
-    TuningFork_LoadingEventHandle *handle) {
+        const TuningFork_LoadingTimeMetadata* eventMetadata_in, uint32_t eventMetadataSize,
+        const TuningFork_CProtobufSerialization* annotation,
+        TuningFork_LoadingEventHandle* handle) {
     tf::LoadingTimeMetadata eventMetadata;
-    auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize,
-                                    eventMetadata);
+    auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize, eventMetadata);
     if (err != TUNINGFORK_ERROR_OK) {
         return err;
     }
     if (handle == nullptr) return TUNINGFORK_ERROR_INVALID_LOADING_HANDLE;
-    return tf::StartRecordingLoadingTime(
-        eventMetadata, tf::ToProtobufSerialization(*annotation), *handle);
+    return tf::StartRecordingLoadingTime(eventMetadata, tf::ToProtobufSerialization(*annotation),
+                                         *handle);
 }
 
-TuningFork_ErrorCode TuningFork_stopRecordingLoadingTime(
-    TuningFork_LoadingEventHandle handle) {
+TuningFork_ErrorCode TuningFork_stopRecordingLoadingTime(TuningFork_LoadingEventHandle handle) {
     return tf::StopRecordingLoadingTime(handle);
 }
 
-TuningFork_ErrorCode TuningFork_reportLifecycleEvent(
-    TuningFork_LifecycleState state) {
+TuningFork_ErrorCode TuningFork_reportLifecycleEvent(TuningFork_LifecycleState state) {
     return tf::ReportLifecycleEvent(state);
 }
 
 TuningFork_ErrorCode TuningFork_startLoadingGroup(
-    const TuningFork_LoadingTimeMetadata *eventMetadata_in,
-    uint32_t eventMetadataSize,
-    const TuningFork_CProtobufSerialization *annotation_in,
-    TuningFork_LoadingGroupHandle *handle) {
+        const TuningFork_LoadingTimeMetadata* eventMetadata_in, uint32_t eventMetadataSize,
+        const TuningFork_CProtobufSerialization* annotation_in,
+        TuningFork_LoadingGroupHandle* handle) {
     tf::LoadingTimeMetadata eventMetadata;
-    tf::LoadingTimeMetadata *eventMetadataPtr = nullptr;
+    tf::LoadingTimeMetadata* eventMetadataPtr = nullptr;
     if (eventMetadata_in != nullptr) {
-        auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize,
-                                        eventMetadata);
+        auto err = CheckLoadingMetaData(eventMetadata_in, eventMetadataSize, eventMetadata);
         if (err != TUNINGFORK_ERROR_OK) {
             return err;
         }
         eventMetadataPtr = &eventMetadata;
     }
     tf::ProtobufSerialization annotation;
-    tf::ProtobufSerialization *annotationPtr = nullptr;
+    tf::ProtobufSerialization* annotationPtr = nullptr;
     if (annotation_in != nullptr) {
         annotation = tf::ToProtobufSerialization(*annotation_in);
         annotationPtr = &annotation;
@@ -215,8 +203,7 @@ TuningFork_ErrorCode TuningFork_startLoadingGroup(
     return tf::StartLoadingGroup(eventMetadataPtr, annotationPtr, handle);
 }
 
-TuningFork_ErrorCode TuningFork_stopLoadingGroup(
-    TuningFork_LoadingGroupHandle handle) {
+TuningFork_ErrorCode TuningFork_stopLoadingGroup(TuningFork_LoadingGroupHandle handle) {
     return tf::StopLoadingGroup(handle);
 }
 
@@ -227,16 +214,16 @@ void TUNINGFORK_VERSION_SYMBOL() {
     // undefined symbol, as the name of the function depends on the version.
 }
 
-const char *Tuningfork_versionString() {
-  static const char version[] =
-      AGDK_STRING_VERSION(TUNINGFORK_MAJOR_VERSION, TUNINGFORK_MINOR_VERSION,
-                          TUNINGFORK_BUGFIX_VERSION);
-  return version;
+const char* Tuningfork_versionString() {
+    static const char version[] =
+            AGDK_STRING_VERSION(TUNINGFORK_MAJOR_VERSION, TUNINGFORK_MINOR_VERSION,
+                                TUNINGFORK_BUGFIX_VERSION);
+    return version;
 }
 
-TuningFork_ErrorCode TuningFork_setAggregationStrategyInterval(
-    TuningFork_Submission method, uint32_t interval_ms_or_count) {
+TuningFork_ErrorCode TuningFork_setAggregationStrategyInterval(TuningFork_Submission method,
+                                                               uint32_t interval_ms_or_count) {
     return tf::SetAggregationStrategyInterval(method, interval_ms_or_count);
 }
 
-}  // extern "C" {
+} // extern "C" {

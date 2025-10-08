@@ -87,14 +87,18 @@ struct ExtThreadImpl : public ThreadImpl {
     std::function<void()> fn_;
     SwappyThreadId id_;
 
-   public:
+public:
     ExtThreadImpl(std::function<void()>&& fn) : fn_(std::move(fn)) {
         if (s_ext_thread_manager->start(&id_, startThread, this) != 0) {
             SWAPPY_LOGE("Couldn't create thread");
         }
     }
-    void join() { s_ext_thread_manager->join(id_); }
-    bool joinable() { return s_ext_thread_manager->joinable(id_); }
+    void join() {
+        s_ext_thread_manager->join(id_);
+    }
+    bool joinable() {
+        return s_ext_thread_manager->joinable(id_);
+    }
     static void* startThread(void* x) {
         ExtThreadImpl* impl = (ExtThreadImpl*)x;
         impl->fn_();
@@ -105,10 +109,14 @@ struct ExtThreadImpl : public ThreadImpl {
 struct StlThreadImpl : public ThreadImpl {
     std::thread thread_;
 
-   public:
+public:
     StlThreadImpl(std::function<void()>&& fn) : thread_(std::move(fn)) {}
-    void join() { thread_.join(); }
-    bool joinable() { return thread_.joinable(); }
+    void join() {
+        thread_.join();
+    }
+    bool joinable() {
+        return thread_.joinable();
+    }
 };
 
 Thread::Thread() noexcept {}
@@ -142,7 +150,7 @@ bool Thread::joinable() {
     return (impl_.get() != nullptr && impl_->joinable());
 }
 
-}  // namespace swappy
+} // namespace swappy
 
 extern "C" void Swappy_setThreadFunctions(const SwappyThreadFunctions* mgr) {
     swappy::s_ext_thread_manager = mgr;

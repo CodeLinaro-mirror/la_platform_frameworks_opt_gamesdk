@@ -93,12 +93,10 @@ const TuningFork_CProtobufSerialization* TrainingModeParams() {
     return &cpb;
 }
 
-tf::Settings TestSettings(tf::Settings::AggregationStrategy::Submission method,
-                          int n_ticks, int n_keys,
-                          std::vector<uint32_t> annotation_size,
+tf::Settings TestSettings(tf::Settings::AggregationStrategy::Submission method, int n_ticks,
+                          int n_keys, std::vector<uint32_t> annotation_size,
                           const std::vector<tf::Settings::Histogram>& hists,
-                          int num_frame_time_histograms,
-                          int num_loading_time_histograms) {
+                          int num_frame_time_histograms, int num_loading_time_histograms) {
     tf::Settings s{};
     s.aggregation_strategy.method = method;
     s.aggregation_strategy.intervalms_or_count = n_ticks;
@@ -122,4 +120,4 @@ std::string ReplaceReturns(std::string in) {
     return in;
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

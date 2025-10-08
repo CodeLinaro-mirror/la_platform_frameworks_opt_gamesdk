@@ -16,27 +16,26 @@
 
 package com.memory_advice.testapp;
 
-import android.text.method.ScrollingMovementMethod;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
+    // Used to load the testapp's native library on application startup.
+    static {
+        System.loadLibrary("testapp");
+    }
 
-  // Used to load the testapp's native library on application startup.
-  static {
-    System.loadLibrary("testapp");
-  }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
+        TextView tv = findViewById(R.id.sample_text);
+        tv.setMovementMethod(new ScrollingMovementMethod());
+        tv.setText(runTests());
+    }
 
-    TextView tv = findViewById(R.id.sample_text);
-    tv.setMovementMethod(new ScrollingMovementMethod());
-    tv.setText(runTests());
-  }
-
-  public native String runTests();
+    public native String runTests();
 }

@@ -26,26 +26,26 @@ constexpr Duration kUploadCheckInterval = std::chrono::seconds(1);
 
 const char kUploadRpcName[] = ":uploadTelemetry";
 
-UltimateUploader::UltimateUploader(const TuningFork_Cache* persister,
-                                   const HttpRequest& request)
-    : Runnable(nullptr), persister_(persister), request_(request) {}
+UltimateUploader::UltimateUploader(const TuningFork_Cache* persister, const HttpRequest& request)
+      : Runnable(nullptr), persister_(persister), request_(request) {}
 Duration UltimateUploader::DoWork() {
     CheckUploadPending();
     return kUploadCheckInterval;
 }
 
-void UltimateUploader::Run() { Runnable::Run(); }
+void UltimateUploader::Run() {
+    Runnable::Run();
+}
 
 bool UltimateUploader::CheckUploadPending() {
     TuningFork_CProtobufSerialization uploading_hists_ser;
-    if (persister_->get(HISTOGRAMS_UPLOADING, &uploading_hists_ser,
-                        persister_->user_data) == TUNINGFORK_ERROR_OK) {
+    if (persister_->get(HISTOGRAMS_UPLOADING, &uploading_hists_ser, persister_->user_data) ==
+        TUNINGFORK_ERROR_OK) {
         std::string request_json = ToString(uploading_hists_ser);
         int response_code = -1;
         std::string body;
         ALOGV("Got UPLOADING histograms: %s", request_json.c_str());
-        TuningFork_ErrorCode ret =
-            request_.Send(kUploadRpcName, request_json, response_code, body);
+        TuningFork_ErrorCode ret = request_.Send(kUploadRpcName, request_json, response_code, body);
         if (ret == TUNINGFORK_ERROR_OK) {
             ALOGI("UPLOAD request returned %d %s", response_code, body.c_str());
             if (response_code == 200) {
@@ -54,11 +54,9 @@ bool UltimateUploader::CheckUploadPending() {
                 return true;
             }
         } else {
-            ALOGW("Error %d when sending UPLOAD request\n%s", ret,
-                  request_json.c_str());
+            ALOGW("Error %d when sending UPLOAD request\n%s", ret, request_json.c_str());
             persister_->remove(HISTOGRAMS_UPLOADING, persister_->user_data);
-            persister_->set(HISTOGRAMS_PAUSED, &uploading_hists_ser,
-                            persister_->user_data);
+            persister_->set(HISTOGRAMS_PAUSED, &uploading_hists_ser, persister_->user_data);
         }
         TuningFork_CProtobufSerialization_free(&uploading_hists_ser);
     } else {
@@ -68,4 +66,4 @@ bool UltimateUploader::CheckUploadPending() {
     return false;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -36,7 +36,7 @@ GameControllerDeviceInfo::GameControllerDeviceInfo() {
     }
 }
 
-void GameControllerDeviceInfo::setName(const char *name) {
+void GameControllerDeviceInfo::setName(const char* name) {
     strncpy(mName, name, DEVICEINFO_MAX_NAME_LENGTH);
 }
-}  // namespace paddleboat
+} // namespace paddleboat

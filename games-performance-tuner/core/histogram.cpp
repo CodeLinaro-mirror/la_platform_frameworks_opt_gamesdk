@@ -19,4 +19,4 @@
 #include <cmath>
 #include <sstream>
 
-namespace tuningfork {}  // namespace tuningfork
+namespace tuningfork {} // namespace tuningfork

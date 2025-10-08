@@ -62,12 +62,10 @@ void UnityTracer(const SwappyTracer* tracer) {
 // Return swappy tracer for opengl.
 // There is no tracer for Vulkan in that version of swappy.
 SwappyTracerFn findTracerSwappy() {
-    auto tracer =
-        findFunction<SwappyTracerFn>("libswappy.so", "Swappy_injectTracer");
+    auto tracer = findFunction<SwappyTracerFn>("libswappy.so", "Swappy_injectTracer");
     if (tracer == nullptr) return nullptr;
 
-    auto swappyIsEnabledFunc =
-        findFunction<SwappyIsEnabled>("libswappy.so", "Swappy_isEnabled");
+    auto swappyIsEnabledFunc = findFunction<SwappyIsEnabled>("libswappy.so", "Swappy_isEnabled");
     if (swappyIsEnabledFunc == nullptr) return nullptr;
 
     bool swappyIsEnabled = swappyIsEnabledFunc();
@@ -77,10 +75,8 @@ SwappyTracerFn findTracerSwappy() {
 }
 
 UnitySwappyTracerFn findUnityTracer() {
-    auto tracer = findFunction<UnitySwappyTracerFn>("libunity.so",
-                                                    "UnitySwappy_injectTracer");
-    auto version_fn =
-        findFunction<UnitySwappyVersion>("libunity.so", "UnitySwappy_version");
+    auto tracer = findFunction<UnitySwappyTracerFn>("libunity.so", "UnitySwappy_injectTracer");
+    auto version_fn = findFunction<UnitySwappyVersion>("libunity.so", "UnitySwappy_version");
     if (version_fn != nullptr) {
         s_swappy_version = version_fn();
         ALOGI("Unity Swappy version: [%d]", s_swappy_version);
@@ -100,7 +96,7 @@ bool findSwappy() {
     return s_swappy_tracer_fn != nullptr;
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 namespace jni = gamesdk::jni;
 
@@ -115,21 +111,19 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     jclass activityThread = env->FindClass("android/app/ActivityThread");
     jmethodID currentActivityThread =
-        env->GetStaticMethodID(activityThread, "currentActivityThread",
-                               "()Landroid/app/ActivityThread;");
-    jmethodID getApplication = env->GetMethodID(
-        activityThread, "getApplication", "()Landroid/app/Application;");
+            env->GetStaticMethodID(activityThread, "currentActivityThread",
+                                   "()Landroid/app/ActivityThread;");
+    jmethodID getApplication =
+            env->GetMethodID(activityThread, "getApplication", "()Landroid/app/Application;");
 
-    jobject activityThreadObj =
-        env->CallStaticObjectMethod(activityThread, currentActivityThread);
+    jobject activityThreadObj = env->CallStaticObjectMethod(activityThread, currentActivityThread);
     jobject context = env->CallObjectMethod(activityThreadObj, getApplication);
 
     jni::Init(env, context);
     return JNI_VERSION_1_6;
 }
 
-TuningFork_ErrorCode Unity_TuningFork_init_with_settings(
-    TuningFork_Settings* settings) {
+TuningFork_ErrorCode Unity_TuningFork_init_with_settings(TuningFork_Settings* settings) {
     s_swappy_enabled = findSwappy();
     if (s_swappy_enabled) {
         settings->swappy_tracer_fn = s_swappy_tracer_fn;
@@ -145,9 +139,9 @@ TuningFork_ErrorCode Unity_TuningFork_init_with_settings(
 }
 
 TuningFork_ErrorCode Unity_TuningFork_init(
-    TuningFork_FidelityParamsCallback fidelity_params_callback,
-    const TuningFork_CProtobufSerialization* training_fidelity_params,
-    const char* endpoint_uri_override) {
+        TuningFork_FidelityParamsCallback fidelity_params_callback,
+        const TuningFork_CProtobufSerialization* training_fidelity_params,
+        const char* endpoint_uri_override) {
     s_swappy_enabled = findSwappy();
     TuningFork_Settings settings{};
     if (s_swappy_enabled) {
@@ -160,17 +154,17 @@ TuningFork_ErrorCode Unity_TuningFork_init(
     return TuningFork_init(&settings, jni::Env(), jni::AppContextGlobalRef());
 }
 
-bool Unity_TuningFork_swappyIsEnabled() { return s_swappy_enabled; }
+bool Unity_TuningFork_swappyIsEnabled() {
+    return s_swappy_enabled;
+}
 
 TuningFork_ErrorCode Unity_TuningFork_findFidelityParamsInApk(
-    const char* filename, TuningFork_CProtobufSerialization* fp) {
-    return TuningFork_findFidelityParamsInApk(
-        jni::Env(), jni::AppContextGlobalRef(), filename, fp);
+        const char* filename, TuningFork_CProtobufSerialization* fp) {
+    return TuningFork_findFidelityParamsInApk(jni::Env(), jni::AppContextGlobalRef(), filename, fp);
 }
 
 TuningFork_ErrorCode Unity_TuningFork_saveOrDeleteFidelityParamsFile(
-    TuningFork_CProtobufSerialization* fps) {
-    return TuningFork_saveOrDeleteFidelityParamsFile(
-        jni::Env(), jni::AppContextGlobalRef(), fps);
+        TuningFork_CProtobufSerialization* fps) {
+    return TuningFork_saveOrDeleteFidelityParamsFile(jni::Env(), jni::AppContextGlobalRef(), fps);
 }
-}  // extern "C" {
+} // extern "C" {

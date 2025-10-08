@@ -31,24 +31,23 @@ struct LoadingTimeMetadataWithGroup;
 // Interface to an object that can map between serializations and ids and create
 // compound ids.
 class IdProvider {
- public:
-  virtual ~IdProvider() {}
-  // Decode <ser> into an AnnotationId. If loading is non-null, it sets it
-  // according to whether the annotation is a loading annotation.
-  virtual TuningFork_ErrorCode SerializedAnnotationToAnnotationId(
-      const ProtobufSerialization& ser, AnnotationId& id) = 0;
+public:
+    virtual ~IdProvider() {}
+    // Decode <ser> into an AnnotationId. If loading is non-null, it sets it
+    // according to whether the annotation is a loading annotation.
+    virtual TuningFork_ErrorCode SerializedAnnotationToAnnotationId(
+            const ProtobufSerialization& ser, AnnotationId& id) = 0;
 
-  // Return a new id that is made up of <annotation_id> and <k>.
-  // Gives an error if the id is out-of-bounds.
-  virtual TuningFork_ErrorCode MakeCompoundId(InstrumentationKey k,
-                                              AnnotationId annotation_id,
-                                              MetricId& id) = 0;
+    // Return a new id that is made up of <annotation_id> and <k>.
+    // Gives an error if the id is out-of-bounds.
+    virtual TuningFork_ErrorCode MakeCompoundId(InstrumentationKey k, AnnotationId annotation_id,
+                                                MetricId& id) = 0;
 
-  virtual TuningFork_ErrorCode AnnotationIdToSerializedAnnotation(
-      AnnotationId id, SerializedAnnotation& ser) = 0;
+    virtual TuningFork_ErrorCode AnnotationIdToSerializedAnnotation(AnnotationId id,
+                                                                    SerializedAnnotation& ser) = 0;
 
-  virtual TuningFork_ErrorCode MetricIdToLoadingTimeMetadata(
-      MetricId id, LoadingTimeMetadataWithGroup& md) = 0;
+    virtual TuningFork_ErrorCode MetricIdToLoadingTimeMetadata(
+            MetricId id, LoadingTimeMetadataWithGroup& md) = 0;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

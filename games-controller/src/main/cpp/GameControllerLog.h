@@ -21,7 +21,7 @@
 #include <cstdint>
 
 namespace paddleboat {
-const char *LogGetInputSourceString(const int32_t eventSource);
+const char* LogGetInputSourceString(const int32_t eventSource);
 
-void LogInputEvent(const AInputEvent *event);
-}  // namespace paddleboat
+void LogInputEvent(const AInputEvent* event);
+} // namespace paddleboat

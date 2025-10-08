@@ -31,20 +31,20 @@
 
 #define LOG_TAG "GameControllerSample"
 #include "Log.h"
-#define ABORT_GAME               \
-  {                              \
-    ALOGE("*** GAME ABORTING."); \
-    *((volatile char*)0) = 'a';  \
-  }
+#define ABORT_GAME                   \
+    {                                \
+        ALOGE("*** GAME ABORTING."); \
+        *((volatile char*)0) = 'a';  \
+    }
 #define DEBUG_BLIP ALOGI("[ BLIP ]: %s:%d", __FILE__, __LINE__)
 
-#define MY_ASSERT(cond)                     \
-  {                                         \
-    if (!(cond)) {                          \
-      ALOGE("ASSERTION FAILED: %s", #cond); \
-      ABORT_GAME;                           \
-    }                                       \
-  }
+#define MY_ASSERT(cond)                           \
+    {                                             \
+        if (!(cond)) {                            \
+            ALOGE("ASSERTION FAILED: %s", #cond); \
+            ABORT_GAME;                           \
+        }                                         \
+    }
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 

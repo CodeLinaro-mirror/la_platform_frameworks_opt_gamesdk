@@ -33,10 +33,10 @@ extern "C" {
  * the memory once finished with the buffer.
  */
 typedef struct MemoryAdvice_JsonSerialization {
-  char *json;     ///< String for the json object.
-  uint32_t size;  ///< Size of the json string.
-  ///< Deallocation callback (may be NULL if not owned).
-  void (*dealloc)(struct MemoryAdvice_JsonSerialization *);
+    char* json;    ///< String for the json object.
+    uint32_t size; ///< Size of the json string.
+    ///< Deallocation callback (may be NULL if not owned).
+    void (*dealloc)(struct MemoryAdvice_JsonSerialization*);
 } MemoryAdvice_JsonSerialization;
 
 /**
@@ -49,14 +49,13 @@ typedef struct MemoryAdvice_JsonSerialization {
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED if Memory Advice was not yet
  * initialized.
  */
-MemoryAdvice_ErrorCode MemoryAdvice_getAdvice(
-    MemoryAdvice_JsonSerialization *advice);
+MemoryAdvice_ErrorCode MemoryAdvice_getAdvice(MemoryAdvice_JsonSerialization* advice);
 
 /**
  * @brief Deallocate any memory owned by the json serialization.
  * @param ser A json serialization
  */
-void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization *ser);
+void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization* ser);
 
 /**
  * @brief Perform tests on the memory advice library.
@@ -68,5 +67,5 @@ void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization *ser);
 int32_t MemoryAdvice_test();
 
 #ifdef __cplusplus
-}  // extern "C" {
+} // extern "C" {
 #endif

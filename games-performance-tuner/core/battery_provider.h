@@ -22,46 +22,46 @@ namespace tuningfork {
 
 // Provider for system battery and power information.
 class IBatteryProvider {
- public:
-  typedef enum ThermalState {
-    // Device had no thermal state data, due to low api level.
-    THERMAL_STATE_UNSPECIFIED = 0,
-    // No thermal problems.
-    THERMAL_STATE_NONE = 1,
-    // Light throttling where UX is not impacted.
-    THERMAL_STATE_LIGHT = 2,
-    // Moderate throttling where UX is not largely impacted.
-    THERMAL_STATE_MODERATE = 3,
-    // Severe throttling where UX is largely impacted.
-    THERMAL_STATE_SEVERE = 4,
-    // Platform has done everything to reduce power.
-    THERMAL_STATE_CRITICAL = 5,
-    // Key components in platform are shutting down due to thermal
-    // condition.
-    // Device functionalities are limited.
-    THERMAL_STATE_EMERGENCY = 6,
-    // Indicates that the device needs shutdown immediately.
-    THERMAL_STATE_SHUTDOWN = 7,
-  } ThermalState;
+public:
+    typedef enum ThermalState {
+        // Device had no thermal state data, due to low api level.
+        THERMAL_STATE_UNSPECIFIED = 0,
+        // No thermal problems.
+        THERMAL_STATE_NONE = 1,
+        // Light throttling where UX is not impacted.
+        THERMAL_STATE_LIGHT = 2,
+        // Moderate throttling where UX is not largely impacted.
+        THERMAL_STATE_MODERATE = 3,
+        // Severe throttling where UX is largely impacted.
+        THERMAL_STATE_SEVERE = 4,
+        // Platform has done everything to reduce power.
+        THERMAL_STATE_CRITICAL = 5,
+        // Key components in platform are shutting down due to thermal
+        // condition.
+        // Device functionalities are limited.
+        THERMAL_STATE_EMERGENCY = 6,
+        // Indicates that the device needs shutdown immediately.
+        THERMAL_STATE_SHUTDOWN = 7,
+    } ThermalState;
 
-  virtual ~IBatteryProvider() {}
-  virtual int32_t GetBatteryPercentage() = 0;
-  virtual int32_t GetBatteryCharge() = 0;
-  virtual ThermalState GetCurrentThermalStatus() = 0;
-  virtual bool IsBatteryCharging() = 0;
-  virtual bool IsBatteryReportingEnabled() = 0;
-  virtual bool IsPowerSaveModeEnabled() = 0;
+    virtual ~IBatteryProvider() {}
+    virtual int32_t GetBatteryPercentage() = 0;
+    virtual int32_t GetBatteryCharge() = 0;
+    virtual ThermalState GetCurrentThermalStatus() = 0;
+    virtual bool IsBatteryCharging() = 0;
+    virtual bool IsBatteryReportingEnabled() = 0;
+    virtual bool IsPowerSaveModeEnabled() = 0;
 };
 
 // Implementation that uses JNI calls to BatteryManager and PowerManager.
 class DefaultBatteryProvider : public IBatteryProvider {
- public:
-  int32_t GetBatteryPercentage() override;
-  int32_t GetBatteryCharge() override;
-  ThermalState GetCurrentThermalStatus() override;
-  bool IsBatteryCharging() override;
-  bool IsBatteryReportingEnabled() override;
-  bool IsPowerSaveModeEnabled() override;
+public:
+    int32_t GetBatteryPercentage() override;
+    int32_t GetBatteryCharge() override;
+    ThermalState GetCurrentThermalStatus() override;
+    bool IsBatteryCharging() override;
+    bool IsBatteryReportingEnabled() override;
+    bool IsPowerSaveModeEnabled() override;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

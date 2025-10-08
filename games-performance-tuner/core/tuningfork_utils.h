@@ -35,8 +35,7 @@ bool GetAssetAsSerialization(const char* name, ProtobufSerialization& out);
 
 // Get the app's version code. Also fills packageNameStr, if not null, with
 // the package name.
-int GetVersionCode(std::string* packageNameStr = nullptr,
-                   uint32_t* gl_es_version = nullptr);
+int GetVersionCode(std::string* packageNameStr = nullptr, uint32_t* gl_es_version = nullptr);
 
 // Get the app's SHA1 signature
 std::string GetSignature();
@@ -44,7 +43,7 @@ std::string GetSignature();
 // Get whether the ApplicationInfo indicates the APK is debuggable
 bool GetDebuggable();
 
-}  // namespace apk_utils
+} // namespace apk_utils
 
 namespace file_utils {
 
@@ -58,16 +57,14 @@ bool DeleteFile(const std::string& path);
 
 bool DeleteDir(const std::string& path);
 
-bool LoadBytesFromFile(std::string file_name,
-                       TuningFork_CProtobufSerialization* params);
+bool LoadBytesFromFile(std::string file_name, TuningFork_CProtobufSerialization* params);
 
-bool SaveBytesToFile(std::string file_name,
-                     const TuningFork_CProtobufSerialization* params);
+bool SaveBytesToFile(std::string file_name, const TuningFork_CProtobufSerialization* params);
 
 // Call NativeContext.getCacheDir via JNI
 std::string GetAppCacheDir();
 
-}  // namespace file_utils
+} // namespace file_utils
 
 namespace json_utils {
 
@@ -78,7 +75,7 @@ std::string GetResourceName(const RequestInfo& request_info);
 // See DeviceSpec in proto/performanceparameters.proto
 json11::Json::object DeviceSpecJson(const RequestInfo& request_info);
 
-}  // namespace json_utils
+} // namespace json_utils
 
 // Get a unique identifier using java.util.UUID
 std::string UniqueId();
@@ -95,4 +92,4 @@ Duration GetProcessStartTimeSinceEpoch();
 // Returns a duration or 0 count on error.
 Duration GetTimeSinceProcessStart();
 
-}  // namespace tuningfork
+} // namespace tuningfork

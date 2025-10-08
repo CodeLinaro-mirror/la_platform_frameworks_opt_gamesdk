@@ -37,29 +37,27 @@ using namespace std;
 const IndexTableRemap pb_test_fake_remap[] = {{0}};
 
 static Paddleboat_Controller_Mapping_File_Controller_Entry
-    testMappingTable[GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE];
+        testMappingTable[GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE];
 
 static Paddleboat_Controller_Mapping_File_String_Entry
-    testStringTable[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
+        testStringTable[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
 
 static Paddleboat_Controller_Mapping_File_Axis_Entry
-    testAxisTable[GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE];
+        testAxisTable[GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE];
 
 static Paddleboat_Controller_Mapping_File_Button_Entry
-    testButtonTable[GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE];
+        testButtonTable[GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE];
 
 static void InitSearchFromExistingEntry(
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *sourceEntry,
-    MappingTableSearch &mapSearch) {
-    mapSearch.initSearchParameters(sourceEntry->vendorId,
-                                   sourceEntry->productId,
+        const Paddleboat_Controller_Mapping_File_Controller_Entry* sourceEntry,
+        MappingTableSearch& mapSearch) {
+    mapSearch.initSearchParameters(sourceEntry->vendorId, sourceEntry->productId,
                                    sourceEntry->minimumEffectiveApiLevel,
                                    sourceEntry->maximumEffectiveApiLevel);
 }
 
-static bool ControllerEqual(
-    const Paddleboat_Controller_Mapping_File_Controller_Entry &a,
-    const Paddleboat_Controller_Mapping_File_Controller_Entry &b) {
+static bool ControllerEqual(const Paddleboat_Controller_Mapping_File_Controller_Entry& a,
+                            const Paddleboat_Controller_Mapping_File_Controller_Entry& b) {
     EXPECT_EQ(a.minimumEffectiveApiLevel, b.minimumEffectiveApiLevel);
     EXPECT_EQ(a.maximumEffectiveApiLevel, b.maximumEffectiveApiLevel);
     EXPECT_EQ(a.vendorId, b.vendorId);
@@ -67,20 +65,15 @@ static bool ControllerEqual(
     EXPECT_EQ(a.flags, b.flags);
     EXPECT_EQ(a.axisTableIndex, b.axisTableIndex);
     EXPECT_EQ(a.buttonTableIndex, b.buttonTableIndex);
-    EXPECT_EQ(a.deviceAllowlistStringTableIndex,
-              b.deviceAllowlistStringTableIndex);
-    EXPECT_EQ(a.deviceDenylistStringTableIndex,
-              b.deviceDenylistStringTableIndex);
+    EXPECT_EQ(a.deviceAllowlistStringTableIndex, b.deviceAllowlistStringTableIndex);
+    EXPECT_EQ(a.deviceDenylistStringTableIndex, b.deviceDenylistStringTableIndex);
 
     return (a.minimumEffectiveApiLevel == b.minimumEffectiveApiLevel &&
-            a.maximumEffectiveApiLevel == b.maximumEffectiveApiLevel &&
-            a.vendorId == b.vendorId && a.productId == b.productId &&
-            a.flags == b.flags && a.axisTableIndex == b.axisTableIndex &&
-            a.buttonTableIndex == b.buttonTableIndex &&
-            a.deviceAllowlistStringTableIndex ==
-                b.deviceAllowlistStringTableIndex &&
-            a.deviceDenylistStringTableIndex ==
-                b.deviceDenylistStringTableIndex);
+            a.maximumEffectiveApiLevel == b.maximumEffectiveApiLevel && a.vendorId == b.vendorId &&
+            a.productId == b.productId && a.flags == b.flags &&
+            a.axisTableIndex == b.axisTableIndex && a.buttonTableIndex == b.buttonTableIndex &&
+            a.deviceAllowlistStringTableIndex == b.deviceAllowlistStringTableIndex &&
+            a.deviceDenylistStringTableIndex == b.deviceDenylistStringTableIndex);
 }
 // Make sure NotEmpty works
 TEST(PaddleboatTestNE, NotEmpty) {
@@ -99,63 +92,44 @@ TEST(PaddleboatTestValidity, Validity) {
 // --=========================================================================
 // Test data
 // Validation failure test, improper ordering of vendorId
-const Paddleboat_Controller_Mapping_File_Controller_Entry
-    pbtest_invalidmap_vendorid[] = {
-        {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_invalidmap_vendorid[] = {
+        {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+        {16, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+        {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+        {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
 };
 
 // Validation failure test, improper ordering of productId
-const Paddleboat_Controller_Mapping_File_Controller_Entry
-    pbtest_invalidmap_productid[] = {
-        {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0}};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_invalidmap_productid[] =
+        {{16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0}};
 
 // Validation failure test, improper ordering of api levels
-const Paddleboat_Controller_Mapping_File_Controller_Entry
-    pbtest_invalidmap_apilevel[] = {
-        {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {19, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0},
-        {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-         0}};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_invalidmap_apilevel[] =
+        {{16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {19, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0020, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0030, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0}};
 
 // Validation success test / find-insert tests baseline existing map
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_validmap[] = {
-    {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {16, 18, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {19, 21, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {16, 00, 0x0020, 0x0004, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {16, 00, 0x0030, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0,
-     0}};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_validmap[] =
+        {{16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 18, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {19, 21, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0020, 0x0004, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {16, 00, 0x0030, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0}};
 
 // Test validateMapTable catches improper vendorId ordering
 TEST(PaddleboatValidateMapVendorId, Validity) {
     const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_vendorid));
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *errorEntry =
-        GameControllerMappingUtils::validateMapTable(pbtest_invalidmap_vendorid,
-                                                     entryCount);
+            static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_vendorid));
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* errorEntry =
+            GameControllerMappingUtils::validateMapTable(pbtest_invalidmap_vendorid, entryCount);
     EXPECT_NE(errorEntry, nullptr);
     EXPECT_EQ(errorEntry->vendorId, 0x0018);
 }
@@ -163,10 +137,9 @@ TEST(PaddleboatValidateMapVendorId, Validity) {
 // Test validateMapTable catches improper productId ordering
 TEST(PaddleboatValidateMapProductId, Validity) {
     const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_productid));
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *errorEntry =
-        GameControllerMappingUtils::validateMapTable(
-            pbtest_invalidmap_productid, entryCount);
+            static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_productid));
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* errorEntry =
+            GameControllerMappingUtils::validateMapTable(pbtest_invalidmap_productid, entryCount);
     EXPECT_NE(errorEntry, nullptr);
     EXPECT_EQ(errorEntry->vendorId, 0x0020);
     EXPECT_EQ(errorEntry->productId, 0x0001);
@@ -175,10 +148,9 @@ TEST(PaddleboatValidateMapProductId, Validity) {
 // Test validateMapTable catches improper api level ordering
 TEST(PaddleboatValidateMapApiLevel, Validity) {
     const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_apilevel));
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *errorEntry =
-        GameControllerMappingUtils::validateMapTable(pbtest_invalidmap_apilevel,
-                                                     entryCount);
+            static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_invalidmap_apilevel));
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* errorEntry =
+            GameControllerMappingUtils::validateMapTable(pbtest_invalidmap_apilevel, entryCount);
     EXPECT_NE(errorEntry, nullptr);
     EXPECT_EQ(errorEntry->vendorId, 0x0020);
     EXPECT_EQ(errorEntry->productId, 0x0001);
@@ -187,11 +159,9 @@ TEST(PaddleboatValidateMapApiLevel, Validity) {
 
 // Test validateMapTable returns nullptr on a successful validation
 TEST(PaddleboatValidateMapSuccess, Validity) {
-    const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
-    const Paddleboat_Controller_Mapping_File_Controller_Entry *errorEntry =
-        GameControllerMappingUtils::validateMapTable(pbtest_validmap,
-                                                     entryCount);
+    const int32_t entryCount = static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
+    const Paddleboat_Controller_Mapping_File_Controller_Entry* errorEntry =
+            GameControllerMappingUtils::validateMapTable(pbtest_validmap, entryCount);
     EXPECT_EQ(errorEntry, nullptr);
 }
 
@@ -200,18 +170,15 @@ TEST(PaddleboatValidateMapSuccess, Validity) {
 // Test data
 
 TEST(PaddleboatValidateFindMapEntry, Validity) {
-    const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
+    const int32_t entryCount = static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
     memcpy(testMappingTable, pbtest_validmap,
-           entryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     MappingTableSearch mapSearch(&testMappingTable[0], entryCount);
 
     // Should find a match for the first entry
     int32_t targetTableIndex = 0;
     InitSearchFromExistingEntry(&testMappingTable[targetTableIndex], mapSearch);
-    bool foundEntry =
-        GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
+    bool foundEntry = GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
     EXPECT_EQ(foundEntry, true);
     EXPECT_EQ(mapSearch.tableIndex, targetTableIndex);
 
@@ -261,32 +228,30 @@ TEST(PaddleboatValidateFindMapEntry, Validity) {
 // Controller insert test
 // =========================================================================
 // Test data
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry1 = {
-    16, 00, 0x0001, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry1 =
+        {16, 00, 0x0001, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
 
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry2 = {
-    16, 00, 0x0020, 0x0010, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry2 =
+        {16, 00, 0x0020, 0x0010, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
 
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry3 = {
-    16, 00, 0x0040, 0x0100, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_add_entry3 =
+        {16, 00, 0x0040, 0x0100, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0};
 
 TEST(PaddleboatValidateInsertMapEntry, Validity) {
     Paddleboat_ErrorCode errorCode = PADDLEBOAT_NO_ERROR;
-    const int32_t entryCount =
-        static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
+    const int32_t entryCount = static_cast<const int32_t>(ARRAY_COUNTOF(pbtest_validmap));
     memset(testMappingTable, 0,
            GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     memcpy(testMappingTable, pbtest_validmap,
-           entryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     MappingTableSearch mapSearch(&testMappingTable[0], entryCount);
 
     // Insert should happen at beginning of table
     InitSearchFromExistingEntry(&pbtest_add_entry1, mapSearch);
     GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
-    errorCode = GameControllerMappingUtils::insertMapEntry(
-        &pbtest_add_entry1, &mapSearch, pb_test_fake_remap, pb_test_fake_remap);
+    errorCode = GameControllerMappingUtils::insertMapEntry(&pbtest_add_entry1, &mapSearch,
+                                                           pb_test_fake_remap, pb_test_fake_remap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(testMappingTable[0].vendorId, pbtest_add_entry1.vendorId);
     EXPECT_EQ(testMappingTable[0].productId, pbtest_add_entry1.productId);
@@ -297,16 +262,15 @@ TEST(PaddleboatValidateInsertMapEntry, Validity) {
     // reset mapping table
     memset(testMappingTable, 0,
            GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     memcpy(testMappingTable, pbtest_validmap,
-           entryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     mapSearch.tableEntryCount = entryCount;
 
     InitSearchFromExistingEntry(&pbtest_add_entry2, mapSearch);
     GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
-    errorCode = GameControllerMappingUtils::insertMapEntry(
-        &pbtest_add_entry2, &mapSearch, pb_test_fake_remap, pb_test_fake_remap);
+    errorCode = GameControllerMappingUtils::insertMapEntry(&pbtest_add_entry2, &mapSearch,
+                                                           pb_test_fake_remap, pb_test_fake_remap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(testMappingTable[5].vendorId, pbtest_add_entry2.vendorId);
     EXPECT_EQ(testMappingTable[5].productId, pbtest_add_entry2.productId);
@@ -317,16 +281,15 @@ TEST(PaddleboatValidateInsertMapEntry, Validity) {
     // reset mapping table
     memset(testMappingTable, 0,
            GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     memcpy(testMappingTable, pbtest_validmap,
-           entryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     mapSearch.tableEntryCount = entryCount;
 
     InitSearchFromExistingEntry(&pbtest_add_entry3, mapSearch);
     GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
-    errorCode = GameControllerMappingUtils::insertMapEntry(
-        &pbtest_add_entry3, &mapSearch, pb_test_fake_remap, pb_test_fake_remap);
+    errorCode = GameControllerMappingUtils::insertMapEntry(&pbtest_add_entry3, &mapSearch,
+                                                           pb_test_fake_remap, pb_test_fake_remap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(testMappingTable[5].vendorId, 0x30);
     EXPECT_EQ(testMappingTable[5].productId, 0x1);
@@ -337,17 +300,16 @@ TEST(PaddleboatValidateInsertMapEntry, Validity) {
     // reset mapping table
     memset(testMappingTable, 0,
            GameControllerMappingInfo::MAX_CONTROLLER_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     memcpy(testMappingTable, pbtest_validmap,
-           entryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     mapSearch.tableEntryCount = entryCount;
 
     mapSearch.tableMaxEntryCount = entryCount;
     InitSearchFromExistingEntry(&pbtest_add_entry3, mapSearch);
     GameControllerMappingUtils::findMatchingMapEntry(&mapSearch);
-    errorCode = GameControllerMappingUtils::insertMapEntry(
-        &pbtest_add_entry3, &mapSearch, pb_test_fake_remap, pb_test_fake_remap);
+    errorCode = GameControllerMappingUtils::insertMapEntry(&pbtest_add_entry3, &mapSearch,
+                                                           pb_test_fake_remap, pb_test_fake_remap);
     EXPECT_EQ(errorCode, PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED);
 }
 
@@ -355,103 +317,89 @@ TEST(PaddleboatValidateInsertMapEntry, Validity) {
 // ==============================================================================
 // Test data
 const Paddleboat_Controller_Mapping_File_String_Entry pbtest_stringstart[] = {
-    {"None"},               // 00
-    {"Generic_Axis"},       // 01
-    {"XB_Button"},          // 02
-    {"DS_Button"},          // 03
-    {"DS5_Compat_Button"},  // 04
+        {"None"},              // 00
+        {"Generic_Axis"},      // 01
+        {"XB_Button"},         // 02
+        {"DS_Button"},         // 03
+        {"DS5_Compat_Button"}, // 04
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pbtest_stringadd1[] = {
-    {"NinSPro_Button"},  // 05
-    {"Generic_Button"},  // 06
+        {"NinSPro_Button"}, // 05
+        {"Generic_Button"}, // 06
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pbtest_stringadd2[] = {
-    {"Generic_Axis"},      // 01
-    {"XB_Button"},         // 02
-    {"NGPro_PC2_Button"},  // 07
-    {"DS5_Compat_Axis"}    // 08
+        {"Generic_Axis"},     // 01
+        {"XB_Button"},        // 02
+        {"NGPro_PC2_Button"}, // 07
+        {"DS5_Compat_Axis"}   // 08
 };
 
-const Paddleboat_Controller_Mapping_File_String_Entry pbtest_stringadd3[] = {
-    {"Placeholder_space"}};
+const Paddleboat_Controller_Mapping_File_String_Entry pbtest_stringadd3[] = {{"Placeholder_space"}};
 
 TEST(PaddleboatValidateStringTableMerge, Validity) {
     Paddleboat_ErrorCode errorCode = PADDLEBOAT_NO_ERROR;
     memset(testStringTable, 0,
            GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
-    const uint32_t entryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringstart));
+                   sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+    const uint32_t entryCount = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringstart));
     EXPECT_EQ(entryCount, 5);
-    memcpy(
-        testStringTable, pbtest_stringstart,
-        entryCount * sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
-    IndexTableRemap
-        stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
+    memcpy(testStringTable, pbtest_stringstart,
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+    IndexTableRemap stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
 
     // Expect two new strings appended to end of existing table, with two remap
     // table entries
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     uint32_t currentEntryCount = entryCount;
-    const uint32_t add1Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd1));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pbtest_stringadd1, add1Count, testStringTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+    const uint32_t add1Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd1));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pbtest_stringadd1, add1Count, testStringTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 7);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              5);  // index 0 old table, 5 new table
+              5); // index 0 old table, 5 new table
     EXPECT_EQ(stringTableRemap[1].newIndex,
-              6);  // index 1 old table, 6 new table
-    EXPECT_EQ(strcmp(testStringTable[5].stringTableEntry,
-                     pbtest_stringadd1[0].stringTableEntry),
+              6); // index 1 old table, 6 new table
+    EXPECT_EQ(strcmp(testStringTable[5].stringTableEntry, pbtest_stringadd1[0].stringTableEntry),
               0);
-    EXPECT_EQ(strcmp(testStringTable[6].stringTableEntry,
-                     pbtest_stringadd1[1].stringTableEntry),
+    EXPECT_EQ(strcmp(testStringTable[6].stringTableEntry, pbtest_stringadd1[1].stringTableEntry),
               0);
 
     // Expect two new strings appended to end of existing table, with two remap
     // table entries, and two skipped duplicates
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
-    const uint32_t add2Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd2));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pbtest_stringadd2, add2Count, testStringTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
+    const uint32_t add2Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd2));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pbtest_stringadd2, add2Count, testStringTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 9);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              1);  // index 0 old table, 1 new table
+              1); // index 0 old table, 1 new table
     EXPECT_EQ(stringTableRemap[1].newIndex,
-              2);  // index 1 old table, 2 new table
+              2); // index 1 old table, 2 new table
     EXPECT_EQ(stringTableRemap[2].newIndex,
-              7);  // index 2 old table, 7 new table
+              7); // index 2 old table, 7 new table
     EXPECT_EQ(stringTableRemap[3].newIndex,
-              8);  // index 3 old table, 8 new table
-    EXPECT_EQ(strcmp(testStringTable[7].stringTableEntry,
-                     pbtest_stringadd2[2].stringTableEntry),
+              8); // index 3 old table, 8 new table
+    EXPECT_EQ(strcmp(testStringTable[7].stringTableEntry, pbtest_stringadd2[2].stringTableEntry),
               0);
-    EXPECT_EQ(strcmp(testStringTable[8].stringTableEntry,
-                     pbtest_stringadd2[3].stringTableEntry),
+    EXPECT_EQ(strcmp(testStringTable[8].stringTableEntry, pbtest_stringadd2[3].stringTableEntry),
               0);
 
     // Expect out of space error condition
     currentEntryCount = GameControllerMappingInfo::MAX_STRING_TABLE_SIZE;
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
-    const uint32_t add3Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd3));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pbtest_stringadd3, add3Count, testStringTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
+    const uint32_t add3Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_stringadd3));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pbtest_stringadd3, add3Count, testStringTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED);
 }
 
@@ -460,180 +408,179 @@ TEST(PaddleboatValidateStringTableMerge, Validity) {
 // Test data
 
 const Paddleboat_Controller_Mapping_File_Axis_Entry pb_test_axis_start[] = {
-    {1,  // "Generic_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_X,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_Z,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0}};
+        {1, // "Generic_Axis"
+         {
+                 /* LX */ AMOTION_EVENT_AXIS_X,
+                 /* LY */ AMOTION_EVENT_AXIS_Y,
+                 /* RX */ AMOTION_EVENT_AXIS_Z,
+                 /* RY */ AMOTION_EVENT_AXIS_RZ,
+                 /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                 /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                 /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                 /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                 /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                 /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+         },
+         {
+                 /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                 /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                 /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                 /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+         },
+         {
+                 /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                 /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+         },
+         0}};
 
 const Paddleboat_Controller_Mapping_File_Axis_Entry pb_test_axis_add1[] = {
-    {0,  // "Foo_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_Y,
-         /* LY */ AMOTION_EVENT_AXIS_X,
-         /* RX */ AMOTION_EVENT_AXIS_Z,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0}};
+        {0, // "Foo_Axis"
+         {
+                 /* LX */ AMOTION_EVENT_AXIS_Y,
+                 /* LY */ AMOTION_EVENT_AXIS_X,
+                 /* RX */ AMOTION_EVENT_AXIS_Z,
+                 /* RY */ AMOTION_EVENT_AXIS_RZ,
+                 /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                 /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                 /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                 /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                 /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                 /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+         },
+         {
+                 /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                 /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                 /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                 /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+         },
+         {
+                 /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                 /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                 /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+         },
+         0}};
 
-const Paddleboat_Controller_Mapping_File_Axis_Entry pb_test_axis_add2[] = {
-    {0,  // "Generic_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_X,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_Z,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0},
-    {1,  // "Bar_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_Z,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_X,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0}};
+const Paddleboat_Controller_Mapping_File_Axis_Entry pb_test_axis_add2[] =
+        {{0, // "Generic_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_X,
+                  /* LY */ AMOTION_EVENT_AXIS_Y,
+                  /* RX */ AMOTION_EVENT_AXIS_Z,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0},
+         {1, // "Bar_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_Z,
+                  /* LY */ AMOTION_EVENT_AXIS_Y,
+                  /* RX */ AMOTION_EVENT_AXIS_X,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0}};
 
-const Paddleboat_Controller_Mapping_File_String_Entry pbtest_axisstringstart[] =
-    {
-        {"None"},          // 00
-        {"Generic_Axis"},  // 01
+const Paddleboat_Controller_Mapping_File_String_Entry pbtest_axisstringstart[] = {
+        {"None"},         // 00
+        {"Generic_Axis"}, // 01
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pb_test_axisstr_add1[] = {
-    {"Foo_Axis"},  // 00
+        {"Foo_Axis"}, // 00
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pb_test_axisstr_add2[] = {
-    {"Generic_Axis"},  // 00
-    {"Bar_Axis"},      // 01
+        {"Generic_Axis"}, // 00
+        {"Bar_Axis"},     // 01
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pb_test_axisstr_add3[] = {
-    {"Why_Axis"},  // 00
+        {"Why_Axis"}, // 00
 };
 
 TEST(PaddleboatValidateAxisTableMerge, Validity) {
@@ -641,57 +588,49 @@ TEST(PaddleboatValidateAxisTableMerge, Validity) {
     // Init axis table
     memset(testAxisTable, 0,
            GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
-    const uint32_t entryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_start));
+                   sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
+    const uint32_t entryCount = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_start));
     EXPECT_EQ(entryCount, 1);
     memcpy(testAxisTable, pb_test_axis_start,
            entryCount * sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
     // Init string table
     memset(testStringTable, 0,
            GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     const uint32_t stringEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axisstringstart));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axisstringstart));
     EXPECT_EQ(stringEntryCount, 2);
     memcpy(testStringTable, pbtest_axisstringstart,
-           stringEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+           stringEntryCount * sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     // Init remap tables
-    IndexTableRemap
-        stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
-    IndexTableRemap
-        axisTableRemap[GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE];
+    IndexTableRemap stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
+    IndexTableRemap axisTableRemap[GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE];
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(axisTableRemap, 0,
-           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE * sizeof(IndexTableRemap));
 
     // Test 1, have to merge string table first
     uint32_t currentStringEntryCount = stringEntryCount;
-    const uint32_t strAdd1Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add1));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_axisstr_add1, strAdd1Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+    const uint32_t strAdd1Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_axisstr_add1, strAdd1Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              2);  // index 0 old table, 2 new table
+              2); // index 0 old table, 2 new table
 
     // Should append one axis entry and remap its axis and string indices
     uint32_t currentEntryCount = entryCount;
-    const uint32_t add1Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add1));
-    errorCode = GameControllerMappingUtils::mergeAxisTable(
-        pb_test_axis_add1, add1Count, testAxisTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
-        axisTableRemap);
+    const uint32_t add1Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeAxisTable(pb_test_axis_add1, add1Count, testAxisTable, &currentEntryCount,
+                           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
+                           axisTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 2);
-    EXPECT_EQ(axisTableRemap[0].newIndex, 1);  // index 0 old table, 1 new table
+    EXPECT_EQ(axisTableRemap[0].newIndex, 1); // index 0 old table, 1 new table
     EXPECT_EQ(testAxisTable[0].axisNameStringTableIndex, 1);
     EXPECT_EQ(testAxisTable[0].axisMapping[0], AMOTION_EVENT_AXIS_X);
     EXPECT_EQ(testAxisTable[1].axisNameStringTableIndex, 2);
@@ -699,35 +638,31 @@ TEST(PaddleboatValidateAxisTableMerge, Validity) {
 
     // Test 2, reset remap tables and merge string table first
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(axisTableRemap, 0,
-           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE *
-               sizeof(IndexTableRemap));
-    const uint32_t strAdd2Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add2));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_axisstr_add2, strAdd2Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE * sizeof(IndexTableRemap));
+    const uint32_t strAdd2Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add2));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_axisstr_add2, strAdd2Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              1);  // index 0 old table, 1 new table
+              1); // index 0 old table, 1 new table
     EXPECT_EQ(stringTableRemap[1].newIndex,
-              3);  // index 1 old table, 3 new table
+              3); // index 1 old table, 3 new table
 
     // Should append one axis entry and remap its axis and string indices
     // and ignore a duplicate
-    const uint32_t add2Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add2));
-    errorCode = GameControllerMappingUtils::mergeAxisTable(
-        pb_test_axis_add2, add2Count, testAxisTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
-        axisTableRemap);
+    const uint32_t add2Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add2));
+    errorCode = GameControllerMappingUtils::
+            mergeAxisTable(pb_test_axis_add2, add2Count, testAxisTable, &currentEntryCount,
+                           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
+                           axisTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 3);
-    EXPECT_EQ(axisTableRemap[0].newIndex, 0);  // index 0 old table, 0 new table
-    EXPECT_EQ(axisTableRemap[1].newIndex, 2);  // index 1 old table, 2 new table
+    EXPECT_EQ(axisTableRemap[0].newIndex, 0); // index 0 old table, 0 new table
+    EXPECT_EQ(axisTableRemap[1].newIndex, 2); // index 1 old table, 2 new table
     EXPECT_EQ(testAxisTable[0].axisNameStringTableIndex, 1);
     EXPECT_EQ(testAxisTable[0].axisMapping[0], AMOTION_EVENT_AXIS_X);
     EXPECT_EQ(testAxisTable[1].axisNameStringTableIndex, 2);
@@ -737,30 +672,26 @@ TEST(PaddleboatValidateAxisTableMerge, Validity) {
 
     // Test 3, reset remap tables and merge string table first
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(axisTableRemap, 0,
-           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE *
-               sizeof(IndexTableRemap));
-    const uint32_t strAdd3Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add3));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_axisstr_add3, strAdd3Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE * sizeof(IndexTableRemap));
+    const uint32_t strAdd3Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axisstr_add3));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_axisstr_add3, strAdd3Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              4);  // index 0 old table, 4 new table
+              4); // index 0 old table, 4 new table
 
     // Should return no free space error, reuse add1 since the string table
     // remap counts as a 'new' axis
     currentEntryCount = GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE;
-    const uint32_t add3Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add1));
-    errorCode = GameControllerMappingUtils::mergeAxisTable(
-        pb_test_axis_add1, add3Count, testAxisTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
-        axisTableRemap);
+    const uint32_t add3Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_axis_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeAxisTable(pb_test_axis_add1, add3Count, testAxisTable, &currentEntryCount,
+                           GameControllerMappingInfo::MAX_AXIS_TABLE_SIZE, stringTableRemap,
+                           axisTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED);
 }
 
@@ -768,124 +699,120 @@ TEST(PaddleboatValidateAxisTableMerge, Validity) {
 // ==============================================================================
 // Test data
 const Paddleboat_Controller_Mapping_File_Button_Entry pb_test_button_start[] = {
-    {2,  // "XB_Button"
-     {/* UP     */ AKEYCODE_DPAD_UP,
-      /* LEFT   */ AKEYCODE_DPAD_LEFT,
-      /* DOWN   */ AKEYCODE_DPAD_DOWN,
-      /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
+        {2, // "XB_Button"
+         {/* UP     */ AKEYCODE_DPAD_UP,
+          /* LEFT   */ AKEYCODE_DPAD_LEFT,
+          /* DOWN   */ AKEYCODE_DPAD_DOWN,
+          /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
+          /* A      */ AKEYCODE_BUTTON_A,
+          /* B      */ AKEYCODE_BUTTON_B,
+          /* X      */ AKEYCODE_BUTTON_X,
+          /* Y      */ AKEYCODE_BUTTON_Y,
+          /* L1     */ AKEYCODE_BUTTON_L1,
+          /* L2     */ AKEYCODE_BUTTON_L2,
+          /* L3     */ AKEYCODE_BUTTON_THUMBL,
+          /* R1     */ AKEYCODE_BUTTON_R1,
+          /* R2     */ AKEYCODE_BUTTON_R2,
+          /* R3     */ AKEYCODE_BUTTON_THUMBR,
+          /* SELECT */ AKEYCODE_BUTTON_SELECT,
+          /* START  */ AKEYCODE_BUTTON_START,
+          /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+          /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+          /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
 
 const Paddleboat_Controller_Mapping_File_Button_Entry pb_test_button_add1[] = {
-    {0,  // "DS_Button"
-     {/* UP     */ AKEYCODE_DPAD_DOWN,
-      /* LEFT   */ AKEYCODE_DPAD_LEFT,
-      /* DOWN   */ AKEYCODE_DPAD_UP,
-      /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
+        {0, // "DS_Button"
+         {/* UP     */ AKEYCODE_DPAD_DOWN,
+          /* LEFT   */ AKEYCODE_DPAD_LEFT,
+          /* DOWN   */ AKEYCODE_DPAD_UP,
+          /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
+          /* A      */ AKEYCODE_BUTTON_A,
+          /* B      */ AKEYCODE_BUTTON_B,
+          /* X      */ AKEYCODE_BUTTON_X,
+          /* Y      */ AKEYCODE_BUTTON_Y,
+          /* L1     */ AKEYCODE_BUTTON_L1,
+          /* L2     */ AKEYCODE_BUTTON_L2,
+          /* L3     */ AKEYCODE_BUTTON_THUMBL,
+          /* R1     */ AKEYCODE_BUTTON_R1,
+          /* R2     */ AKEYCODE_BUTTON_R2,
+          /* R3     */ AKEYCODE_BUTTON_THUMBR,
+          /* SELECT */ AKEYCODE_BUTTON_SELECT,
+          /* START  */ AKEYCODE_BUTTON_START,
+          /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+          /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+          /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
 
-const Paddleboat_Controller_Mapping_File_Button_Entry pb_test_button_add2[] = {
-    {0,  // "XB_Button"
-     {/* UP     */ AKEYCODE_DPAD_UP,
-      /* LEFT   */ AKEYCODE_DPAD_LEFT,
-      /* DOWN   */ AKEYCODE_DPAD_DOWN,
-      /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}},
-    {1,  // "SP_Button"
-     {/* UP     */ AKEYCODE_DPAD_LEFT,
-      /* LEFT   */ AKEYCODE_DPAD_DOWN,
-      /* DOWN   */ AKEYCODE_DPAD_RIGHT,
-      /* RIGHT  */ AKEYCODE_DPAD_UP,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
+const Paddleboat_Controller_Mapping_File_Button_Entry pb_test_button_add2[] =
+        {{0, // "XB_Button"
+          {/* UP     */ AKEYCODE_DPAD_UP,
+           /* LEFT   */ AKEYCODE_DPAD_LEFT,
+           /* DOWN   */ AKEYCODE_DPAD_DOWN,
+           /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
+           /* A      */ AKEYCODE_BUTTON_A,
+           /* B      */ AKEYCODE_BUTTON_B,
+           /* X      */ AKEYCODE_BUTTON_X,
+           /* Y      */ AKEYCODE_BUTTON_Y,
+           /* L1     */ AKEYCODE_BUTTON_L1,
+           /* L2     */ AKEYCODE_BUTTON_L2,
+           /* L3     */ AKEYCODE_BUTTON_THUMBL,
+           /* R1     */ AKEYCODE_BUTTON_R1,
+           /* R2     */ AKEYCODE_BUTTON_R2,
+           /* R3     */ AKEYCODE_BUTTON_THUMBR,
+           /* SELECT */ AKEYCODE_BUTTON_SELECT,
+           /* START  */ AKEYCODE_BUTTON_START,
+           /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+           /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+           /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}},
+         {1, // "SP_Button"
+          {/* UP     */ AKEYCODE_DPAD_LEFT,
+           /* LEFT   */ AKEYCODE_DPAD_DOWN,
+           /* DOWN   */ AKEYCODE_DPAD_RIGHT,
+           /* RIGHT  */ AKEYCODE_DPAD_UP,
+           /* A      */ AKEYCODE_BUTTON_A,
+           /* B      */ AKEYCODE_BUTTON_B,
+           /* X      */ AKEYCODE_BUTTON_X,
+           /* Y      */ AKEYCODE_BUTTON_Y,
+           /* L1     */ AKEYCODE_BUTTON_L1,
+           /* L2     */ AKEYCODE_BUTTON_L2,
+           /* L3     */ AKEYCODE_BUTTON_THUMBL,
+           /* R1     */ AKEYCODE_BUTTON_R1,
+           /* R2     */ AKEYCODE_BUTTON_R2,
+           /* R3     */ AKEYCODE_BUTTON_THUMBR,
+           /* SELECT */ AKEYCODE_BUTTON_SELECT,
+           /* START  */ AKEYCODE_BUTTON_START,
+           /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+           /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+           /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+           /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
 
-const Paddleboat_Controller_Mapping_File_String_Entry
-    pbtest_buttonstringstart[] = {
-        {"None"},          // 00
-        {"Generic_Axis"},  // 01
-        {"XB_Button"}      // 02
+const Paddleboat_Controller_Mapping_File_String_Entry pbtest_buttonstringstart[] = {
+        {"None"},         // 00
+        {"Generic_Axis"}, // 01
+        {"XB_Button"}     // 02
 };
 
-const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add1[] =
-    {
-        {"DS_Button"},  // 00
+const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add1[] = {
+        {"DS_Button"}, // 00
 };
 
-const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add2[] =
-    {
-        {"XB_Button"},  // 00
-        {"SP_Button"},  // 01
+const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add2[] = {
+        {"XB_Button"}, // 00
+        {"SP_Button"}, // 01
 };
 
-const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add3[] =
-    {
-        {"Foo_Button"},  // 00
+const Paddleboat_Controller_Mapping_File_String_Entry pb_test_buttonstr_add3[] = {
+        {"Foo_Button"}, // 00
 };
 
 TEST(PaddleboatValidateButtonTableMerge, Validity) {
@@ -893,59 +820,51 @@ TEST(PaddleboatValidateButtonTableMerge, Validity) {
     // Init button table
     memset(testButtonTable, 0,
            GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
-    const uint32_t entryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_start));
+                   sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
+    const uint32_t entryCount = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_start));
     EXPECT_EQ(entryCount, 1);
-    memcpy(
-        testButtonTable, pb_test_button_start,
-        entryCount * sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
+    memcpy(testButtonTable, pb_test_button_start,
+           entryCount * sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
     // Init string table
     memset(testStringTable, 0,
            GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     const uint32_t stringEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_buttonstringstart));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_buttonstringstart));
     EXPECT_EQ(stringEntryCount, 3);
     memcpy(testStringTable, pbtest_buttonstringstart,
-           stringEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+           stringEntryCount * sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
     // Init remap tables
-    IndexTableRemap
-        stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
-    IndexTableRemap
-        buttonTableRemap[GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE];
+    IndexTableRemap stringTableRemap[GameControllerMappingInfo::MAX_STRING_TABLE_SIZE];
+    IndexTableRemap buttonTableRemap[GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE];
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(buttonTableRemap, 0,
-           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE * sizeof(IndexTableRemap));
 
     // Test 1, have to merge string table first
     uint32_t currentStringEntryCount = stringEntryCount;
     const uint32_t strAdd1Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add1));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_buttonstr_add1, strAdd1Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_buttonstr_add1, strAdd1Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              3);  // index 0 old table, 3 new table
+              3); // index 0 old table, 3 new table
 
     // Should append one button entry and remap its button and string indices
     uint32_t currentEntryCount = entryCount;
-    const uint32_t add1Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add1));
-    errorCode = GameControllerMappingUtils::mergeButtonTable(
-        pb_test_button_add1, add1Count, testButtonTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
-        buttonTableRemap);
+    const uint32_t add1Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeButtonTable(pb_test_button_add1, add1Count, testButtonTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
+                             buttonTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 2);
     EXPECT_EQ(buttonTableRemap[0].newIndex,
-              1);  // index 0 old table, 1 new table
+              1); // index 0 old table, 1 new table
     EXPECT_EQ(testButtonTable[0].buttonNameStringTableIndex, 2);
     EXPECT_EQ(testButtonTable[0].buttonMapping[0], AKEYCODE_DPAD_UP);
     EXPECT_EQ(testButtonTable[1].buttonNameStringTableIndex, 3);
@@ -953,37 +872,34 @@ TEST(PaddleboatValidateButtonTableMerge, Validity) {
 
     // Test 2, reset remap tables and merge string table first
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(buttonTableRemap, 0,
-           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE * sizeof(IndexTableRemap));
     const uint32_t strAdd2Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add2));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_buttonstr_add2, strAdd2Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add2));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_buttonstr_add2, strAdd2Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              2);  // index 0 old table, 2 new table
+              2); // index 0 old table, 2 new table
     EXPECT_EQ(stringTableRemap[1].newIndex,
-              4);  // index 1 old table, 4 new table
+              4); // index 1 old table, 4 new table
 
     // Should append one button entry and remap its button and string indices
     // and ignore a duplicate
-    const uint32_t add2Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add2));
-    errorCode = GameControllerMappingUtils::mergeButtonTable(
-        pb_test_button_add2, add2Count, testButtonTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
-        buttonTableRemap);
+    const uint32_t add2Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add2));
+    errorCode = GameControllerMappingUtils::
+            mergeButtonTable(pb_test_button_add2, add2Count, testButtonTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
+                             buttonTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(currentEntryCount, 3);
     EXPECT_EQ(buttonTableRemap[0].newIndex,
-              0);  // index 0 old table, 0 new table
+              0); // index 0 old table, 0 new table
     EXPECT_EQ(buttonTableRemap[1].newIndex,
-              2);  // index 1 old table, 2 new table
+              2); // index 1 old table, 2 new table
     EXPECT_EQ(testButtonTable[0].buttonNameStringTableIndex, 2);
     EXPECT_EQ(testButtonTable[0].buttonMapping[0], AKEYCODE_DPAD_UP);
     EXPECT_EQ(testButtonTable[1].buttonNameStringTableIndex, 3);
@@ -993,30 +909,27 @@ TEST(PaddleboatValidateButtonTableMerge, Validity) {
 
     // Test 3, reset remap tables and merge string table first
     memset(stringTableRemap, 0,
-           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_STRING_TABLE_SIZE * sizeof(IndexTableRemap));
     memset(buttonTableRemap, 0,
-           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE *
-               sizeof(IndexTableRemap));
+           GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE * sizeof(IndexTableRemap));
     const uint32_t strAdd3Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add3));
-    errorCode = GameControllerMappingUtils::mergeStringTable(
-        pb_test_buttonstr_add3, strAdd3Count, testStringTable,
-        &currentStringEntryCount,
-        GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_buttonstr_add3));
+    errorCode = GameControllerMappingUtils::
+            mergeStringTable(pb_test_buttonstr_add3, strAdd3Count, testStringTable,
+                             &currentStringEntryCount,
+                             GameControllerMappingInfo::MAX_STRING_TABLE_SIZE, stringTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(stringTableRemap[0].newIndex,
-              5);  // index 0 old table, 5 new table
+              5); // index 0 old table, 5 new table
 
     // Should return no free space error, reuse add1 since the string table
     // remap counts as a 'new' button
     currentEntryCount = GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE;
-    const uint32_t add3Count =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add1));
-    errorCode = GameControllerMappingUtils::mergeButtonTable(
-        pb_test_button_add1, add3Count, testButtonTable, &currentEntryCount,
-        GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
-        buttonTableRemap);
+    const uint32_t add3Count = static_cast<const uint32_t>(ARRAY_COUNTOF(pb_test_button_add1));
+    errorCode = GameControllerMappingUtils::
+            mergeButtonTable(pb_test_button_add1, add3Count, testButtonTable, &currentEntryCount,
+                             GameControllerMappingInfo::MAX_BUTTON_TABLE_SIZE, stringTableRemap,
+                             buttonTableRemap);
     EXPECT_EQ(errorCode, PADDLEBOAT_ERROR_FEATURE_NOT_SUPPORTED);
 }
 
@@ -1024,19 +937,17 @@ TEST(PaddleboatValidateButtonTableMerge, Validity) {
 // ===================================================================== Test
 // data
 
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_base[] = {
-    {16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
-    {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
-    {16, 18, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 2, 0, 0, 0},
-    {19, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 2, 0, 0, 0},
-    {16, 00, 0x0020, 0x0004, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
-    {16, 00, 0x0030, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0,
-     0}};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_base[] =
+        {{16, 00, 0x0010, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
+         {16, 00, 0x0018, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
+         {16, 18, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 2, 0, 0, 0},
+         {19, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 2, 0, 0, 0},
+         {16, 00, 0x0020, 0x0004, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0},
+         {16, 00, 0x0030, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0}};
 
-const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_file[] = {
-    {21, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
-    {24, 00, 0x0004, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0,
-     0}};
+const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_file[] =
+        {{21, 00, 0x0020, 0x0002, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 0, 0, 0, 0},
+         {24, 00, 0x0004, 0x0001, PADDLEBOAT_CONTROLLER_LAYOUT_STANDARD, 1, 0, 0, 0}};
 
 /* post-merge should look like:
 const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_merge[] =
@@ -1053,280 +964,275 @@ const Paddleboat_Controller_Mapping_File_Controller_Entry pbtest_ctrl_merge[] =
 
  */
 
-const Paddleboat_Controller_Mapping_File_Axis_Entry pbtest_axis_base[] = {
-    {1,  // "Generic_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_X,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_Z,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0},
-    {2,  // "Silly_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_Z,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_X,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0}};
+const Paddleboat_Controller_Mapping_File_Axis_Entry pbtest_axis_base[] =
+        {{1, // "Generic_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_X,
+                  /* LY */ AMOTION_EVENT_AXIS_Y,
+                  /* RX */ AMOTION_EVENT_AXIS_Z,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0},
+         {2, // "Silly_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_Z,
+                  /* LY */ AMOTION_EVENT_AXIS_Y,
+                  /* RX */ AMOTION_EVENT_AXIS_X,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0}};
 
-const Paddleboat_Controller_Mapping_File_Axis_Entry pbtest_axis_file[] = {
-    {2,  // "Silly_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_Z,
-         /* LY */ AMOTION_EVENT_AXIS_Y,
-         /* RX */ AMOTION_EVENT_AXIS_X,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0},
-    {4,  // "Foo_Axis"
-     {
-         /* LX */ AMOTION_EVENT_AXIS_Y,
-         /* LY */ AMOTION_EVENT_AXIS_Z,
-         /* RX */ AMOTION_EVENT_AXIS_X,
-         /* RY */ AMOTION_EVENT_AXIS_RZ,
-         /* L1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
-         /* R1 */ PADDLEBOAT_AXIS_IGNORED,
-         /* R2 */ AMOTION_EVENT_AXIS_GAS,
-         /* HX */ AMOTION_EVENT_AXIS_HAT_X,
-         /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
-     },
-     {
-         /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
-         /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
-         /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
-     },
-     0}};
+const Paddleboat_Controller_Mapping_File_Axis_Entry pbtest_axis_file[] =
+        {{2, // "Silly_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_Z,
+                  /* LY */ AMOTION_EVENT_AXIS_Y,
+                  /* RX */ AMOTION_EVENT_AXIS_X,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0},
+         {4, // "Foo_Axis"
+          {
+                  /* LX */ AMOTION_EVENT_AXIS_Y,
+                  /* LY */ AMOTION_EVENT_AXIS_Z,
+                  /* RX */ AMOTION_EVENT_AXIS_X,
+                  /* RY */ AMOTION_EVENT_AXIS_RZ,
+                  /* L1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* L2 */ AMOTION_EVENT_AXIS_BRAKE,
+                  /* R1 */ PADDLEBOAT_AXIS_IGNORED,
+                  /* R2 */ AMOTION_EVENT_AXIS_GAS,
+                  /* HX */ AMOTION_EVENT_AXIS_HAT_X,
+                  /* HY */ AMOTION_EVENT_AXIS_HAT_Y,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_L2,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_R2,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_RIGHT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_DOWN,
+          },
+          {
+                  /* LX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* LY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RX */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* RY */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* L2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R1 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* R2 */ PADDLEBOAT_AXIS_BUTTON_IGNORED,
+                  /* HX */ PADDLEBOAT_AXIS_BUTTON_DPAD_LEFT,
+                  /* HY */ PADDLEBOAT_AXIS_BUTTON_DPAD_UP,
+          },
+          0}};
 
 const Paddleboat_Controller_Mapping_File_Button_Entry pbtest_button_base[] = {
-    {3,  // "XB_Button"
-     {/* UP     */ AKEYCODE_DPAD_UP,
-      /* LEFT   */ AKEYCODE_DPAD_LEFT,
-      /* DOWN   */ AKEYCODE_DPAD_DOWN,
-      /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
+        {3, // "XB_Button"
+         {/* UP     */ AKEYCODE_DPAD_UP,
+          /* LEFT   */ AKEYCODE_DPAD_LEFT,
+          /* DOWN   */ AKEYCODE_DPAD_DOWN,
+          /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
+          /* A      */ AKEYCODE_BUTTON_A,
+          /* B      */ AKEYCODE_BUTTON_B,
+          /* X      */ AKEYCODE_BUTTON_X,
+          /* Y      */ AKEYCODE_BUTTON_Y,
+          /* L1     */ AKEYCODE_BUTTON_L1,
+          /* L2     */ AKEYCODE_BUTTON_L2,
+          /* L3     */ AKEYCODE_BUTTON_THUMBL,
+          /* R1     */ AKEYCODE_BUTTON_R1,
+          /* R2     */ AKEYCODE_BUTTON_R2,
+          /* R3     */ AKEYCODE_BUTTON_THUMBR,
+          /* SELECT */ AKEYCODE_BUTTON_SELECT,
+          /* START  */ AKEYCODE_BUTTON_START,
+          /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+          /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+          /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
 
 const Paddleboat_Controller_Mapping_File_Button_Entry pbtest_button_file[] = {
-    {5,  // "Foo_Button"
-     {/* UP     */ AKEYCODE_DPAD_DOWN,
-      /* LEFT   */ AKEYCODE_DPAD_LEFT,
-      /* DOWN   */ AKEYCODE_DPAD_UP,
-      /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
-      /* A      */ AKEYCODE_BUTTON_A,
-      /* B      */ AKEYCODE_BUTTON_B,
-      /* X      */ AKEYCODE_BUTTON_X,
-      /* Y      */ AKEYCODE_BUTTON_Y,
-      /* L1     */ AKEYCODE_BUTTON_L1,
-      /* L2     */ AKEYCODE_BUTTON_L2,
-      /* L3     */ AKEYCODE_BUTTON_THUMBL,
-      /* R1     */ AKEYCODE_BUTTON_R1,
-      /* R2     */ AKEYCODE_BUTTON_R2,
-      /* R3     */ AKEYCODE_BUTTON_THUMBR,
-      /* SELECT */ AKEYCODE_BUTTON_SELECT,
-      /* START  */ AKEYCODE_BUTTON_START,
-      /* SYSTEM */ AKEYCODE_BUTTON_MODE,
-      /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX1   */ AKEYCODE_MEDIA_RECORD,
-      /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
-      /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
+        {5, // "Foo_Button"
+         {/* UP     */ AKEYCODE_DPAD_DOWN,
+          /* LEFT   */ AKEYCODE_DPAD_LEFT,
+          /* DOWN   */ AKEYCODE_DPAD_UP,
+          /* RIGHT  */ AKEYCODE_DPAD_RIGHT,
+          /* A      */ AKEYCODE_BUTTON_A,
+          /* B      */ AKEYCODE_BUTTON_B,
+          /* X      */ AKEYCODE_BUTTON_X,
+          /* Y      */ AKEYCODE_BUTTON_Y,
+          /* L1     */ AKEYCODE_BUTTON_L1,
+          /* L2     */ AKEYCODE_BUTTON_L2,
+          /* L3     */ AKEYCODE_BUTTON_THUMBL,
+          /* R1     */ AKEYCODE_BUTTON_R1,
+          /* R2     */ AKEYCODE_BUTTON_R2,
+          /* R3     */ AKEYCODE_BUTTON_THUMBR,
+          /* SELECT */ AKEYCODE_BUTTON_SELECT,
+          /* START  */ AKEYCODE_BUTTON_START,
+          /* SYSTEM */ AKEYCODE_BUTTON_MODE,
+          /* TOUCHP */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX1   */ AKEYCODE_MEDIA_RECORD,
+          /* AUX2   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX3   */ PADDLEBOAT_BUTTON_IGNORED,
+          /* AUX4   */ PADDLEBOAT_BUTTON_IGNORED}}};
 
 const Paddleboat_Controller_Mapping_File_String_Entry pbtest_string_base[] = {
-    {"None"},          // 00
-    {"Generic_Axis"},  // 01
-    {"Silly_Axis"},    // 02
-    {"XB_Button"}      // 03
+        {"None"},         // 00
+        {"Generic_Axis"}, // 01
+        {"Silly_Axis"},   // 02
+        {"XB_Button"}     // 03
 };
 
 const Paddleboat_Controller_Mapping_File_String_Entry pbtest_string_file[] = {
-    {"None"},          // 00
-    {"Generic_Axis"},  // 01
-    {"Silly_Axis"},    // 02
-    {"XB_Button"},     // 03
-    {"Foo_Axis"},      // 04
-    {"Foo_Button"}     // 05
+        {"None"},         // 00
+        {"Generic_Axis"}, // 01
+        {"Silly_Axis"},   // 02
+        {"XB_Button"},    // 03
+        {"Foo_Axis"},     // 04
+        {"Foo_Button"}    // 05
 };
 
 // Test controller file merge
 TEST(PaddleboatValidateControllerFileMerge, Validity) {
     // Initialize the 'base' data
     GameControllerMappingInfo mappingInfo;
-    mappingInfo.mAxisTableEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axis_base));
+    mappingInfo.mAxisTableEntryCount = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axis_base));
     memcpy(&mappingInfo.mAxisTable[0], pbtest_axis_base,
            mappingInfo.mAxisTableEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry));
     mappingInfo.mButtonTableEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_button_base));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_button_base));
     memcpy(&mappingInfo.mButtonTable[0], pbtest_button_base,
            mappingInfo.mButtonTableEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Button_Entry));
     mappingInfo.mControllerTableEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_ctrl_base));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_ctrl_base));
     memcpy(&mappingInfo.mControllerTable[0], pbtest_ctrl_base,
            mappingInfo.mControllerTableEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry));
     mappingInfo.mStringTableEntryCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_string_base));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_string_base));
     memcpy(&mappingInfo.mStringTable[0], pbtest_string_base,
            mappingInfo.mStringTableEntryCount *
-               sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
+                   sizeof(Paddleboat_Controller_Mapping_File_String_Entry));
 
     // Generate a fake 'file'
-    const uint32_t axisTableCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axis_file));
+    const uint32_t axisTableCount = static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_axis_file));
     const uint32_t buttonTableCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_button_file));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_button_file));
     const uint32_t controllerTableCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_ctrl_file));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_ctrl_file));
     const uint32_t stringTableCount =
-        static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_string_file));
+            static_cast<const uint32_t>(ARRAY_COUNTOF(pbtest_string_file));
     const size_t axisTableSize =
-        axisTableCount * sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry);
+            axisTableCount * sizeof(Paddleboat_Controller_Mapping_File_Axis_Entry);
     const size_t buttonTableSize =
-        buttonTableCount *
-        sizeof(Paddleboat_Controller_Mapping_File_Button_Entry);
+            buttonTableCount * sizeof(Paddleboat_Controller_Mapping_File_Button_Entry);
     const size_t controllerTableSize =
-        controllerTableCount *
-        sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry);
+            controllerTableCount * sizeof(Paddleboat_Controller_Mapping_File_Controller_Entry);
     const size_t stringTableSize =
-        stringTableCount *
-        sizeof(Paddleboat_Controller_Mapping_File_String_Entry);
+            stringTableCount * sizeof(Paddleboat_Controller_Mapping_File_String_Entry);
     const size_t headerSize = sizeof(Paddleboat_Controller_Mapping_File_Header);
-    const size_t fileSize = headerSize + axisTableSize + buttonTableSize +
-                            controllerTableSize + stringTableSize;
-    uint8_t *basePtr = reinterpret_cast<uint8_t *>(malloc(fileSize));
+    const size_t fileSize =
+            headerSize + axisTableSize + buttonTableSize + controllerTableSize + stringTableSize;
+    uint8_t* basePtr = reinterpret_cast<uint8_t*>(malloc(fileSize));
     memset(basePtr, 0, fileSize);
-    Paddleboat_Controller_Mapping_File_Header *fileHeader =
-        reinterpret_cast<Paddleboat_Controller_Mapping_File_Header *>(basePtr);
+    Paddleboat_Controller_Mapping_File_Header* fileHeader =
+            reinterpret_cast<Paddleboat_Controller_Mapping_File_Header*>(basePtr);
     fileHeader->fileIdentifier = PADDLEBOAT_MAPPING_FILE_IDENTIFIER;
     fileHeader->libraryMinimumVersion = 0x010200;
     fileHeader->axisTableEntryCount = axisTableCount;
@@ -1347,8 +1253,7 @@ TEST(PaddleboatValidateControllerFileMerge, Validity) {
     memcpy(&basePtr[offset], pbtest_string_file, stringTableSize);
 
     Paddleboat_ErrorCode errorCode =
-        GameControllerMappingUtils::mergeControllerRemapData(
-            fileHeader, fileSize, mappingInfo);
+            GameControllerMappingUtils::mergeControllerRemapData(fileHeader, fileSize, mappingInfo);
     EXPECT_EQ(errorCode, PADDLEBOAT_NO_ERROR);
     EXPECT_EQ(mappingInfo.mAxisTableEntryCount, 3);
     EXPECT_EQ(mappingInfo.mButtonTableEntryCount, 2);
@@ -1356,30 +1261,22 @@ TEST(PaddleboatValidateControllerFileMerge, Validity) {
     EXPECT_EQ(mappingInfo.mStringTableEntryCount, 6);
     // First entry should be the second entry from the 'file' with remapped
     // button and axis
-    EXPECT_EQ(mappingInfo.mControllerTable[0].vendorId,
-              pbtest_ctrl_file[1].vendorId);
-    EXPECT_EQ(mappingInfo.mControllerTable[0].productId,
-              pbtest_ctrl_file[1].productId);
+    EXPECT_EQ(mappingInfo.mControllerTable[0].vendorId, pbtest_ctrl_file[1].vendorId);
+    EXPECT_EQ(mappingInfo.mControllerTable[0].productId, pbtest_ctrl_file[1].productId);
     EXPECT_EQ(mappingInfo.mControllerTable[0].axisTableIndex, 2);
     EXPECT_EQ(mappingInfo.mControllerTable[0].buttonTableIndex, 1);
     // Second entry should be the first entry from the 'base', unmodified
-    EXPECT_EQ(
-        ControllerEqual(mappingInfo.mControllerTable[1], pbtest_ctrl_base[0]),
-        true);
+    EXPECT_EQ(ControllerEqual(mappingInfo.mControllerTable[1], pbtest_ctrl_base[0]), true);
     // Fifth entry should be a 'patched' version of the fourth 'base' entry
-    EXPECT_EQ(mappingInfo.mControllerTable[4].vendorId,
-              pbtest_ctrl_base[3].vendorId);
-    EXPECT_EQ(mappingInfo.mControllerTable[4].productId,
-              pbtest_ctrl_base[3].productId);
+    EXPECT_EQ(mappingInfo.mControllerTable[4].vendorId, pbtest_ctrl_base[3].vendorId);
+    EXPECT_EQ(mappingInfo.mControllerTable[4].productId, pbtest_ctrl_base[3].productId);
     EXPECT_EQ(mappingInfo.mControllerTable[4].minimumEffectiveApiLevel,
               pbtest_ctrl_base[3].minimumEffectiveApiLevel);
     EXPECT_EQ(mappingInfo.mControllerTable[4].maximumEffectiveApiLevel, 20);
     // Sixth entry should be the first entry from the 'file' with remapped
     // button
-    EXPECT_EQ(mappingInfo.mControllerTable[5].vendorId,
-              pbtest_ctrl_file[0].vendorId);
-    EXPECT_EQ(mappingInfo.mControllerTable[5].productId,
-              pbtest_ctrl_file[0].productId);
+    EXPECT_EQ(mappingInfo.mControllerTable[5].vendorId, pbtest_ctrl_file[0].vendorId);
+    EXPECT_EQ(mappingInfo.mControllerTable[5].productId, pbtest_ctrl_file[0].productId);
     EXPECT_EQ(mappingInfo.mControllerTable[5].axisTableIndex, 1);
     EXPECT_EQ(mappingInfo.mControllerTable[5].buttonTableIndex, 1);
     EXPECT_EQ(mappingInfo.mControllerTable[5].minimumEffectiveApiLevel,

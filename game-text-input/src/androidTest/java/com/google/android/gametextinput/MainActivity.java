@@ -29,38 +29,38 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
-  InputEnabledTextView inputEnabledTextView;
-  TextView displayedText;
+    InputEnabledTextView inputEnabledTextView;
+    TextView displayedText;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    EdgeToEdge.enable(this);
-    setContentView(R.layout.activity_main);
-    applyInsets();
-    inputEnabledTextView = (InputEnabledTextView) findViewById(R.id.input_enabled_text_view);
-    assert (inputEnabledTextView != null);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        applyInsets();
+        inputEnabledTextView = (InputEnabledTextView) findViewById(R.id.input_enabled_text_view);
+        assert (inputEnabledTextView != null);
 
-    displayedText = (TextView) findViewById(R.id.displayed_text);
-    assert (displayedText != null);
+        displayedText = (TextView) findViewById(R.id.displayed_text);
+        assert (displayedText != null);
 
-    inputEnabledTextView.createInputConnection(InputType.TYPE_CLASS_TEXT, this);
-  }
-
-  public void setDisplayedText(String text, int selectionStart, int selectionEnd) {
-    SpannableString str = new SpannableString(text);
-
-    if (selectionStart != selectionEnd) {
-      str.setSpan(new BackgroundColorSpan(Color.YELLOW), selectionStart, selectionEnd, 0);
+        inputEnabledTextView.createInputConnection(InputType.TYPE_CLASS_TEXT, this);
     }
-    displayedText.setText(str);
-  }
 
-  private void applyInsets() {
-    ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-      Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-      v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-      return insets;
-    });
-  }
+    public void setDisplayedText(String text, int selectionStart, int selectionEnd) {
+        SpannableString str = new SpannableString(text);
+
+        if (selectionStart != selectionEnd) {
+            str.setSpan(new BackgroundColorSpan(Color.YELLOW), selectionStart, selectionEnd, 0);
+        }
+        displayedText.setText(str);
+    }
+
+    private void applyInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+    }
 }

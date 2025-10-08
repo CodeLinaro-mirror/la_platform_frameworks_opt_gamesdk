@@ -22,49 +22,48 @@ import javax.swing.JComboBox;
 import javax.swing.JPanel;
 
 public class FidelityTablePanel extends JPanel {
+    private final JComboBox<String> enumTypes;
+    private final FidelityValidatablePanelWithTextField enumName;
+    private FidelityTableData fidelityData;
 
-  private final JComboBox<String> enumTypes;
-  private final FidelityValidatablePanelWithTextField enumName;
-  private FidelityTableData fidelityData;
-
-  public FidelityTablePanel() {
-    setLayout(new GridLayout(1, 2));
-    enumTypes = new ComboBox<>();
-    enumName = new FidelityValidatablePanelWithTextField();
-    fidelityData = new FidelityTableData();
-    add(enumTypes);
-    add(enumName);
-  }
-
-  public JComboBox<String> getEnumTypes() {
-    return enumTypes;
-  }
-
-  public FidelityValidatablePanelWithTextField getTextFieldPanel() {
-    return enumName;
-  }
-
-  public String getEnumName() {
-    return enumName.getTextField().getText();
-  }
-
-  public String getEnumType() {
-    return enumTypes.getSelectedIndex() == -1 ? "" : enumTypes.getSelectedItem().toString();
-  }
-
-  public FidelityTableData getFidelityData() {
-    return new FidelityTableData(fidelityData.getFieldType(), getEnumType(), getEnumName());
-  }
-
-  public void setComboBoxChoices(List<String> choices) {
-    for (String string : choices) {
-      enumTypes.addItem(string);
+    public FidelityTablePanel() {
+        setLayout(new GridLayout(1, 2));
+        enumTypes = new ComboBox<>();
+        enumName = new FidelityValidatablePanelWithTextField();
+        fidelityData = new FidelityTableData();
+        add(enumTypes);
+        add(enumName);
     }
-  }
 
-  public void updateData(FidelityTableData fidelityData) {
-    this.fidelityData = fidelityData;
-    enumTypes.setSelectedItem(this.fidelityData.getFieldEnumName());
-    enumName.getTextField().setText(this.fidelityData.getFieldParamName());
-  }
+    public JComboBox<String> getEnumTypes() {
+        return enumTypes;
+    }
+
+    public FidelityValidatablePanelWithTextField getTextFieldPanel() {
+        return enumName;
+    }
+
+    public String getEnumName() {
+        return enumName.getTextField().getText();
+    }
+
+    public String getEnumType() {
+        return enumTypes.getSelectedIndex() == -1 ? "" : enumTypes.getSelectedItem().toString();
+    }
+
+    public FidelityTableData getFidelityData() {
+        return new FidelityTableData(fidelityData.getFieldType(), getEnumType(), getEnumName());
+    }
+
+    public void setComboBoxChoices(List<String> choices) {
+        for (String string : choices) {
+            enumTypes.addItem(string);
+        }
+    }
+
+    public void updateData(FidelityTableData fidelityData) {
+        this.fidelityData = fidelityData;
+        enumTypes.setSelectedItem(this.fidelityData.getFieldEnumName());
+        enumName.getTextField().setText(this.fidelityData.getFieldParamName());
+    }
 }

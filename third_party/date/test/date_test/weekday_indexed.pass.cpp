@@ -36,25 +36,22 @@
 //
 // std::ostream& operator<<(std::ostream& os, const weekday_indexed& wdi);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::weekday_indexed>{}, "");
-static_assert( std::is_default_constructible<date::weekday_indexed>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::weekday_indexed>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::weekday_indexed>{}, "");
-static_assert( std::is_trivially_move_constructible<date::weekday_indexed>{}, "");
-static_assert( std::is_trivially_move_assignable<date::weekday_indexed>{}, "");
+#include "date.h"
 
-static_assert(std::is_nothrow_constructible<date::weekday_indexed, date::weekday,
-                                                                   unsigned>{}, "");
+static_assert(std::is_trivially_destructible<date::weekday_indexed>{}, "");
+static_assert(std::is_default_constructible<date::weekday_indexed>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::weekday_indexed>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::weekday_indexed>{}, "");
+static_assert(std::is_trivially_move_constructible<date::weekday_indexed>{}, "");
+static_assert(std::is_trivially_move_assignable<date::weekday_indexed>{}, "");
 
-int
-main()
-{
+static_assert(std::is_nothrow_constructible<date::weekday_indexed, date::weekday, unsigned>{}, "");
+
+int main() {
     using namespace date;
 
     constexpr weekday_indexed wdi = sun[1];

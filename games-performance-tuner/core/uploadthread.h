@@ -24,44 +24,43 @@
 namespace tuningfork {
 
 class UploadThread : public Runnable {
- private:
-  const Session* ready_ = nullptr;
-  bool upload_ = false;
-  IBackend* backend_ = nullptr;
-  TuningFork_UploadCallback upload_callback_ = nullptr;
-  const TuningFork_Cache* persister_ = nullptr;
-  IdProvider* id_provider_ = nullptr;
-  // Optional isn't available until C++17 so use vector instead.
-  std::vector<LifecycleUploadEvent> lifecycle_event_;
-  const Session* lifecycle_event_session_ = nullptr;
+private:
+    const Session* ready_ = nullptr;
+    bool upload_ = false;
+    IBackend* backend_ = nullptr;
+    TuningFork_UploadCallback upload_callback_ = nullptr;
+    const TuningFork_Cache* persister_ = nullptr;
+    IdProvider* id_provider_ = nullptr;
+    // Optional isn't available until C++17 so use vector instead.
+    std::vector<LifecycleUploadEvent> lifecycle_event_;
+    const Session* lifecycle_event_session_ = nullptr;
 
- public:
-  UploadThread(IdProvider* id_provider);
-  ~UploadThread();
+public:
+    UploadThread(IdProvider* id_provider);
+    ~UploadThread();
 
-  UploadThread(const UploadThread&) = delete;
-  UploadThread& operator=(const UploadThread&) = delete;
+    UploadThread(const UploadThread&) = delete;
+    UploadThread& operator=(const UploadThread&) = delete;
 
-  void SetBackend(IBackend* backend);
+    void SetBackend(IBackend* backend);
 
-  void InitialChecks(Session& session, IdProvider& id_provider,
-                     const TuningFork_Cache* persister);
+    void InitialChecks(Session& session, IdProvider& id_provider,
+                       const TuningFork_Cache* persister);
 
-  void Start() override;
-  Duration DoWork() override;
+    void Start() override;
+    Duration DoWork() override;
 
-  // Returns true if we submitted, false if we are waiting for a previous
-  // submit to complete If upload is false, the cache is serialized and saved,
-  // not uploaded.
-  bool Submit(const Session* session, bool upload);
+    // Returns true if we submitted, false if we are waiting for a previous
+    // submit to complete If upload is false, the cache is serialized and saved,
+    // not uploaded.
+    bool Submit(const Session* session, bool upload);
 
-  void SetUploadCallback(TuningFork_UploadCallback upload_callback) {
-    upload_callback_ = upload_callback;
-  }
+    void SetUploadCallback(TuningFork_UploadCallback upload_callback) {
+        upload_callback_ = upload_callback;
+    }
 
-  // Returns true if there were no errors.
-  bool SendLifecycleEvent(const LifecycleUploadEvent& event,
-                          const Session* session);
+    // Returns true if there were no errors.
+    bool SendLifecycleEvent(const LifecycleUploadEvent& event, const Session* session);
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -27,23 +27,23 @@ namespace tuningfork {
 // Stores the mapping from annotation serializations to annotation ids
 // and back again.
 class AnnotationMap {
-  // We store in a hash table of fixed size to avoid having to lock when
-  // inserting. If we used an STL unordered map there's the possibility of
-  // rehashing.
-  static const int kHashTableSize = 256;
-  typedef std::vector<std::list<std::pair<AnnotationId, ProtobufSerialization>>>
-      InnerContainer;
-  typedef InnerContainer::iterator Iterator;
-  InnerContainer hash_table_;
+    // We store in a hash table of fixed size to avoid having to lock when
+    // inserting. If we used an STL unordered map there's the possibility of
+    // rehashing.
+    static const int kHashTableSize = 256;
+    typedef std::vector<std::list<std::pair<AnnotationId, ProtobufSerialization>>> InnerContainer;
+    typedef InnerContainer::iterator Iterator;
+    InnerContainer hash_table_;
 
- public:
-  AnnotationMap();
-  TuningFork_ErrorCode GetOrInsert(const ProtobufSerialization& ser,
-                                   AnnotationId& id);
-  TuningFork_ErrorCode Get(AnnotationId id, ProtobufSerialization& ser);
+public:
+    AnnotationMap();
+    TuningFork_ErrorCode GetOrInsert(const ProtobufSerialization& ser, AnnotationId& id);
+    TuningFork_ErrorCode Get(AnnotationId id, ProtobufSerialization& ser);
 
- private:
-  inline int HashIndex(AnnotationId id) { return id & 0xff; }
+private:
+    inline int HashIndex(AnnotationId id) {
+        return id & 0xff;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -20,12 +20,11 @@ package Utils.Proto;
  * Exception thrown by {@link ProtoCompiler} when something went wrong.
  */
 public class CompilationException extends Exception {
+    public CompilationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-  public CompilationException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public CompilationException(String message) {
-    super(message);
-  }
+    public CompilationException(String message) {
+        super(message);
+    }
 }

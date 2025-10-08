@@ -19,10 +19,9 @@
 
 namespace tuningfork {
 
-FrameTimeMetricData* Session::CreateFrameTimeHistogram(
-    MetricId id, const Settings::Histogram& settings) {
-    frame_time_data_.push_back(
-        std::make_unique<FrameTimeMetricData>(id, settings));
+FrameTimeMetricData* Session::CreateFrameTimeHistogram(MetricId id,
+                                                       const Settings::Histogram& settings) {
+    frame_time_data_.push_back(std::make_unique<FrameTimeMetricData>(id, settings));
     auto p = frame_time_data_.back().get();
     available_frame_time_data_.push_back(p);
     return p;
@@ -105,4 +104,4 @@ void Session::Ping(SystemTimePoint t) {
     time_.end = t;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

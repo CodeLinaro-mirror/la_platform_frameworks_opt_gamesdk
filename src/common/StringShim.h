@@ -20,25 +20,24 @@
 
 // These string functions can be needed when compiling using GNU STL.
 
-#if (defined ANDROID_GNUSTL) || \
-    ((defined ANDROID_NDK_VERSION) && ANDROID_NDK_VERSION <= 17)
+#if (defined ANDROID_GNUSTL) || ((defined ANDROID_NDK_VERSION) && ANDROID_NDK_VERSION <= 17)
 
 namespace std {
 
 template <typename T>
 std::string to_string(T value) {
-  std::stringstream os;
-  os << value;
-  return os.str();
+    std::stringstream os;
+    os << value;
+    return os.str();
 }
 template <typename T>
 std::wstring to_wstring(T value) {
-  std::wstringstream os;
-  os << value;
-  return os.str();
+    std::wstringstream os;
+    os << value;
+    return os.str();
 }
 
-}  // namespace std
+} // namespace std
 
 #endif
 
@@ -47,15 +46,15 @@ std::wstring to_wstring(T value) {
 namespace std {
 
 long double stold(const std::string& str, std::size_t* pos = nullptr) {
-  long double d;
-  std::stringstream is(str);
-  auto p0 = is.tellg();
-  is >> d;
-  if (pos != nullptr) {
-    *pos = is.tellg() - p0;
-  }
-  return d;
+    long double d;
+    std::stringstream is(str);
+    auto p0 = is.tellg();
+    is >> d;
+    if (pos != nullptr) {
+        *pos = is.tellg() - p0;
+    }
+    return d;
 }
 
-}  // namespace std
+} // namespace std
 #endif

@@ -24,20 +24,20 @@
 namespace tuningfork {
 
 class CrashHandler {
- public:
-  CrashHandler();
-  void Init(std::function<bool(void)> callback);
-  virtual ~CrashHandler();
+public:
+    CrashHandler();
+    void Init(std::function<bool(void)> callback);
+    virtual ~CrashHandler();
 
- private:
-  std::function<bool(void)> callback_;
-  bool handler_inited_ = false;
-  std::string tf_crash_info_file_;
-  static bool InstallHandlerLocked();
-  static void RestoreHandlerLocked();
-  static void SignalHandler(int sig, siginfo_t* info, void* ucontext);
+private:
+    std::function<bool(void)> callback_;
+    bool handler_inited_ = false;
+    std::string tf_crash_info_file_;
+    static bool InstallHandlerLocked();
+    static void RestoreHandlerLocked();
+    static void SignalHandler(int sig, siginfo_t* info, void* ucontext);
 
-  bool HandlerSignal(int sig, siginfo_t* info, void* ucontext);
+    bool HandlerSignal(int sig, siginfo_t* info, void* ucontext);
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

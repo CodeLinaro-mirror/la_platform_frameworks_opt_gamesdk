@@ -25,87 +25,80 @@ import java.util.List;
 import javax.swing.JTable;
 
 public class AnnotationTabController extends EnumController {
+    private final MessageDataModel annotationDataModel;
+    private final PropertyChangeSupport propertyChangeSupport;
+    private static final String FIELD_NAME_PATTERN = "[a-zA-Z_]+$";
 
-  private final MessageDataModel annotationDataModel;
-  private final PropertyChangeSupport propertyChangeSupport;
-  private static final String FIELD_NAME_PATTERN = "[a-zA-Z_]+$";
-
-  public AnnotationTabController(MessageDataModel annotationDataModel, List<EnumDataModel> enums) {
-    super(enums);
-    this.annotationDataModel = annotationDataModel;
-    propertyChangeSupport = new PropertyChangeSupport(this);
-  }
-
-  public MessageDataModel getAnnotationData() {
-    return annotationDataModel;
-  }
-
-  public void addInitialAnnotation(JTable table) {
-    List<String> enumNames = annotationDataModel.getFieldNames();
-    List<String> enumValues = annotationDataModel.getFieldTypes();
-    AnnotationTableModel model = (AnnotationTableModel) table.getModel();
-    List<String[]> data = new ArrayList<>();
-    for (int i = 0; i < enumNames.size(); i++) {
-      data.add(new String[]{enumValues.get(i), enumNames.get(i)});
+    public AnnotationTabController(
+            MessageDataModel annotationDataModel, List<EnumDataModel> enums) {
+        super(enums);
+        this.annotationDataModel = annotationDataModel;
+        propertyChangeSupport = new PropertyChangeSupport(this);
     }
-    model.setData(data);
-  }
 
-
-  @Override
-  public void onEnumTableChanged(ChangeType changeType,
-      Object[] changeList) {
-    if (changeType.equals(ChangeType.ADD)) {
-      propertyChangeSupport
-          .firePropertyChange("addEnum", changeList[0], "");
-    } else if (changeType.equals(ChangeType.EDIT)) {
-      propertyChangeSupport
-          .firePropertyChange("editEnum", changeList[0], changeList[1]);
-    } else if (changeType.equals(ChangeType.REMOVE)) {
-      propertyChangeSupport
-          .firePropertyChange("deleteEnum", changeList[0], "");
-    } else if (changeType.equals(ChangeType.EDIT_OPTIONS)) {
-      propertyChangeSupport.firePropertyChange("editOptions", changeList[0],
-          new Object[]{changeList[1], changeList[2]});
+    public MessageDataModel getAnnotationData() {
+        return annotationDataModel;
     }
-  }
 
-  public void addRowAction(JTable jtable) {
-    AnnotationTableModel model = (AnnotationTableModel) jtable.getModel();
-    model.addRow(
-        new String[]{
-            "", "",
+    public void addInitialAnnotation(JTable table) {
+        List<String> enumNames = annotationDataModel.getFieldNames();
+        List<String> enumValues = annotationDataModel.getFieldTypes();
+        AnnotationTableModel model = (AnnotationTableModel) table.getModel();
+        List<String[]> data = new ArrayList<>();
+        for (int i = 0; i < enumNames.size(); i++) {
+            data.add(new String[] {enumValues.get(i), enumNames.get(i)});
+        }
+        model.setData(data);
+    }
+
+    @Override
+    public void onEnumTableChanged(ChangeType changeType, Object[] changeList) {
+        if (changeType.equals(ChangeType.ADD)) {
+            propertyChangeSupport.firePropertyChange("addEnum", changeList[0], "");
+        } else if (changeType.equals(ChangeType.EDIT)) {
+            propertyChangeSupport.firePropertyChange("editEnum", changeList[0], changeList[1]);
+        } else if (changeType.equals(ChangeType.REMOVE)) {
+            propertyChangeSupport.firePropertyChange("deleteEnum", changeList[0], "");
+        } else if (changeType.equals(ChangeType.EDIT_OPTIONS)) {
+            propertyChangeSupport.firePropertyChange(
+                    "editOptions", changeList[0], new Object[] {changeList[1], changeList[2]});
+        }
+    }
+
+    public void addRowAction(JTable jtable) {
+        AnnotationTableModel model = (AnnotationTableModel) jtable.getModel();
+        model.addRow(new String[] {
+                "",
+                "",
         });
-  }
-
-  public void removeRowAction(JTable jtable) {
-    AnnotationTableModel model = (AnnotationTableModel) jtable.getModel();
-    int row = jtable.getSelectedRow();
-    if (jtable.getCellEditor() != null) {
-      jtable.getCellEditor().stopCellEditing();
     }
-    model.removeRow(row);
-  }
 
-  public void setEnumFieldType(int row, String enumType) {
-    annotationDataModel.updateType(row, enumType);
-  }
+    public void removeRowAction(JTable jtable) {
+        AnnotationTableModel model = (AnnotationTableModel) jtable.getModel();
+        int row = jtable.getSelectedRow();
+        if (jtable.getCellEditor() != null) {
+            jtable.getCellEditor().stopCellEditing();
+        }
+        model.removeRow(row);
+    }
 
-  public void setEnumFieldName(int row, String enumType) {
-    annotationDataModel.updateName(row, enumType);
-  }
+    public void setEnumFieldType(int row, String enumType) {
+        annotationDataModel.updateType(row, enumType);
+    }
 
-  public void addEnumField() {
-    annotationDataModel.addField("", "");
-  }
+    public void setEnumFieldName(int row, String enumType) {
+        annotationDataModel.updateName(row, enumType);
+    }
 
-  public void removeEnumField(int row) {
-    annotationDataModel.removeSetting(row);
-  }
+    public void addEnumField() {
+        annotationDataModel.addField("", "");
+    }
 
-  public void addPropertyChangeListener(
-      PropertyChangeListener propertyChangeListener) {
-    propertyChangeSupport
-        .addPropertyChangeListener(propertyChangeListener);
-  }
+    public void removeEnumField(int row) {
+        annotationDataModel.removeSetting(row);
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener propertyChangeListener) {
+        propertyChangeSupport.addPropertyChangeListener(propertyChangeListener);
+    }
 }

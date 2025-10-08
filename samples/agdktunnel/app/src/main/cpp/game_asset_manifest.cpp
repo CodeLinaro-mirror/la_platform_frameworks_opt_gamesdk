@@ -28,32 +28,33 @@ namespace {
  * the asset pipeline.
  */
 #if defined(NO_ASSET_PACKS)
-const char *InstallFileList[] = {"no_asset_packs_textures/wall1.ktx",
+const char* InstallFileList[] = {"no_asset_packs_textures/wall1.ktx",
                                  "no_asset_packs_textures/wall2.ktx"};
-const char *OnDemandFileList[] = {
-    "no_asset_packs_textures/wall3.ktx", "no_asset_packs_textures/wall4.ktx",
-    "no_asset_packs_textures/wall5.ktx", "no_asset_packs_textures/wall6.ktx",
-    "no_asset_packs_textures/wall7.ktx", "no_asset_packs_textures/wall8.ktx"};
-#else   // !NO_ASSET_PACKS
-const char *InstallFileList[] = {"textures/wall1.ktx", "textures/wall2.ktx"};
-const char *OnDemandFileList[] = {"textures/wall3.ktx", "textures/wall4.ktx",
-                                  "textures/wall5.ktx", "textures/wall6.ktx",
-                                  "textures/wall7.ktx", "textures/wall8.ktx"};
-#endif  // NO_ASSET_PACKS
-const GameAssetManifest::AssetPackDefinition AssetPacks[] = {
-    {GameAssetManager::GAMEASSET_PACKTYPE_INTERNAL,
-     ELEMENTS_OF(InstallFileList), GameAssetManifest::MAIN_ASSETPACK_NAME,
-     InstallFileList},
-    {GameAssetManager::GAMEASSET_PACKTYPE_ONDEMAND,
-     ELEMENTS_OF(OnDemandFileList), GameAssetManifest::EXPANSION_ASSETPACK_NAME,
-     OnDemandFileList}};
-}  // namespace
+const char* OnDemandFileList[] = {"no_asset_packs_textures/wall3.ktx",
+                                  "no_asset_packs_textures/wall4.ktx",
+                                  "no_asset_packs_textures/wall5.ktx",
+                                  "no_asset_packs_textures/wall6.ktx",
+                                  "no_asset_packs_textures/wall7.ktx",
+                                  "no_asset_packs_textures/wall8.ktx"};
+#else  // !NO_ASSET_PACKS
+const char* InstallFileList[] = {"textures/wall1.ktx", "textures/wall2.ktx"};
+const char* OnDemandFileList[] = {"textures/wall3.ktx", "textures/wall4.ktx", "textures/wall5.ktx",
+                                  "textures/wall6.ktx", "textures/wall7.ktx", "textures/wall8.ktx"};
+#endif // NO_ASSET_PACKS
+const GameAssetManifest::AssetPackDefinition AssetPacks[] =
+        {{GameAssetManager::GAMEASSET_PACKTYPE_INTERNAL, ELEMENTS_OF(InstallFileList),
+          GameAssetManifest::MAIN_ASSETPACK_NAME, InstallFileList},
+         {GameAssetManager::GAMEASSET_PACKTYPE_ONDEMAND, ELEMENTS_OF(OnDemandFileList),
+          GameAssetManifest::EXPANSION_ASSETPACK_NAME, OnDemandFileList}};
+} // namespace
 
 namespace GameAssetManifest {
-size_t AssetManifest_GetAssetPackCount() { return ELEMENTS_OF(AssetPacks); }
-
-const AssetPackDefinition *AssetManifest_GetAssetPackDefinitions() {
-  return AssetPacks;
+size_t AssetManifest_GetAssetPackCount() {
+    return ELEMENTS_OF(AssetPacks);
 }
 
-}  // namespace GameAssetManifest
+const AssetPackDefinition* AssetManifest_GetAssetPackDefinitions() {
+    return AssetPacks;
+}
+
+} // namespace GameAssetManifest

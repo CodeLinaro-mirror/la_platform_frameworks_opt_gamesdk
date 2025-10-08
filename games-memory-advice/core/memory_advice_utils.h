@@ -45,6 +45,6 @@ bool EvaluateBoolean(std::string formula, Json::object metrics);
 double EvaluateNumber(std::string formula, Json::object metrics);
 Json::object GetBuildInfo();
 
-}  // namespace utils
+} // namespace utils
 
-}  // namespace memory_advice
+} // namespace memory_advice

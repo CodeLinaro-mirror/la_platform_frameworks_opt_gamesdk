@@ -41,24 +41,21 @@ static void add_params(const ProtobufSerialization& params, Json::object& obj,
                        const std::string& field_name) {
     size_t len = params.size();
     std::string dest(modp_b64_encode_len(len), '\0');
-    size_t encoded_len =
-        modp_b64_encode(const_cast<char*>(dest.c_str()),
-                        reinterpret_cast<const char*>(params.data()), len);
+    size_t encoded_len = modp_b64_encode(const_cast<char*>(dest.c_str()),
+                                         reinterpret_cast<const char*>(params.data()), len);
     if (encoded_len != -1) {
         dest.resize(encoded_len);
         obj[field_name] = dest;
     }
 }
 
-static std::string RequestJson(
-    const RequestInfo& request_info,
-    const ProtobufSerialization* training_mode_params) {
+static std::string RequestJson(const RequestInfo& request_info,
+                               const ProtobufSerialization* training_mode_params) {
     Json::object request_obj =
-        Json::object{{"name", json_utils::GetResourceName(request_info)},
-                     {"device_spec", json_utils::DeviceSpecJson(request_info)}};
+            Json::object{{"name", json_utils::GetResourceName(request_info)},
+                         {"device_spec", json_utils::DeviceSpecJson(request_info)}};
     if (training_mode_params != nullptr) {
-        add_params(*training_mode_params, request_obj,
-                   "serialized_training_tuning_parameters");
+        add_params(*training_mode_params, request_obj, "serialized_training_tuning_parameters");
     }
     Json request = request_obj;
     auto result = request.dump();
@@ -66,8 +63,7 @@ static std::string RequestJson(
     return result;
 }
 
-static TuningFork_ErrorCode DecodeResponse(const std::string& response,
-                                           std::vector<uint8_t>& fps,
+static TuningFork_ErrorCode DecodeResponse(const std::string& response, std::vector<uint8_t>& fps,
                                            std::string& experiment_id) {
     using namespace json11;
     if (response.empty()) {
@@ -77,8 +73,7 @@ static TuningFork_ErrorCode DecodeResponse(const std::string& response,
         return TUNINGFORK_ERROR_NO_FIDELITY_PARAMS;
     } else {
         ALOGI("Response to generateTuningParameters: %s",
-              g_verbose_logging_enabled ? response.c_str()
-                                        : LOGGING_PLACEHOLDER_TEXT);
+              g_verbose_logging_enabled ? response.c_str() : LOGGING_PLACEHOLDER_TEXT);
     }
     std::string err;
     Json jresponse = Json::parse(response, err);
@@ -129,8 +124,7 @@ static TuningFork_ErrorCode DecodeResponse(const std::string& response,
             }
             std::string sfps = ifps->second.string_value();
             fps.resize(modp_b64_decode_len(sfps.length()));
-            int sz =
-                modp_b64_decode((char*)fps.data(), sfps.c_str(), sfps.length());
+            int sz = modp_b64_decode((char*)fps.data(), sfps.c_str(), sfps.length());
             if (sz == -1) {
                 ALOGE("Can't decode base 64 FPs");
                 return TUNINGFORK_ERROR_GENERATE_TUNING_PARAMETERS_ERROR;
@@ -143,14 +137,15 @@ static TuningFork_ErrorCode DecodeResponse(const std::string& response,
     return TUNINGFORK_ERROR_OK;
 }
 
-static TuningFork_ErrorCode DownloadFidelityParams(
-    HttpRequest& request, const ProtobufSerialization* training_mode_fps,
-    ProtobufSerialization& fps, std::string& experiment_id) {
+static TuningFork_ErrorCode DownloadFidelityParams(HttpRequest& request,
+                                                   const ProtobufSerialization* training_mode_fps,
+                                                   ProtobufSerialization& fps,
+                                                   std::string& experiment_id) {
     int response_code;
     std::string body;
-    TuningFork_ErrorCode ret = request.Send(
-        kRpcName, RequestJson(RequestInfo::CachedValue(), training_mode_fps),
-        response_code, body);
+    TuningFork_ErrorCode ret =
+            request.Send(kRpcName, RequestJson(RequestInfo::CachedValue(), training_mode_fps),
+                         response_code, body);
     if (ret != TUNINGFORK_ERROR_OK) return ret;
 
     if (response_code >= kSuccessCodeMin && response_code <= kSuccessCodeMax)
@@ -162,10 +157,9 @@ static TuningFork_ErrorCode DownloadFidelityParams(
 }
 
 TuningFork_ErrorCode HttpBackend::GenerateTuningParameters(
-    HttpRequest& request, const ProtobufSerialization* training_mode_fps,
-    ProtobufSerialization& fidelity_params, std::string& experiment_id) {
-    return DownloadFidelityParams(request, training_mode_fps, fidelity_params,
-                                  experiment_id);
+        HttpRequest& request, const ProtobufSerialization* training_mode_fps,
+        ProtobufSerialization& fidelity_params, std::string& experiment_id) {
+    return DownloadFidelityParams(request, training_mode_fps, fidelity_params, experiment_id);
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

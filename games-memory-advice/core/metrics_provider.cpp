@@ -60,14 +60,11 @@ Json::object DefaultMetricsProvider::GetProcValues() {
 
 Json::object DefaultMetricsProvider::GetActivityManagerValues() {
     Json::object metrics_map;
-    java::Object obj = AppContext().getSystemService(
-        android::content::Context::ACTIVITY_SERVICE);
+    java::Object obj = AppContext().getSystemService(android::content::Context::ACTIVITY_SERVICE);
     android::app::ActivityManager activity_manager(std::move(obj));
 
-    metrics_map["MemoryClass"] =
-        Json(activity_manager.getMemoryClass() * BYTES_IN_MB);
-    metrics_map["LargeMemoryClass"] =
-        Json(activity_manager.getLargeMemoryClass() * BYTES_IN_MB);
+    metrics_map["MemoryClass"] = Json(activity_manager.getMemoryClass() * BYTES_IN_MB);
+    metrics_map["LargeMemoryClass"] = Json(activity_manager.getLargeMemoryClass() * BYTES_IN_MB);
     metrics_map["LowRamDevice"] = Json(activity_manager.isLowRamDevice());
 
     return metrics_map;
@@ -76,8 +73,7 @@ Json::object DefaultMetricsProvider::GetActivityManagerValues() {
 Json::object DefaultMetricsProvider::GetActivityManagerMemoryInfo() {
     android::app::MemoryInfo memory_info;
     Json::object metrics_map;
-    java::Object obj = AppContext().getSystemService(
-        android::content::Context::ACTIVITY_SERVICE);
+    java::Object obj = AppContext().getSystemService(android::content::Context::ACTIVITY_SERVICE);
     android::app::ActivityManager activity_manager(std::move(obj));
     activity_manager.getMemoryInfo(memory_info);
     metrics_map["threshold"] = Json((double)memory_info.threshold());
@@ -91,17 +87,15 @@ Json::object DefaultMetricsProvider::GetActivityManagerMemoryInfo() {
 Json::object DefaultMetricsProvider::GetDebugValues() {
     Json::object metrics_map;
     metrics_map["nativeHeapAllocatedSize"] =
-        Json((double)android_debug_.getNativeHeapAllocatedSize());
-    metrics_map["nativeHeapFreeSize"] =
-        Json((double)android_debug_.getNativeHeapFreeSize());
-    metrics_map["nativeHeapSize"] =
-        Json((double)android_debug_.getNativeHeapSize());
+            Json((double)android_debug_.getNativeHeapAllocatedSize());
+    metrics_map["nativeHeapFreeSize"] = Json((double)android_debug_.getNativeHeapFreeSize());
+    metrics_map["nativeHeapSize"] = Json((double)android_debug_.getNativeHeapSize());
 
     return metrics_map;
 }
 
-Json::object DefaultMetricsProvider::GetMemoryValuesFromFile(
-    const std::string &path, const std::regex &pattern) {
+Json::object DefaultMetricsProvider::GetMemoryValuesFromFile(const std::string& path,
+                                                             const std::regex& pattern) {
     std::ifstream file_stream(path);
     Json::object metrics_map;
     if (!file_stream) {
@@ -114,8 +108,7 @@ Json::object DefaultMetricsProvider::GetMemoryValuesFromFile(
     std::smatch match;
     while (std::regex_search(file, match, pattern)) {
         metrics_map[match[1].str()] =
-            Json((double)(strtoll(match[2].str().c_str(), nullptr, 10) *
-                          BYTES_IN_KB));
+                Json((double)(strtoll(match[2].str().c_str(), nullptr, 10) * BYTES_IN_KB));
         file = match.suffix().str();
     }
     return metrics_map;
@@ -135,4 +128,4 @@ int32_t DefaultMetricsProvider::GetOomScore() {
     }
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

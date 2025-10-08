@@ -22,34 +22,34 @@ import androidx.core.graphics.Insets;
  * Also a listener for window insets changes.
  */
 public interface Listener {
-  /*
-   * Called when the IME text, selection or composing region has changed.
-   *
-   * @param newState The updated state
-   * @param dismmissed Deprecated, don't use
-   */
-  void stateChanged(State newState, boolean dismissed);
+    /*
+     * Called when the IME text, selection or composing region has changed.
+     *
+     * @param newState The updated state
+     * @param dismmissed Deprecated, don't use
+     */
+    void stateChanged(State newState, boolean dismissed);
 
-  /*
-   * Called when the IME window insets change, i.e. the IME moves into or out of view.
-   *
-   * @param insets The new window insets, i.e. the offsets of top, bottom, left and right
-   * relative to the window
-   */
-  void onImeInsetsChanged(Insets insets);
+    /*
+     * Called when the IME window insets change, i.e. the IME moves into or out of view.
+     *
+     * @param insets The new window insets, i.e. the offsets of top, bottom, left and right
+     * relative to the window
+     */
+    void onImeInsetsChanged(Insets insets);
 
-  /*
-   * Called when the IME window is shown or hidden.
-   *
-   * @param insets True is IME is visible, false otherwise.
-   */
-  void onSoftwareKeyboardVisibilityChanged(boolean visible);
+    /*
+     * Called when the IME window is shown or hidden.
+     *
+     * @param insets True is IME is visible, false otherwise.
+     */
+    void onSoftwareKeyboardVisibilityChanged(boolean visible);
 
-  /*
-   * Called when any editor action is performed. Typically this means that
-   * the Enter button has been pressed.
-   *
-   * @param action Code of the action. A default action is IME_ACTION_DONE.
-   */
-  void onEditorAction(int action);
+    /*
+     * Called when any editor action is performed. Typically this means that
+     * the Enter button has been pressed.
+     *
+     * @param action Code of the action. A default action is IME_ACTION_DONE.
+     */
+    void onEditorAction(int action);
 }

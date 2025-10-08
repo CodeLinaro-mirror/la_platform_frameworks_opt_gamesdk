@@ -31,34 +31,34 @@ struct ControllerButtonMap {
 };
 
 const ControllerButtonMap defaultButtonMap = {{
-    AKEYCODE_DPAD_UP,        // PADDLEBOAT_BUTTON_DPAD_UP
-    AKEYCODE_DPAD_LEFT,      // PADDLEBOAT_BUTTON_DPAD_LEFT
-    AKEYCODE_DPAD_DOWN,      // PADDLEBOAT_BUTTON_DPAD_DOWN
-    AKEYCODE_DPAD_RIGHT,     // PADDLEBOAT_BUTTON_DPAD_RIGHT
-    AKEYCODE_BUTTON_A,       // PADDLEBOAT_BUTTON_A
-    AKEYCODE_BUTTON_B,       // PADDLEBOAT_BUTTON_B
-    AKEYCODE_BUTTON_X,       // PADDLEBOAT_BUTTON_X
-    AKEYCODE_BUTTON_Y,       // PADDLEBOAT_BUTTON_Y
-    AKEYCODE_BUTTON_L1,      // PADDLEBOAT_BUTTON_L1
-    AKEYCODE_BUTTON_L2,      // PADDLEBOAT_BUTTON_L2
-    AKEYCODE_BUTTON_THUMBL,  // PADDLEBOAT_BUTTON_L3
-    AKEYCODE_BUTTON_R1,      // PADDLEBOAT_BUTTON_R1
-    AKEYCODE_BUTTON_R2,      // PADDLEBOAT_BUTTON_R2
-    AKEYCODE_BUTTON_THUMBR,  // PADDLEBOAT_BUTTON_R3
-    AKEYCODE_BUTTON_SELECT,  // PADDLEBOAT_BUTTON_SELECT
-    AKEYCODE_BUTTON_START,   // PADDLEBOAT_BUTTON_START
-    AKEYCODE_BUTTON_MODE,    // PADDLEBOAT_BUTTON_SYSTEM
-    0,                       // PADDLEBOAT_BUTTON_TOUCHPAD
-    0,                       // PADDLEBOAT_BUTTON_AUX1
-    0,                       // PADDLEBOAT_BUTTON_AUX2
-    0,                       // PADDLEBOAT_BUTTON_AUX3
-    0                        // PADDLEBOAT_BUTTON_AUX4
+        AKEYCODE_DPAD_UP,       // PADDLEBOAT_BUTTON_DPAD_UP
+        AKEYCODE_DPAD_LEFT,     // PADDLEBOAT_BUTTON_DPAD_LEFT
+        AKEYCODE_DPAD_DOWN,     // PADDLEBOAT_BUTTON_DPAD_DOWN
+        AKEYCODE_DPAD_RIGHT,    // PADDLEBOAT_BUTTON_DPAD_RIGHT
+        AKEYCODE_BUTTON_A,      // PADDLEBOAT_BUTTON_A
+        AKEYCODE_BUTTON_B,      // PADDLEBOAT_BUTTON_B
+        AKEYCODE_BUTTON_X,      // PADDLEBOAT_BUTTON_X
+        AKEYCODE_BUTTON_Y,      // PADDLEBOAT_BUTTON_Y
+        AKEYCODE_BUTTON_L1,     // PADDLEBOAT_BUTTON_L1
+        AKEYCODE_BUTTON_L2,     // PADDLEBOAT_BUTTON_L2
+        AKEYCODE_BUTTON_THUMBL, // PADDLEBOAT_BUTTON_L3
+        AKEYCODE_BUTTON_R1,     // PADDLEBOAT_BUTTON_R1
+        AKEYCODE_BUTTON_R2,     // PADDLEBOAT_BUTTON_R2
+        AKEYCODE_BUTTON_THUMBR, // PADDLEBOAT_BUTTON_R3
+        AKEYCODE_BUTTON_SELECT, // PADDLEBOAT_BUTTON_SELECT
+        AKEYCODE_BUTTON_START,  // PADDLEBOAT_BUTTON_START
+        AKEYCODE_BUTTON_MODE,   // PADDLEBOAT_BUTTON_SYSTEM
+        0,                      // PADDLEBOAT_BUTTON_TOUCHPAD
+        0,                      // PADDLEBOAT_BUTTON_AUX1
+        0,                      // PADDLEBOAT_BUTTON_AUX2
+        0,                      // PADDLEBOAT_BUTTON_AUX3
+        0                       // PADDLEBOAT_BUTTON_AUX4
 }};
 
 // Axis must be at least this value to trigger a mapped button press
 constexpr float AXIS_BUTTON_THRESHOLD = 0.1f;
 
-void resetData(Paddleboat_Controller_Data &pbData) {
+void resetData(Paddleboat_Controller_Data& pbData) {
     pbData.timestamp = 0;
     pbData.buttonsDown = 0;
     pbData.leftStick.stickX = 0.0f;
@@ -73,7 +73,7 @@ void resetData(Paddleboat_Controller_Data &pbData) {
     pbData.virtualPointer.pointerY = 0.0f;
 }
 
-void resetInfo(Paddleboat_Controller_Info &pbInfo) {
+void resetInfo(Paddleboat_Controller_Info& pbInfo) {
     pbInfo.controllerNumber = -1;
     pbInfo.controllerFlags = 0;
     pbInfo.vendorId = 0;
@@ -90,12 +90,12 @@ void resetInfo(Paddleboat_Controller_Info &pbInfo) {
 }
 
 GameController::GameController()
-    : mConnectionIndex(-1),
-      mControllerData(),
-      mControllerInfo(),
-      mAxisInfo(),
-      mDeviceInfo(),
-      mControllerDataDirty(true) {
+      : mConnectionIndex(-1),
+        mControllerData(),
+        mControllerInfo(),
+        mAxisInfo(),
+        mDeviceInfo(),
+        mControllerDataDirty(true) {
     memset(mButtonKeycodes, 0, sizeof(mButtonKeycodes));
     resetControllerData();
 }
@@ -106,12 +106,10 @@ void GameController::resetControllerData() {
 }
 
 void GameController::setupController(
-        const Paddleboat_Controller_Mapping_File_Controller_Entry *controllerEntry,
-        const Paddleboat_Controller_Mapping_File_Axis_Entry *axisEntry,
-        const Paddleboat_Controller_Mapping_File_Button_Entry *buttonEntry) {
-
-    const GameControllerDeviceInfo::InfoFields &infoFields =
-            *(mDeviceInfo.getInfo());
+        const Paddleboat_Controller_Mapping_File_Controller_Entry* controllerEntry,
+        const Paddleboat_Controller_Mapping_File_Axis_Entry* axisEntry,
+        const Paddleboat_Controller_Mapping_File_Button_Entry* buttonEntry) {
+    const GameControllerDeviceInfo::InfoFields& infoFields = *(mDeviceInfo.getInfo());
     uint64_t axisLow = static_cast<uint64_t>(infoFields.mAxisBitsLow);
     uint64_t axisHigh = static_cast<uint64_t>(infoFields.mAxisBitsHigh);
     mControllerAxisMask = axisLow | (axisHigh << 32ULL);
@@ -133,21 +131,18 @@ void GameController::setupController(
         for (int32_t i = 0; i < PADDLEBOAT_MAPPING_AXIS_COUNT; ++i) {
             if (axisEntry->axisMapping[i] != PADDLEBOAT_AXIS_IGNORED) {
                 bool axisInvert = ((mAxisInversionBitmask & (1 << i)) != 0);
-                const GameControllerAxis gcAxis =
-                        static_cast<GameControllerAxis>(i);
+                const GameControllerAxis gcAxis = static_cast<GameControllerAxis>(i);
                 const int32_t nativeAxisId = axisEntry->axisMapping[i];
                 const int32_t positiveButton =
-                        (axisEntry->axisPositiveButtonMapping[i] ==
-                         PADDLEBOAT_AXIS_BUTTON_IGNORED)
+                        (axisEntry->axisPositiveButtonMapping[i] == PADDLEBOAT_AXIS_BUTTON_IGNORED)
                         ? 0
                         : (1 << axisEntry->axisPositiveButtonMapping[i]);
                 const int32_t negativeButton =
-                        (axisEntry->axisNegativeButtonMapping[i] ==
-                         PADDLEBOAT_AXIS_BUTTON_IGNORED)
+                        (axisEntry->axisNegativeButtonMapping[i] == PADDLEBOAT_AXIS_BUTTON_IGNORED)
                         ? 0
                         : (1 << axisEntry->axisNegativeButtonMapping[i]);
-                setupAxis(gcAxis, nativeAxisId, nativeAxisId, positiveButton,
-                          negativeButton, axisInvert);
+                setupAxis(gcAxis, nativeAxisId, nativeAxisId, positiveButton, negativeButton,
+                          axisInvert);
             }
         }
         adjustAxisConstants();
@@ -156,111 +151,94 @@ void GameController::setupController(
         // Fallback defaults if there wasn't mapping data provided
         initializeDefaultAxisMapping();
         memcpy(mButtonKeycodes, &defaultButtonMap, sizeof(ControllerButtonMap));
-        mControllerInfo.controllerFlags |=
-                PADDLEBOAT_CONTROLLER_FLAG_GENERIC_PROFILE;
+        mControllerInfo.controllerFlags |= PADDLEBOAT_CONTROLLER_FLAG_GENERIC_PROFILE;
     }
 }
 
 void GameController::initializeDefaultAxisMapping() {
-    setupAxis(GAMECONTROLLER_AXIS_LSTICK_X, AMOTION_EVENT_AXIS_X,
-              AMOTION_EVENT_AXIS_X, 0, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_LSTICK_Y, AMOTION_EVENT_AXIS_Y,
-              AMOTION_EVENT_AXIS_Y, 0, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_RSTICK_X, AMOTION_EVENT_AXIS_Z,
-              AMOTION_EVENT_AXIS_RX, 0, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_RSTICK_Y, AMOTION_EVENT_AXIS_RZ,
-              AMOTION_EVENT_AXIS_RY, 0, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_L2, AMOTION_EVENT_AXIS_LTRIGGER,
-              AMOTION_EVENT_AXIS_BRAKE, PADDLEBOAT_BUTTON_L2, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_R2, AMOTION_EVENT_AXIS_RTRIGGER,
-              AMOTION_EVENT_AXIS_GAS, PADDLEBOAT_BUTTON_R2, 0, false);
-    setupAxis(GAMECONTROLLER_AXIS_HAT_X, AMOTION_EVENT_AXIS_HAT_X,
-              AMOTION_EVENT_AXIS_HAT_X, PADDLEBOAT_BUTTON_DPAD_RIGHT,
-              PADDLEBOAT_BUTTON_DPAD_LEFT, false);
-    setupAxis(GAMECONTROLLER_AXIS_HAT_Y, AMOTION_EVENT_AXIS_HAT_Y,
-              AMOTION_EVENT_AXIS_HAT_Y, PADDLEBOAT_BUTTON_DPAD_DOWN,
-              PADDLEBOAT_BUTTON_DPAD_UP, false);
+    setupAxis(GAMECONTROLLER_AXIS_LSTICK_X, AMOTION_EVENT_AXIS_X, AMOTION_EVENT_AXIS_X, 0, 0,
+              false);
+    setupAxis(GAMECONTROLLER_AXIS_LSTICK_Y, AMOTION_EVENT_AXIS_Y, AMOTION_EVENT_AXIS_Y, 0, 0,
+              false);
+    setupAxis(GAMECONTROLLER_AXIS_RSTICK_X, AMOTION_EVENT_AXIS_Z, AMOTION_EVENT_AXIS_RX, 0, 0,
+              false);
+    setupAxis(GAMECONTROLLER_AXIS_RSTICK_Y, AMOTION_EVENT_AXIS_RZ, AMOTION_EVENT_AXIS_RY, 0, 0,
+              false);
+    setupAxis(GAMECONTROLLER_AXIS_L2, AMOTION_EVENT_AXIS_LTRIGGER, AMOTION_EVENT_AXIS_BRAKE,
+              PADDLEBOAT_BUTTON_L2, 0, false);
+    setupAxis(GAMECONTROLLER_AXIS_R2, AMOTION_EVENT_AXIS_RTRIGGER, AMOTION_EVENT_AXIS_GAS,
+              PADDLEBOAT_BUTTON_R2, 0, false);
+    setupAxis(GAMECONTROLLER_AXIS_HAT_X, AMOTION_EVENT_AXIS_HAT_X, AMOTION_EVENT_AXIS_HAT_X,
+              PADDLEBOAT_BUTTON_DPAD_RIGHT, PADDLEBOAT_BUTTON_DPAD_LEFT, false);
+    setupAxis(GAMECONTROLLER_AXIS_HAT_Y, AMOTION_EVENT_AXIS_HAT_Y, AMOTION_EVENT_AXIS_HAT_Y,
+              PADDLEBOAT_BUTTON_DPAD_DOWN, PADDLEBOAT_BUTTON_DPAD_UP, false);
     adjustAxisConstants();
 }
 
 void GameController::adjustAxisConstants() {
     if (mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisIndex >= 0) {
-        const bool stickAxisAdjust =
-            ((mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisFlags &
-              GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0);
+        const bool stickAxisAdjust = ((mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisFlags &
+                                       GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0);
 
         mControllerInfo.leftStickPrecision.stickFlatX =
-            mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X]
-                                           .axisIndex];
+                mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisIndex];
         mControllerInfo.leftStickPrecision.stickFlatY =
-            mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y]
-                                           .axisIndex];
+                mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisIndex];
         mControllerInfo.leftStickPrecision.stickFuzzX =
-            mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X]
-                                           .axisIndex];
+                mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisIndex];
         mControllerInfo.leftStickPrecision.stickFuzzY =
-            mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y]
-                                           .axisIndex];
+                mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisIndex];
         if (stickAxisAdjust) {
             // We are adjusting the raw axis values, so we also adjust the
             // 'flat' and 'fuzz' values for the sticks
             mControllerInfo.leftStickPrecision.stickFlatX *=
-                mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisMultiplier;
+                    mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisMultiplier;
             mControllerInfo.leftStickPrecision.stickFlatY *=
-                mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisMultiplier;
+                    mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisMultiplier;
             mControllerInfo.leftStickPrecision.stickFuzzX *=
-                mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisMultiplier;
+                    mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_X].axisMultiplier;
             mControllerInfo.leftStickPrecision.stickFuzzY *=
-                mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisMultiplier;
+                    mAxisInfo[GAMECONTROLLER_AXIS_LSTICK_Y].axisMultiplier;
         }
     }
 
     if (mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisIndex >= 0) {
-        const bool stickAxisAdjust =
-            ((mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisFlags &
-              GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0);
+        const bool stickAxisAdjust = ((mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisFlags &
+                                       GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0);
 
         mControllerInfo.rightStickPrecision.stickFlatX =
-            mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X]
-                                           .axisIndex];
+                mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisIndex];
         mControllerInfo.rightStickPrecision.stickFlatY =
-            mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y]
-                                           .axisIndex];
+                mDeviceInfo.getFlatArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisIndex];
         mControllerInfo.rightStickPrecision.stickFuzzX =
-            mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X]
-                                           .axisIndex];
+                mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisIndex];
         mControllerInfo.rightStickPrecision.stickFuzzY =
-            mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y]
-                                           .axisIndex];
+                mDeviceInfo.getFuzzArray()[mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisIndex];
         if (stickAxisAdjust) {
             // We are adjusting the raw axis values, so we also adjust the
             // 'flat' and 'fuzz' values for the sticks
             mControllerInfo.rightStickPrecision.stickFlatX *=
-                fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisMultiplier);
+                    fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisMultiplier);
             mControllerInfo.rightStickPrecision.stickFlatY *=
-                fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisMultiplier);
+                    fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisMultiplier);
             mControllerInfo.rightStickPrecision.stickFuzzX *=
-                fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisMultiplier);
+                    fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_X].axisMultiplier);
             mControllerInfo.rightStickPrecision.stickFuzzY *=
-                fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisMultiplier);
+                    fabs(mAxisInfo[GAMECONTROLLER_AXIS_RSTICK_Y].axisMultiplier);
         }
     }
 }
 
-void GameController::setupAxis(const GameControllerAxis gcAxis,
-                               const int32_t preferredNativeAxisId,
-                               const int32_t secondaryNativeAxisId,
-                               const int32_t buttonMask,
-                               const int32_t buttonNegativeMask,
-                               const bool axisInvert) {
+void GameController::setupAxis(const GameControllerAxis gcAxis, const int32_t preferredNativeAxisId,
+                               const int32_t secondaryNativeAxisId, const int32_t buttonMask,
+                               const int32_t buttonNegativeMask, const bool axisInvert) {
     mAxisInfo[gcAxis].resetInfo();
     mAxisInfo[gcAxis].axisButtonMask = buttonMask;
     mAxisInfo[gcAxis].axisButtonNegativeMask = buttonNegativeMask;
     mAxisInfo[gcAxis].axisInvert = axisInvert;
 
     // Do we have a mapping for the preferred native axis?
-    if (preferredNativeAxisId < MAX_AXIS_COUNT &&
-        secondaryNativeAxisId < MAX_AXIS_COUNT) {
+    if (preferredNativeAxisId < MAX_AXIS_COUNT && secondaryNativeAxisId < MAX_AXIS_COUNT) {
         const int32_t preferredMask = (1U << preferredNativeAxisId);
         const int32_t secondaryMask = (1U << secondaryNativeAxisId);
         if ((mControllerAxisMask & preferredMask) != 0) {
@@ -273,26 +251,22 @@ void GameController::setupAxis(const GameControllerAxis gcAxis,
         } else if (buttonMask) {
             // There wasn't a matching axis,
             // but we will fake this axis using a digital button mapping
-            mAxisInfo[gcAxis].axisFlags |=
-                GAMECONTROLLER_AXIS_FLAG_DIGITAL_TRIGGER;
+            mAxisInfo[gcAxis].axisFlags |= GAMECONTROLLER_AXIS_FLAG_DIGITAL_TRIGGER;
         }
 
         // If we found a native axis, check its ranges and see if we need to set
         // up adjustment values if the ranges aren't -1.0 to 1.0 for a stick or
         // 0.0 to 1.0 for a trigger
         if (mAxisInfo[gcAxis].axisIndex >= 0) {
-            bool isStickAxis = (!(gcAxis >= GAMECONTROLLER_AXIS_L1 &&
-                                  gcAxis <= GAMECONTROLLER_AXIS_R2));
+            bool isStickAxis =
+                    (!(gcAxis >= GAMECONTROLLER_AXIS_L1 && gcAxis <= GAMECONTROLLER_AXIS_R2));
             const float minAdjust = isStickAxis ? 1.0f : 0.0f;
-            const float rawMin =
-                mDeviceInfo.getMinArray()[mAxisInfo[gcAxis].axisIndex];
-            const float rawMax =
-                mDeviceInfo.getMaxArray()[mAxisInfo[gcAxis].axisIndex];
+            const float rawMin = mDeviceInfo.getMinArray()[mAxisInfo[gcAxis].axisIndex];
+            const float rawMax = mDeviceInfo.getMaxArray()[mAxisInfo[gcAxis].axisIndex];
             const float diffMin = fabsf(rawMin + minAdjust);
             const float diffMax = fabsf(1.0f - rawMax);
             if (!(diffMin <= FLT_MIN && diffMax <= FLT_MIN)) {
-                mAxisInfo[gcAxis].axisFlags |=
-                    GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS;
+                mAxisInfo[gcAxis].axisFlags |= GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS;
                 if (isStickAxis) {
                     // normalize min and max axis to 1.0
                     mAxisInfo[gcAxis].axisMultiplier = 1.0f / rawMax;
@@ -300,30 +274,29 @@ void GameController::setupAxis(const GameControllerAxis gcAxis,
                     const float rawCenter = ((rawMax - rawMin) * 0.5f) + rawMin;
                     if (rawCenter >= FLT_MIN) {
                         mAxisInfo[gcAxis].axisAdjust =
-                            -(rawCenter * mAxisInfo[gcAxis].axisMultiplier);
+                                -(rawCenter * mAxisInfo[gcAxis].axisMultiplier);
                     }
                 } else {
                     // This case is hit on PS5 API <= 30 having weird trigger
                     // axis mappings of: L2=RX R2=RY with a -1.0 to 1.0 range
                     mAxisInfo[gcAxis].axisMultiplier = 1.0f / (rawMax - rawMin);
-                    mAxisInfo[gcAxis].axisAdjust =
-                        (-rawMin) * mAxisInfo[gcAxis].axisMultiplier;
+                    mAxisInfo[gcAxis].axisAdjust = (-rawMin) * mAxisInfo[gcAxis].axisMultiplier;
                 }
             }
         }
     }
 }
 
-int32_t GameController::processGameActivityKeyEvent(
-    const Paddleboat_GameActivityKeyEvent *event, const size_t eventSize) {
+int32_t GameController::processGameActivityKeyEvent(const Paddleboat_GameActivityKeyEvent* event,
+                                                    const size_t eventSize) {
     return processKeyEventInternal(event->keyCode, event->action);
 }
 
-int32_t GameController::processGameActivityMotionEvent(const float *axisValues) {
+int32_t GameController::processGameActivityMotionEvent(const float* axisValues) {
     return processMotionEventInternal(axisValues, nullptr);
 }
 
-int32_t GameController::processKeyEvent(const AInputEvent *event) {
+int32_t GameController::processKeyEvent(const AInputEvent* event) {
     const int32_t eventKeyCode = AKeyEvent_getKeyCode(event);
     const int32_t eventKeyAction = AKeyEvent_getAction(event);
     return processKeyEventInternal(eventKeyCode, eventKeyAction);
@@ -384,30 +357,26 @@ int32_t GameController::processKeyEventInternal(const int32_t eventKeyCode,
     return handledEvent;
 }
 
-int32_t GameController::processMotionEvent(const AInputEvent *event) {
+int32_t GameController::processMotionEvent(const AInputEvent* event) {
     return processMotionEventInternal(nullptr, event);
 }
 
-int32_t GameController::processMotionEventInternal(const float *axisArray,
-                                                   const AInputEvent *event) {
+int32_t GameController::processMotionEventInternal(const float* axisArray,
+                                                   const AInputEvent* event) {
     int32_t handledEvent = IGNORED_EVENT;
 
-    for (uint32_t axis = GAMECONTROLLER_AXIS_LSTICK_X;
-         axis < GAMECONTROLLER_AXIS_COUNT; ++axis) {
+    for (uint32_t axis = GAMECONTROLLER_AXIS_LSTICK_X; axis < GAMECONTROLLER_AXIS_COUNT; ++axis) {
         if (mAxisInfo[axis].axisIndex >= 0 &&
-            mAxisInfo[axis].axisIndex <
-                PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT) {
+            mAxisInfo[axis].axisIndex < PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT) {
             float axisValue = 0.0f;
             if (axisArray != nullptr) {
                 axisValue = axisArray[mAxisInfo[axis].axisIndex];
             } else if (event != nullptr) {
-                axisValue = AMotionEvent_getAxisValue(
-                    event, mAxisInfo[axis].axisIndex, 0);
+                axisValue = AMotionEvent_getAxisValue(event, mAxisInfo[axis].axisIndex, 0);
             }
-            if ((mAxisInfo[axis].axisFlags &
-                 GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0) {
-                axisValue = ((axisValue * mAxisInfo[axis].axisMultiplier) +
-                             mAxisInfo[axis].axisAdjust);
+            if ((mAxisInfo[axis].axisFlags & GAMECONTROLLER_AXIS_FLAG_APPLY_ADJUSTMENTS) != 0) {
+                axisValue =
+                        ((axisValue * mAxisInfo[axis].axisMultiplier) + mAxisInfo[axis].axisAdjust);
             }
             if (mAxisInfo[axis].axisInvert) {
                 axisValue = -axisValue;
@@ -418,26 +387,21 @@ int32_t GameController::processMotionEventInternal(const float *axisArray,
             // axis as an index into the axis entries in the
             // Paddleboat_Controller_Data struct
             if (axis < GAMECONTROLLER_AXIS_HAT_X) {
-                float *axisData = &mControllerData.leftStick.stickX;
+                float* axisData = &mControllerData.leftStick.stickX;
                 axisData[axis] = axisValue;
             }
 
             // If this axis has a button associated with it, set/clear the flags
             // as appropriate
-            if (mAxisInfo[axis].axisButtonMask != 0 ||
-                mAxisInfo[axis].axisButtonNegativeMask) {
-                if (axisValue > -AXIS_BUTTON_THRESHOLD &&
-                    axisValue < AXIS_BUTTON_THRESHOLD) {
+            if (mAxisInfo[axis].axisButtonMask != 0 || mAxisInfo[axis].axisButtonNegativeMask) {
+                if (axisValue > -AXIS_BUTTON_THRESHOLD && axisValue < AXIS_BUTTON_THRESHOLD) {
                     const uint32_t buttonMask =
-                        mAxisInfo[axis].axisButtonMask |
-                        mAxisInfo[axis].axisButtonNegativeMask;
+                            mAxisInfo[axis].axisButtonMask | mAxisInfo[axis].axisButtonNegativeMask;
                     mControllerData.buttonsDown &= (~buttonMask);
                 } else if (axisValue > AXIS_BUTTON_THRESHOLD) {
-                    mControllerData.buttonsDown |=
-                        mAxisInfo[axis].axisButtonMask;
+                    mControllerData.buttonsDown |= mAxisInfo[axis].axisButtonMask;
                 } else if (axisValue < -AXIS_BUTTON_THRESHOLD) {
-                    mControllerData.buttonsDown |=
-                        mAxisInfo[axis].axisButtonNegativeMask;
+                    mControllerData.buttonsDown |= mAxisInfo[axis].axisButtonNegativeMask;
                 }
             }
 
@@ -452,12 +416,11 @@ void GameController::setControllerDataDirty(const bool dirty) {
     mControllerDataDirty = dirty;
     if (dirty) {
         // update the timestamp any time we mark dirty
-        const auto timestamp =
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now().time_since_epoch())
-                .count();
+        const auto timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
+                                       std::chrono::steady_clock::now().time_since_epoch())
+                                       .count();
         mControllerData.timestamp = static_cast<uint64_t>(timestamp);
     }
 }
 
-}  // namespace paddleboat
+} // namespace paddleboat
