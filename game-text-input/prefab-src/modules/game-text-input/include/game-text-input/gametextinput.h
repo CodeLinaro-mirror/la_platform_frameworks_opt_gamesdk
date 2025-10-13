@@ -102,7 +102,8 @@ typedef struct GameTextInput GameTextInput;
  * Initialize the GameTextInput library.
  * If called twice without GameTextInput_destroy being called, the same pointer
  * will be returned and a warning will be issued.
- * @param env A JNI env valid on the calling thread.
+ * @param env A JNI env valid on the calling thread. All other calls to the resulting GameTextInput
+ * object must be done on the same calling thread.
  * @param max_string_size The maximum length of a string that can be edited. If
  * zero, the maximum defaults to 65536 bytes. A buffer of this size is allocated
  * at initialization.
