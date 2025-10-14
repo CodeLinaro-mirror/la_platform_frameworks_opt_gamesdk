@@ -50,24 +50,28 @@ libraries=(
 for lib_name in "${libraries[@]}"; do
   declare -n struct="$lib_name"
 
+  name="${struct[name]}"
   header="${struct[header]}"
   prefix="${struct[prefix]}"
   version_pattern="${prefix}_MAJOR_VERSION"
   macro_pattern="${prefix}_VERSION_REVISION"
   macro="#define ${macro_pattern} $commit_sha"
 
-  if grep -q "$macro_pattern" "$header"; then
-    # If revision macro already exists, replace it.
-    sed -i "s|^#define ${macro_pattern}.*|$macro|" "$header"
-  else
-    # Find line number of version macro.
-    line_number=$(grep -n -m 1 "$version_pattern" "$header" | cut -d: -f1)
-    if [ -z "$line_number" ]; then
-        echo "Error: Pattern \"${version_pattern}\" not present in file: \"${header}\""
-        exit 1
-    fi
+  # If we have updated the version of this library
+  if git diff HEAD~1 HEAD -- VERSIONS | grep -E "^\+" | grep -q "$name"; then
+    if grep -q "$macro_pattern" "$header"; then
+      # If revision macro already exists, replace it.
+      sed -i "s|^#define ${macro_pattern}.*|$macro|" "$header"
+    else
+      # Find line number of version macro.
+      line_number=$(grep -n -m 1 "$version_pattern" "$header" | cut -d: -f1)
+      if [ -z "$line_number" ]; then
+          echo "Error: Pattern \"${version_pattern}\" not present in file: \"${header}\""
+          exit 1
+      fi
 
-    # Insert macro at line number.
-    sed -i "${line_number}i $macro" "$header"
+      # Insert macro at line number.
+      sed -i "${line_number}i $macro" "$header"
+    fi
   fi
 done
