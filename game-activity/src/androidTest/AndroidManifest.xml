@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.google.androidgamesdk.gameactivity.test">
+
+    <uses-sdk android:minSdkVersion="21" />
+
+    <application>
+        <activity android:name="com.google.androidgamesdk.TestGameActivity"
+                  android:exported="true"
+                  android:theme="@style/Theme.AppCompat">
+        </activity>
+    </application>
+
+</manifest>
