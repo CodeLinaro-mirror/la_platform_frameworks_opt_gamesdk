@@ -20,21 +20,18 @@
 namespace tuningfork {
 
 void FrameTimeMetricData::Tick(TimePoint t, bool record) {
-    if (last_time_ != TimePoint::min() && t > last_time_ && record)
-        Record(t - last_time_);
+    if (last_time_ != TimePoint::min() && t > last_time_ && record) Record(t - last_time_);
     last_time_ = t;
 }
 
 void FrameTimeMetricData::Record(Duration dt) {
     if (dt.count() > 0) {
         // The histogram stores millisecond values as doubles
-        histogram_.Add(
-            double(std::chrono::duration_cast<std::chrono::nanoseconds>(dt)
-                       .count()) /
-            1000000);
+        histogram_.Add(double(std::chrono::duration_cast<std::chrono::nanoseconds>(dt).count()) /
+                       1000000);
         // The values are stored in the kll aggregator as microseconds
-        aggregator_->Add(int64_t(
-            std::chrono::duration_cast<std::chrono::microseconds>(dt).count()));
+        aggregator_->Add(
+                int64_t(std::chrono::duration_cast<std::chrono::microseconds>(dt).count()));
         duration_ += dt;
     }
 }
@@ -46,4 +43,4 @@ void FrameTimeMetricData::Clear() {
     aggregator_->Reset();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

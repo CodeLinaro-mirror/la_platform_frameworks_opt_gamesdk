@@ -24,58 +24,57 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class AssetsFinder {
-
-  private static File createDir(Optional<File> foundDirectory, String absolutePath) {
-    if (foundDirectory.isPresent()) {
-      return foundDirectory.get();
-    } else {
-      File tuningforkDir = new File(absolutePath + "/src/assets/tuningfork");
-      tuningforkDir.mkdirs();
-      return tuningforkDir;
-    }
-  }
-
-  public static Optional<File> findAssets() {
-    File currentDirectory = new File(new File(".").getAbsolutePath());
-    return findAssets(currentDirectory);
-  }
-
-  public static File findAssets(String projectPath) {
-    String absolutePath = projectPath.split(".idea")[0];
-    File currentDirectory = new File(absolutePath);
-    Optional<File> foundDirectory = findAssets(currentDirectory);
-    return createDir(foundDirectory, absolutePath);
-  }
-
-  public static Optional<File> findAssets(File currentDirectory) {
-    File[] files = currentDirectory.listFiles();
-
-    if (files.length == 0) {
-      return Optional.empty();
+    private static File createDir(Optional<File> foundDirectory, String absolutePath) {
+        if (foundDirectory.isPresent()) {
+            return foundDirectory.get();
+        } else {
+            File tuningforkDir = new File(absolutePath + "/src/assets/tuningfork");
+            tuningforkDir.mkdirs();
+            return tuningforkDir;
+        }
     }
 
-    List<File> foundDir =
-        Arrays.stream(files)
-            .filter(file -> Pattern.matches(".*/assets/tuningfork", file.getAbsolutePath()))
-            .collect(Collectors.toList());
-
-    if (foundDir.size() == 1) {
-      File match = foundDir.get(0);
-      if (match.isDirectory()) {
-        return Optional.of(match);
-      }
-    } else if (foundDir.size() == 0) {
-      List<Optional<File>> foundRecursive =
-          Arrays.stream(files)
-              .filter(File::isDirectory)
-              .map(AssetsFinder::findAssets)
-              .filter(Optional::isPresent)
-              .collect(Collectors.toList());
-      if (foundRecursive.size() > 0) {
-        return foundRecursive.get(0);
-      }
+    public static Optional<File> findAssets() {
+        File currentDirectory = new File(new File(".").getAbsolutePath());
+        return findAssets(currentDirectory);
     }
 
-    return Optional.empty();
-  }
+    public static File findAssets(String projectPath) {
+        String absolutePath = projectPath.split(".idea")[0];
+        File currentDirectory = new File(absolutePath);
+        Optional<File> foundDirectory = findAssets(currentDirectory);
+        return createDir(foundDirectory, absolutePath);
+    }
+
+    public static Optional<File> findAssets(File currentDirectory) {
+        File[] files = currentDirectory.listFiles();
+
+        if (files.length == 0) {
+            return Optional.empty();
+        }
+
+        List<File> foundDir =
+                Arrays.stream(files)
+                        .filter(file
+                                -> Pattern.matches(".*/assets/tuningfork", file.getAbsolutePath()))
+                        .collect(Collectors.toList());
+
+        if (foundDir.size() == 1) {
+            File match = foundDir.get(0);
+            if (match.isDirectory()) {
+                return Optional.of(match);
+            }
+        } else if (foundDir.size() == 0) {
+            List<Optional<File>> foundRecursive = Arrays.stream(files)
+                                                          .filter(File::isDirectory)
+                                                          .map(AssetsFinder::findAssets)
+                                                          .filter(Optional::isPresent)
+                                                          .collect(Collectors.toList());
+            if (foundRecursive.size() > 0) {
+                return foundRecursive.get(0);
+            }
+        }
+
+        return Optional.empty();
+    }
 }

@@ -21,7 +21,7 @@ namespace tuningfork {
 CrashHandler::CrashHandler() {}
 CrashHandler::~CrashHandler() {}
 void CrashHandler::Init(std::function<bool(void)> callback) {}
-}  // namespace tuningfork
+} // namespace tuningfork
 #else
 
 #include <pthread.h>
@@ -51,7 +51,7 @@ const int signals[]{SIGILL, SIGTRAP, SIGABRT, SIGBUS, SIGFPE, SIGSEGV};
 const int numSignals = sizeof(signals) / sizeof(signals[0]);
 
 // static
-const char *GetSignalName(int signal) {
+const char* GetSignalName(int signal) {
     switch (signal) {
         case SIGILL:
             return "SIGILL";
@@ -86,7 +86,7 @@ struct kernel_sigset_t {
 struct kernel_sigaction {
     union {
         void (*sa_handler_x)(int);
-        void (*sa_sigaction_x)(int, siginfo_t *, void *);
+        void (*sa_sigaction_x)(int, siginfo_t*, void*);
     };
     size_t sa_flags;
     void (*sa_restorer)();
@@ -141,10 +141,10 @@ void InstallDefaultHandler(int sig) {
     syscall(__NR_rt_sigaction, sig, &sa, NULL, sizeof(kernel_sigset_t));
 }
 
-std::vector<CrashHandler *> *g_handler_stack_ = NULL;
+std::vector<CrashHandler*>* g_handler_stack_ = NULL;
 pthread_mutex_t handler_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-}  // namespace
+} // namespace
 
 CrashHandler::CrashHandler() {}
 
@@ -152,7 +152,7 @@ void CrashHandler::Init(std::function<bool(void)> callback) {
     if (handler_inited_) return;
     pthread_mutex_lock(&handler_mutex);
     if (!g_handler_stack_) {
-        g_handler_stack_ = new std::vector<CrashHandler *>;
+        g_handler_stack_ = new std::vector<CrashHandler*>;
     }
     InstallAlternateStackLocked();
     InstallHandlerLocked();
@@ -174,8 +174,8 @@ void CrashHandler::Init(std::function<bool(void)> callback) {
 CrashHandler::~CrashHandler() {
     if (!handler_inited_) return;
     pthread_mutex_lock(&handler_mutex);
-    std::vector<CrashHandler *>::iterator handler =
-        std::find(g_handler_stack_->begin(), g_handler_stack_->end(), this);
+    std::vector<CrashHandler*>::iterator handler =
+            std::find(g_handler_stack_->begin(), g_handler_stack_->end(), this);
     g_handler_stack_->erase(handler);
     if (g_handler_stack_->empty()) {
         delete g_handler_stack_;
@@ -227,11 +227,10 @@ void CrashHandler::RestoreHandlerLocked() {
     handlers_installed = false;
 }
 // static
-void CrashHandler::SignalHandler(int sig, siginfo_t *info, void *ucontext) {
+void CrashHandler::SignalHandler(int sig, siginfo_t* info, void* ucontext) {
     pthread_mutex_lock(&handler_mutex);
     struct sigaction cur_handler;
-    if (sigaction(sig, NULL, &cur_handler) == 0 &&
-        (cur_handler.sa_flags & SA_SIGINFO) == 0) {
+    if (sigaction(sig, NULL, &cur_handler) == 0 && (cur_handler.sa_flags & SA_SIGINFO) == 0) {
         sigemptyset(&cur_handler.sa_mask);
         sigaddset(&cur_handler.sa_mask, sig);
 
@@ -263,9 +262,8 @@ void CrashHandler::SignalHandler(int sig, siginfo_t *info, void *ucontext) {
     }
 }
 
-bool CrashHandler::HandlerSignal(int sig, siginfo_t *info, void *ucontext) {
-    ALOGI("HandlerSignal: sig %d, name %s, pid %d", sig, GetSignalName(sig),
-          info->si_pid);
+bool CrashHandler::HandlerSignal(int sig, siginfo_t* info, void* ucontext) {
+    ALOGI("HandlerSignal: sig %d, name %s, pid %d", sig, GetSignalName(sig), info->si_pid);
 
     std::ofstream file(tf_crash_info_file_);
     if (file.is_open()) {
@@ -280,5 +278,5 @@ bool CrashHandler::HandlerSignal(int sig, siginfo_t *info, void *ucontext) {
     // Crash is not handled here, return false to restore other signal handlers.
     return false;
 }
-}  // namespace tuningfork
+} // namespace tuningfork
 #endif

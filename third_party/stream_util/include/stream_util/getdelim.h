@@ -34,11 +34,11 @@ namespace stream_util {
 /**
  * Implementation of getdelim(3)
  */
-ssize_t getdelim(char **buf, size_t *bufsiz, int delimiter, FILE *fp);
+ssize_t getdelim(char** buf, size_t* bufsiz, int delimiter, FILE* fp);
 
 /**
  * Implementation of getline(3)
  */
-ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
+ssize_t getline(char** buf, size_t* bufsiz, FILE* fp);
 
-}  // namespace stream_util
+} // namespace stream_util

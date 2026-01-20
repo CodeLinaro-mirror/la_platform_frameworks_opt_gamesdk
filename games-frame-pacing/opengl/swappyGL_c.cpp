@@ -37,7 +37,7 @@ void SWAPPY_VERSION_SYMBOL();
  * @return false if Swappy failed to initialize.
  * @see SwappyGL_destroy
  */
-bool SwappyGL_init(JNIEnv *env, jobject jactivity) {
+bool SwappyGL_init(JNIEnv* env, jobject jactivity) {
     // This call ensures that the header and the linked library are from the
     // same version (if not, a linker error will be triggered because of an
     // undefined symbolP).
@@ -45,13 +45,15 @@ bool SwappyGL_init(JNIEnv *env, jobject jactivity) {
     return SwappyGL::init(env, jactivity);
 }
 
-void SwappyGL_destroy() { SwappyGL::destroyInstance(); }
+void SwappyGL_destroy() {
+    SwappyGL::destroyInstance();
+}
 
 void SwappyGL_onChoreographer(int64_t frameTimeNanos) {
     SwappyGL::onChoreographer(frameTimeNanos);
 }
 
-bool SwappyGL_setWindow(ANativeWindow *window) {
+bool SwappyGL_setWindow(ANativeWindow* window) {
     return SwappyGL::setWindow(window);
 }
 
@@ -79,7 +81,9 @@ uint64_t SwappyGL_getSwapIntervalNS() {
     return SwappyGL::getSwapDuration().count();
 }
 
-void SwappyGL_injectTracer(const SwappyTracer *t) { SwappyGL::addTracer(t); }
+void SwappyGL_injectTracer(const SwappyTracer* t) {
+    SwappyGL::addTracer(t);
+}
 
 void SwappyGL_setAutoSwapInterval(bool enabled) {
     SwappyGL::setAutoSwapInterval(enabled);
@@ -93,17 +97,25 @@ void SwappyGL_setAutoPipelineMode(bool enabled) {
     SwappyGL::setAutoPipelineMode(enabled);
 }
 
-void SwappyGL_enableStats(bool enabled) { SwappyGL::enableStats(enabled); }
+void SwappyGL_enableStats(bool enabled) {
+    SwappyGL::enableStats(enabled);
+}
 
 void SwappyGL_recordFrameStart(EGLDisplay display, EGLSurface surface) {
     SwappyGL::recordFrameStart(display, surface);
 }
 
-void SwappyGL_getStats(SwappyStats *stats) { SwappyGL::getStats(stats); }
+void SwappyGL_getStats(SwappyStats* stats) {
+    SwappyGL::getStats(stats);
+}
 
-void SwappyGL_clearStats() { SwappyGL::clearStats(); }
+void SwappyGL_clearStats() {
+    SwappyGL::clearStats();
+}
 
-bool SwappyGL_isEnabled() { return SwappyGL::isEnabled(); }
+bool SwappyGL_isEnabled() {
+    return SwappyGL::isEnabled();
+}
 
 void SwappyGL_setFenceTimeoutNS(uint64_t t) {
     SwappyGL::setFenceTimeout(std::chrono::nanoseconds(t));
@@ -117,17 +129,17 @@ void SwappyGL_setBufferStuffingFixWait(int32_t n_frames) {
     SwappyGL::setBufferStuffingFixWait(n_frames);
 }
 
-void SwappyGL_uninjectTracer(const SwappyTracer *t) {
+void SwappyGL_uninjectTracer(const SwappyTracer* t) {
     SwappyGL::removeTracer(t);
 }
 
-int SwappyGL_getSupportedRefreshPeriodsNS(uint64_t *out_refreshrates,
-                                          int allocated_entries) {
-    return SwappyGL::getSupportedRefreshPeriodsNS(out_refreshrates,
-                                                  allocated_entries);
+int SwappyGL_getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries) {
+    return SwappyGL::getSupportedRefreshPeriodsNS(out_refreshrates, allocated_entries);
 }
 
-void SwappyGL_resetFramePacing() { SwappyGL::resetFramePacing(); }
+void SwappyGL_resetFramePacing() {
+    SwappyGL::resetFramePacing();
+}
 
 void SwappyGL_enableFramePacing(bool enable) {
     SwappyGL::enableFramePacing(enable);
@@ -137,4 +149,4 @@ void SwappyGL_enableBlockingWait(bool enable) {
     SwappyGL::enableBlockingWait(enable);
 }
 
-}  // extern "C" {
+} // extern "C" {

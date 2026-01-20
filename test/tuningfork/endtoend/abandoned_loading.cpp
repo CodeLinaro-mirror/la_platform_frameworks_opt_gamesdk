@@ -23,8 +23,7 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 static std::string AbandonedLoadingEvent(int type, const std::string& duration,
-                                         const std::string& interval,
-                                         bool add_group = false) {
+                                         const std::string& interval, bool add_group = false) {
     std::string any_string = "\"!REGEX([^\"]*)\"";
     std::stringstream str;
     str << R"TF(
@@ -135,12 +134,10 @@ static std::string AbandonedLoadingEvent(int type, const std::string& duration,
 }
 
 TuningForkLogEvent TestEndToEndWithAbandonedLoadingTimes(bool add_group) {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
     const uint64_t kOneGigaBitPerSecond = 1000000000L;
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
-                     NTICKS - 1, 2, {}, {}, 0 /* use default */, 3);
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
+                                 NTICKS - 1, 2, {}, {}, 0 /* use default */, 3);
     TuningForkTest test(settings, milliseconds(10));
     tf::SerializedAnnotation loading_annotation = {1, 2, 3};
     Annotation ann;
@@ -149,26 +146,24 @@ TuningForkLogEvent TestEndToEndWithAbandonedLoadingTimes(bool add_group) {
                   TUNINGFORK_ERROR_INVALID_LOADING_STATE);
         TuningFork_LoadingTimeMetadata group_metadata{};
         group_metadata.state = TuningFork_LoadingTimeMetadata::FIRST_RUN;
-        EXPECT_EQ(tf::StartLoadingGroup(&group_metadata, nullptr, nullptr),
-                  TUNINGFORK_ERROR_OK);
+        EXPECT_EQ(tf::StartLoadingGroup(&group_metadata, nullptr, nullptr), TUNINGFORK_ERROR_OK);
     }
     tf::LoadingHandle loading_handle;
-    tf::StartRecordingLoadingTime(
-        {tf::LoadingTimeMetadata::LoadingState::WARM_START,
-         tf::LoadingTimeMetadata::LoadingSource::NETWORK, 100,
-         tf::LoadingTimeMetadata::NetworkConnectivity::WIFI,
-         kOneGigaBitPerSecond, 0},
-        loading_annotation, loading_handle);
+    tf::StartRecordingLoadingTime({tf::LoadingTimeMetadata::LoadingState::WARM_START,
+                                   tf::LoadingTimeMetadata::LoadingSource::NETWORK, 100,
+                                   tf::LoadingTimeMetadata::NetworkConnectivity::WIFI,
+                                   kOneGigaBitPerSecond, 0},
+                                  loading_annotation, loading_handle);
     test.IncrementTime(5);
     {
         std::unique_lock<std::mutex> lock(*test.rmutex_);
         tf::ReportLifecycleEvent(TUNINGFORK_STATE_ONSTOP);
         // Wait for the upload thread to complete writing the string
-        EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                    std::cv_status::no_timeout)
-            << "Timeout";
-        auto expected_result = AbandonedLoadingEvent(
-            2, "0.05s", "{\"end\": \"0.15s\",\"start\": \"0.1s\"}", add_group);
+        EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+                << "Timeout";
+        auto expected_result =
+                AbandonedLoadingEvent(2, "0.05s", "{\"end\": \"0.15s\",\"start\": \"0.1s\"}",
+                                      add_group);
         CheckStrings("Lifecycle event", test.Result(), expected_result);
         test.ClearResult();
     }
@@ -177,11 +172,11 @@ TuningForkLogEvent TestEndToEndWithAbandonedLoadingTimes(bool add_group) {
         std::unique_lock<std::mutex> lock(*test.rmutex_);
         tf::ReportLifecycleEvent(TUNINGFORK_STATE_ONSTART);
         // Wait for the upload thread to complete writing the string
-        EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                    std::cv_status::no_timeout)
-            << "Timeout";
-        auto expected_result = AbandonedLoadingEvent(
-            1, "0.1s", "{\"end\": \"0.2s\",\"start\": \"0.1s\"}", add_group);
+        EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+                << "Timeout";
+        auto expected_result =
+                AbandonedLoadingEvent(1, "0.1s", "{\"end\": \"0.2s\",\"start\": \"0.1s\"}",
+                                      add_group);
         CheckStrings("Lifecycle event", test.Result(), expected_result);
         test.ClearResult();
     }
@@ -194,9 +189,8 @@ TuningForkLogEvent TestEndToEndWithAbandonedLoadingTimes(bool add_group) {
         tf::FrameTick(TFTICK_PACED_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -208,12 +202,10 @@ TEST(EndToEndTest, WithAbandonedLoadingTimes) {
     CheckStrings("LoadingTimes", result, ExpectedResultWithLoading());
 }
 
-extern TuningForkLogEvent ExpectedResultWithLoadingGroups(bool use_stop,
-                                                          bool with_annotation);
+extern TuningForkLogEvent ExpectedResultWithLoadingGroups(bool use_stop, bool with_annotation);
 TEST(EndToEndTest, WithAbandonedLoadingTimesAndGroup) {
     auto result = TestEndToEndWithAbandonedLoadingTimes(true /* add_group */);
-    CheckStrings("LoadingTimes", result,
-                 ExpectedResultWithLoadingGroups(false, false));
+    CheckStrings("LoadingTimes", result, ExpectedResultWithLoadingGroups(false, false));
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

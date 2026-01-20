@@ -18,6 +18,9 @@ cmake_minimum_required(VERSION 3.4.1)
 project(swappy-test)
 
 set (TEST_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../..")
+
+set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
+
 add_subdirectory( "${TEST_DIR}" test_dir)
 
 include_directories("${TEST_DIR}"

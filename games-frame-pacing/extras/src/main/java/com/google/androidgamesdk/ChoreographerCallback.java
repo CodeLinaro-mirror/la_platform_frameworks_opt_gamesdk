@@ -2,9 +2,8 @@ package com.google.androidgamesdk;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Choreographer;
 import android.util.Log;
-
+import android.view.Choreographer;
 
 public class ChoreographerCallback implements Choreographer.FrameCallback {
     private static final String LOG_TAG = "ChoreographerCallback";
@@ -52,5 +51,4 @@ public class ChoreographerCallback implements Choreographer.FrameCallback {
     }
 
     public native void nOnChoreographer(long cookie, long frameTimeNanos);
-
 }

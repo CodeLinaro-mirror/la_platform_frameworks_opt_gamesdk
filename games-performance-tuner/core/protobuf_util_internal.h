@@ -26,52 +26,50 @@ namespace tuningfork {
 namespace file_descriptor {
 
 struct EnumField {
-  int number;
-  std::string name;
-  std::string type_name;
+    int number;
+    std::string name;
+    std::string type_name;
 };
 
 struct MessageType {
-  std::string name;
-  std::vector<EnumField> fields;
-  bool GetField(int field_number, const EnumField** field) const {
-    for (auto& f : fields) {
-      if (f.number == field_number) {
-        *field = &f;
-        return true;
-      }
+    std::string name;
+    std::vector<EnumField> fields;
+    bool GetField(int field_number, const EnumField** field) const {
+        for (auto& f : fields) {
+            if (f.number == field_number) {
+                *field = &f;
+                return true;
+            }
+        }
+        return false;
     }
-    return false;
-  }
 };
 
 struct EnumType {
-  std::string name;
-  std::vector<std::pair<std::string, int>> value;
+    std::string name;
+    std::vector<std::pair<std::string, int>> value;
 };
 
 struct File {
-  std::string package;
-  std::vector<MessageType> message_type;
-  std::vector<EnumType> enum_type;
-  // Find the enum in the file with type name given and convert the int value
-  // to an enum field string value
-  std::string GetEnumValueString(const std::string& full_enum_type_name,
-                                 int value) {
-    // Take off the file prefix, e.g. .com.tuningfork.something.Loading ->
-    // Loading
-    if (full_enum_type_name.find(package) != 1) return "Error";
-    std::string enum_type_name =
-        full_enum_type_name.substr(package.length() + 2);  // 2 dots
-    for (auto& e : enum_type) {
-      if (enum_type_name == e.name) {
-        for (auto& v : e.value) {
-          if (v.second == value) return v.first;
+    std::string package;
+    std::vector<MessageType> message_type;
+    std::vector<EnumType> enum_type;
+    // Find the enum in the file with type name given and convert the int value
+    // to an enum field string value
+    std::string GetEnumValueString(const std::string& full_enum_type_name, int value) {
+        // Take off the file prefix, e.g. .com.tuningfork.something.Loading ->
+        // Loading
+        if (full_enum_type_name.find(package) != 1) return "Error";
+        std::string enum_type_name = full_enum_type_name.substr(package.length() + 2); // 2 dots
+        for (auto& e : enum_type) {
+            if (enum_type_name == e.name) {
+                for (auto& v : e.value) {
+                    if (v.second == value) return v.first;
+                }
+            }
         }
-      }
+        return "Error";
     }
-    return "Error";
-  }
 };
 
 // Load and decode the descriptor from dev_tuningfork.bin
@@ -82,6 +80,6 @@ File* GetTuningForkFileDescriptor();
 // Returns nullptr on error.
 ProtobufSerialization* GetTuningForkFileDescriptorSerialization();
 
-}  // namespace file_descriptor
+} // namespace file_descriptor
 
-}  // namespace tuningfork
+} // namespace tuningfork

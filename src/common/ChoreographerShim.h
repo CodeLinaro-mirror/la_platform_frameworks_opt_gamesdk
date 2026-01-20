@@ -34,7 +34,7 @@ typedef struct AChoreographer AChoreographer;
  */
 typedef void (*AChoreographer_frameCallback)(long frameTimeNanos, void* data);
 
-#endif  // __ANDROID_API__ < 24
+#endif // __ANDROID_API__ < 24
 
 #if __ANDROID_API__ < 30
 
@@ -43,10 +43,9 @@ typedef void (*AChoreographer_frameCallback)(long frameTimeNanos, void* data);
  * changes. It's passed the new vsync period in nanoseconds, as well as the data
  * pointer provided by the application that registered a callback.
  */
-typedef void (*AChoreographer_refreshRateCallback)(int64_t vsyncPeriodNanos,
-                                                   void* data);
+typedef void (*AChoreographer_refreshRateCallback)(int64_t vsyncPeriodNanos, void* data);
 
-#endif  // __ANDROID_API__ < 30
+#endif // __ANDROID_API__ < 30
 
 #if __ANDROID_API__ < 33
 
@@ -63,35 +62,32 @@ typedef struct AChoreographerFrameCallbackData AChoreographerFrameCallbackData;
  * well as the \c data pointer provided by the application that registered a
  * callback. The \c callbackData does not outlive the callback.
  */
-typedef void (*AChoreographer_vsyncCallback)(
-    const AChoreographerFrameCallbackData* callbackData, void* data);
+typedef void (*AChoreographer_vsyncCallback)(const AChoreographerFrameCallbackData* callbackData,
+                                             void* data);
 
 /**
  * Posts a callback to be run when the application should begin rendering the
  * next frame. The data pointer provided will be passed to the callback function
  * when it's called.
  */
-typedef void (*AChoreographer_postVsyncCallback)(
-    AChoreographer* choreographer, AChoreographer_vsyncCallback callback,
-    void* data);
+typedef void (*AChoreographer_postVsyncCallback)(AChoreographer* choreographer,
+                                                 AChoreographer_vsyncCallback callback, void* data);
 
 /**
  * Gets the index of the platform-preferred frame timeline.
  * The preferred frame timeline is the default
  * by which the platform scheduled the app, based on the device configuration.
  */
-typedef size_t (
-    *AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex)(
-    const AChoreographerFrameCallbackData* data);
+typedef size_t (*AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex)(
+        const AChoreographerFrameCallbackData* data);
 
 /**
  * Gets the time in nanoseconds at which the frame described at the given \c
  * index is expected to be presented. This time should be used to advance any
  * animation clocks.
  */
-typedef int64_t (
-    *AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos)(
-    const AChoreographerFrameCallbackData* data, size_t index);
+typedef int64_t (*AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos)(
+        const AChoreographerFrameCallbackData* data, size_t index);
 
 /**
  * Gets the time in nanoseconds at which the frame described at the given \c
@@ -102,8 +98,7 @@ typedef int64_t (
  * \param index index of a frame timeline, in \f( [0, FrameTimelinesLength) \f).
  * See AChoreographerFrameCallbackData_getFrameTimelinesLength()
  */
-typedef int64_t (
-    *AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos)(
-    const AChoreographerFrameCallbackData* data, size_t index);
+typedef int64_t (*AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos)(
+        const AChoreographerFrameCallbackData* data, size_t index);
 
-#endif  // __ANDROID_API__ < 33
+#endif // __ANDROID_API__ < 33

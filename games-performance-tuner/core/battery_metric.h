@@ -33,44 +33,47 @@
 namespace tuningfork {
 
 struct BatteryMetric {
-  int32_t percentage_, current_charge_;
-  Duration time_since_process_start_;
-  bool app_on_foreground_, is_charging_, power_save_mode_;
+    int32_t percentage_, current_charge_;
+    Duration time_since_process_start_;
+    bool app_on_foreground_, is_charging_, power_save_mode_;
 
-  BatteryMetric(int32_t percentage, int32_t currentCharge,
-                const Duration& timeSinceProcessStart, bool appOnForeground,
-                bool isCharging, bool powerSaveMode)
-      : percentage_(percentage),
-        current_charge_(currentCharge),
-        time_since_process_start_(timeSinceProcessStart),
-        app_on_foreground_(appOnForeground),
-        is_charging_(isCharging),
-        power_save_mode_(powerSaveMode) {}
+    BatteryMetric(int32_t percentage, int32_t currentCharge, const Duration& timeSinceProcessStart,
+                  bool appOnForeground, bool isCharging, bool powerSaveMode)
+          : percentage_(percentage),
+            current_charge_(currentCharge),
+            time_since_process_start_(timeSinceProcessStart),
+            app_on_foreground_(appOnForeground),
+            is_charging_(isCharging),
+            power_save_mode_(powerSaveMode) {}
 };
 
 struct BatteryMetricData : public MetricData {
-  MetricId metric_id_;
-  std::vector<BatteryMetric> data_;
+    MetricId metric_id_;
+    std::vector<BatteryMetric> data_;
 
-  BatteryMetricData(MetricId metric_id)
-      : MetricData(MetricType()), metric_id_(metric_id) {}
+    BatteryMetricData(MetricId metric_id) : MetricData(MetricType()), metric_id_(metric_id) {}
 
-  void Record(bool app_on_foreground, Duration time_since_process_start,
-              IBatteryProvider* battery_provider) {
-    std::ostringstream out;
-    out << time_since_process_start.count();
-    BatteryMetric metric(battery_provider->GetBatteryPercentage(),
-                         battery_provider->GetBatteryCharge(),
-                         time_since_process_start, app_on_foreground,
-                         battery_provider->IsBatteryCharging(),
-                         battery_provider->IsPowerSaveModeEnabled());
+    void Record(bool app_on_foreground, Duration time_since_process_start,
+                IBatteryProvider* battery_provider) {
+        std::ostringstream out;
+        out << time_since_process_start.count();
+        BatteryMetric metric(battery_provider->GetBatteryPercentage(),
+                             battery_provider->GetBatteryCharge(), time_since_process_start,
+                             app_on_foreground, battery_provider->IsBatteryCharging(),
+                             battery_provider->IsPowerSaveModeEnabled());
 
-    data_.push_back(metric);
-  }
+        data_.push_back(metric);
+    }
 
-  virtual void Clear() override { data_.erase(data_.begin(), data_.end()); }
-  virtual size_t Count() const override { return data_.size(); }
-  static Metric::Type MetricType() { return Metric::Type::BATTERY; }
+    virtual void Clear() override {
+        data_.erase(data_.begin(), data_.end());
+    }
+    virtual size_t Count() const override {
+        return data_.size();
+    }
+    static Metric::Type MetricType() {
+        return Metric::Type::BATTERY;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

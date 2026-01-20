@@ -40,10 +40,11 @@ MemoryAdvice_ErrorCode Init(const char* params) {
     return s_impl->InitializationErrorCode();
 }
 
-MemoryAdvice_ErrorCode Init() { return Init(parameters_string); }
+MemoryAdvice_ErrorCode Init() {
+    return Init(parameters_string);
+}
 
-extern "C" void MemoryAdvice_JsonSerialization_Dealloc(
-    MemoryAdvice_JsonSerialization* c) {
+extern "C" void MemoryAdvice_JsonSerialization_Dealloc(MemoryAdvice_JsonSerialization* c) {
     if (c->json) {
         free(c->json);
         c->json = nullptr;
@@ -65,38 +66,32 @@ MemoryAdvice_ErrorCode GetAdvice(MemoryAdvice_JsonSerialization* advice) {
 
 MemoryAdvice_MemoryState GetMemoryState() {
     if (s_impl == nullptr)
-        return static_cast<MemoryAdvice_MemoryState>(
-            MEMORYADVICE_ERROR_NOT_INITIALIZED);
+        return static_cast<MemoryAdvice_MemoryState>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
     return s_impl->GetMemoryState();
 }
 
 int64_t GetAvailableMemory() {
-    if (s_impl == nullptr)
-        return static_cast<int64_t>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
+    if (s_impl == nullptr) return static_cast<int64_t>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
     return s_impl->GetAvailableMemory();
 }
 
 float GetPercentageAvailableMemory() {
-    if (s_impl == nullptr)
-        return static_cast<float>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
+    if (s_impl == nullptr) return static_cast<float>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
     return s_impl->GetPercentageAvailableMemory();
 }
 
 int64_t GetTotalMemory() {
-    if (s_impl == nullptr)
-        return static_cast<int64_t>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
+    if (s_impl == nullptr) return static_cast<int64_t>(MEMORYADVICE_ERROR_NOT_INITIALIZED);
     return s_impl->GetTotalMemory();
 }
 
 MemoryAdvice_ErrorCode RegisterWatcher(uint64_t intervalMillis,
-                                       MemoryAdvice_WatcherCallback callback,
-                                       void* user_data) {
+                                       MemoryAdvice_WatcherCallback callback, void* user_data) {
     if (s_impl == nullptr) return MEMORYADVICE_ERROR_NOT_INITIALIZED;
     return s_impl->RegisterWatcher(intervalMillis, callback, user_data);
 }
 
-MemoryAdvice_ErrorCode UnregisterWatcher(
-    MemoryAdvice_WatcherCallback callback) {
+MemoryAdvice_ErrorCode UnregisterWatcher(MemoryAdvice_WatcherCallback callback) {
     if (s_impl == nullptr) return MEMORYADVICE_ERROR_NOT_INITIALIZED;
     return s_impl->UnregisterWatcher(callback);
 }
@@ -106,4 +101,4 @@ int32_t BaseTests() {
     return s_impl->BaseTests();
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

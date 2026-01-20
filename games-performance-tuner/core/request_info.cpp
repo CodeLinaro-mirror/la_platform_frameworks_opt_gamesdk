@@ -47,7 +47,7 @@ const char* skipSpace(const char* q) {
     return q;
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 namespace tuningfork {
 
@@ -57,8 +57,8 @@ RequestInfo RequestInfo::ForThisGameAndDevice(const Settings& settings) {
     // Total memory
     if (gamesdk::jni::IsValid()) {
         android::app::MemoryInfo memory_info;
-        java::Object obj = AppContext().getSystemService(
-            android::content::Context::ACTIVITY_SERVICE);
+        java::Object obj =
+                AppContext().getSystemService(android::content::Context::ACTIVITY_SERVICE);
         android::app::ActivityManager activity_manager(std::move(obj));
         activity_manager.getMemoryInfo(memory_info);
         info.total_memory_bytes = (uint64_t)memory_info.totalMem();
@@ -93,21 +93,20 @@ RequestInfo RequestInfo::ForThisGameAndDevice(const Settings& settings) {
     info.cpu_max_freq_hz.clear();
     for (int index = 0;; ++index) {
         std::stringstream str;
-        str << "/sys/devices/system/cpu/cpu" << index
-            << "/cpufreq/cpuinfo_max_freq";
+        str << "/sys/devices/system/cpu/cpu" << index << "/cpufreq/cpuinfo_max_freq";
         auto cpu_freq_file = slurpFile(str.str().c_str());
         if (cpu_freq_file.empty()) break;
         uint64_t freq;
         std::istringstream cstr(cpu_freq_file);
         cstr >> freq;
-        info.cpu_max_freq_hz.push_back(freq * 1000);  // File is in kHz
+        info.cpu_max_freq_hz.push_back(freq * 1000); // File is in kHz
     }
 
     if (gamesdk::jni::IsValid()) {
         using namespace gamesdk::jni;
 
-        info.apk_version_code = apk_utils::GetVersionCode(
-            &info.apk_package_name, &info.gl_es_version);
+        info.apk_version_code =
+                apk_utils::GetVersionCode(&info.apk_package_name, &info.gl_es_version);
         info.model = android::os::Build::MODEL().C();
         info.brand = android::os::Build::BRAND().C();
         info.product = android::os::Build::PRODUCT().C();
@@ -119,8 +118,8 @@ RequestInfo RequestInfo::ForThisGameAndDevice(const Settings& settings) {
 
         android::util::DisplayMetrics display_metrics;
 
-        java::Object win_obj = AppContext().getSystemService(
-            android::content::Context::WINDOW_SERVICE);
+        java::Object win_obj =
+                AppContext().getSystemService(android::content::Context::WINDOW_SERVICE);
 
         if (win_obj.valid()) {
             android::view::WindowManager window_manager(std::move(win_obj));
@@ -128,9 +127,8 @@ RequestInfo RequestInfo::ForThisGameAndDevice(const Settings& settings) {
             info.height_pixels = display_metrics.heightPixels();
             info.width_pixels = display_metrics.widthPixels();
         } else {
-            ALOGE(
-                "Unable to get WindowManager service, width and height will be "
-                "set to 0");
+            ALOGE("Unable to get WindowManager service, width and height will be "
+                  "set to 0");
         }
     }
     info.tuningfork_version = TUNINGFORK_PACKED_VERSION;
@@ -140,11 +138,13 @@ RequestInfo RequestInfo::ForThisGameAndDevice(const Settings& settings) {
 
 static RequestInfo s_request_info;
 
-/*static*/ RequestInfo& RequestInfo::CachedValue() { return s_request_info; }
+/*static*/ RequestInfo& RequestInfo::CachedValue() {
+    return s_request_info;
+}
 
 void RequestInfo::UpdateMemoryValues(IMemInfoProvider* meminfo_provider) {
     meminfo_provider->UpdateMemInfo();
     swap_total_bytes = meminfo_provider->GetMemInfoSwapTotalBytes();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

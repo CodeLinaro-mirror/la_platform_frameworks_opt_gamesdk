@@ -40,12 +40,11 @@ static jobject s_context = 0;
 class GTestRecorder : public EmptyTestEventListener {
     std::vector<std::string> tests_started;
     std::set<std::string> tests_completed;
-    std::vector<std::string> success_invocations;  // Only from SUCCESS macros
-    std::vector<std::string>
-        failed_invocations;  // From any failed EXPECT or ASSERT
+    std::vector<std::string> success_invocations; // Only from SUCCESS macros
+    std::vector<std::string> failed_invocations;  // From any failed EXPECT or ASSERT
     bool overall_success;
 
-   private:
+private:
     // Called before any test activity starts.
     void OnTestProgramStart(const UnitTest& /* unit_test */) override {
         overall_success = false;
@@ -58,8 +57,7 @@ class GTestRecorder : public EmptyTestEventListener {
 
     // Called before a test starts.
     void OnTestStart(const TestInfo& test_info) override {
-        tests_started.push_back(std::string(test_info.test_case_name()) + "." +
-                                test_info.name());
+        tests_started.push_back(std::string(test_info.test_case_name()) + "." + test_info.name());
     }
 
     // Called after a failed assertion or a SUCCEED() invocation.
@@ -69,8 +67,7 @@ class GTestRecorder : public EmptyTestEventListener {
         // added to tests_started is the test for which we are getting the
         // partial result.
         record << tests_started.back() << '\n';
-        record << test_part_result.file_name() << ":"
-               << test_part_result.line_number() << '\n'
+        record << test_part_result.file_name() << ":" << test_part_result.line_number() << '\n'
                << test_part_result.summary() << '\n';
         if (test_part_result.failed()) {
             failed_invocations.push_back(record.str());
@@ -81,22 +78,19 @@ class GTestRecorder : public EmptyTestEventListener {
 
     // Called after a test ends.
     void OnTestEnd(const TestInfo& test_info) override {
-        tests_completed.insert(std::string(test_info.test_case_name()) + "." +
-                               test_info.name());
+        tests_completed.insert(std::string(test_info.test_case_name()) + "." + test_info.name());
     }
 
-   public:
+public:
     std::string GetResult() const {
         std::stringstream result;
-        result << "TESTS " << (overall_success ? "SUCCEEDED" : "FAILED")
-               << '\n';
+        result << "TESTS " << (overall_success ? "SUCCEEDED" : "FAILED") << '\n';
         result << "\nTests that ran to completion:\n";
         for (auto s : tests_completed) {
             result << s << '\n';
         }
         std::set<std::string> not_completed;
-        std::set<std::string> tests_started_set(tests_started.begin(),
-                                                tests_started.end());
+        std::set<std::string> tests_started_set(tests_started.begin(), tests_started.end());
         std::set_difference(tests_started_set.begin(), tests_started_set.end(),
                             tests_completed.begin(), tests_completed.end(),
                             std::inserter(not_completed, not_completed.end()));
@@ -116,15 +110,17 @@ class GTestRecorder : public EmptyTestEventListener {
         }
         return result.str();
     }
-};  // class GTestRecorder
+}; // class GTestRecorder
 
-}  // namespace
+} // namespace
 
 extern "C" bool init_jni_for_tests() {
     gamesdk::jni::Init(s_env, s_context);
     return true;
 }
-extern "C" void clear_jni_for_tests() { gamesdk::jni::Destroy(); }
+extern "C" void clear_jni_for_tests() {
+    gamesdk::jni::Destroy();
+}
 
 extern "C" int shared_main(int argc, char* argv[], JNIEnv* env, jobject context,
                            std::string& messages) {

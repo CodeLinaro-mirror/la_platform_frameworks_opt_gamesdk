@@ -16,7 +16,6 @@ package com.google.android.games.paddleboat;
 import android.os.Build;
 import android.view.InputDevice;
 import android.view.MotionEvent;
-
 import java.util.List;
 
 public class GameControllerInfo {
@@ -120,8 +119,8 @@ public class GameControllerInfo {
             int axisIndex = motionRange.getAxis();
             if (axisIndex >= 0 && axisIndex < MAX_AXIS_COUNT) {
                 int axisSource = motionRange.getSource();
-                if (axisSource == InputDevice.SOURCE_JOYSTICK ||
-                        axisSource == InputDevice.SOURCE_GAMEPAD) {
+                if (axisSource == InputDevice.SOURCE_JOYSTICK
+                        || axisSource == InputDevice.SOURCE_GAMEPAD) {
                     if (axisIndex <= AXIS_COUNT_LOW) {
                         mGameControllerDeviceInfoArray[DEVICEINFO_INDEX_AXISBITS_LOW] |=
                                 (1 << axisIndex);
@@ -141,8 +140,7 @@ public class GameControllerInfo {
         if ((GetGameControllerFlags() & GameControllerManager.DEVICEFLAG_VIRTUAL_MOUSE) != 0) {
             int axisIndex = MotionEvent.AXIS_PRESSURE;
             if (axisIndex <= AXIS_COUNT_LOW) {
-                mGameControllerDeviceInfoArray[DEVICEINFO_INDEX_AXISBITS_LOW] |=
-                        (1 << axisIndex);
+                mGameControllerDeviceInfoArray[DEVICEINFO_INDEX_AXISBITS_LOW] |= (1 << axisIndex);
             } else {
                 mGameControllerDeviceInfoArray[DEVICEINFO_INDEX_AXISBITS_HIGH] |=
                         (1 << (axisIndex - (AXIS_COUNT_LOW + 1)));
@@ -152,7 +150,6 @@ public class GameControllerInfo {
             mGameControllerAxisFlatArray[axisIndex] = 0.0f;
             mGameControllerAxisFuzzArray[axisIndex] = 0.0f;
         }
-
     }
 
     private void EnumerateInfoArray(InputDevice inputDevice) {

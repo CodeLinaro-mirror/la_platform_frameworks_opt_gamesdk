@@ -41,8 +41,7 @@ namespace memory_advice {
 
 using namespace json11;
 
-MemoryAdvice_ErrorCode DefaultPredictor::Init(std::string model_file,
-                                              std::string features_file) {
+MemoryAdvice_ErrorCode DefaultPredictor::Init(std::string model_file, std::string features_file) {
     apk_utils::NativeAsset features_asset(features_file.c_str());
 
     if (!features_asset.IsValid()) {
@@ -51,15 +50,12 @@ MemoryAdvice_ErrorCode DefaultPredictor::Init(std::string model_file,
 
     // Get the features list from the corresponding asset,
     // which is a list of strings denoted with quotation marks
-    std::string features_string(
-        static_cast<const char*>(AAsset_getBuffer(features_asset)));
+    std::string features_string(static_cast<const char*>(AAsset_getBuffer(features_asset)));
 
     // remove the extra bits from the beginning and end of the files
     // including the brackets
-    features_string =
-        features_string.substr(features_string.find_first_of('\n') + 1);
-    features_string =
-        features_string.substr(0, features_string.find_first_of(']'));
+    features_string = features_string.substr(features_string.find_first_of('\n') + 1);
+    features_string = features_string.substr(0, features_string.find_first_of(']'));
     int pos = 0;
 
     // Iterate over the list, searching for quotation marks to figure out
@@ -67,9 +63,8 @@ MemoryAdvice_ErrorCode DefaultPredictor::Init(std::string model_file,
     // features placed inside a vector<string>
     while ((pos = features_string.find_first_of('\n')) != std::string::npos) {
         std::string line(features_string.substr(0, pos));
-        features.push_back(
-            line.substr(line.find_first_of("/") + 1,
-                        line.find_last_of("\"") - line.find_first_of("/") - 1));
+        features.push_back(line.substr(line.find_first_of("/") + 1,
+                                       line.find_last_of("\"") - line.find_first_of("/") - 1));
         features_string = features_string.substr(pos + 1);
     }
 
@@ -79,10 +74,8 @@ MemoryAdvice_ErrorCode DefaultPredictor::Init(std::string model_file,
     if (!model_asset->IsValid()) {
         return MEMORYADVICE_ERROR_TFLITE_MODEL_INVALID;
     }
-    const char* model_buffer =
-        static_cast<const char*>(AAsset_getBuffer(*model_asset));
-    const size_t model_capacity =
-        static_cast<size_t>(AAsset_getLength(*model_asset));
+    const char* model_buffer = static_cast<const char*>(AAsset_getBuffer(*model_asset));
+    const size_t model_capacity = static_cast<size_t>(AAsset_getLength(*model_asset));
 
     // Create a tensorflow lite model using the asset file
 
@@ -124,7 +117,7 @@ float IPredictor::GetFromPath(std::string feature, Json::object data) {
 
         if (result.is_number()) {
             return static_cast<float>(result.number_value()) /
-                GetFromPath("baseline/constant/MemoryInfo/totalMem", data);
+                    GetFromPath("baseline/constant/MemoryInfo/totalMem", data);
         } else {
             return 0.0f;
         }
@@ -147,20 +140,17 @@ float DefaultPredictor::Predict(Json::object data) {
     for (int idx = 0; idx != features.size(); idx++) {
         input_data[idx] = GetFromPath(features[idx], data);
     }
-    TfLiteTensor* input_tensor =
-        TfLiteInterpreterGetInputTensor(interpreter, 0);
-    TfLiteTensorCopyFromBuffer(input_tensor, input_data,
-                               features.size() * sizeof(float));
+    TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
+    TfLiteTensorCopyFromBuffer(input_tensor, input_data, features.size() * sizeof(float));
 
     TfLiteInterpreterInvoke(interpreter);
 
     float output_data;
 
-    const TfLiteTensor* output_tensor =
-        TfLiteInterpreterGetOutputTensor(interpreter, 0);
+    const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
     TfLiteTensorCopyToBuffer(output_tensor, &output_data, 1 * sizeof(float));
 
     return output_data;
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

@@ -25,7 +25,7 @@
 #if defined(__clang__) && (!defined(SWIG))
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
 #else
-#define THREAD_ANNOTATION_ATTRIBUTE__(x)  // no-op
+#define THREAD_ANNOTATION_ATTRIBUTE__(x) // no-op
 #endif
 
 #if !defined GAMESDK_THREAD_CHECKS
@@ -35,11 +35,9 @@
 #if GAMESDK_THREAD_CHECKS
 #define GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(x))
 
-#define REQUIRES(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+#define REQUIRES(...) THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
 
-#define NO_THREAD_SAFETY_ANALYSIS \
-  THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+#define NO_THREAD_SAFETY_ANALYSIS THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
 #else
 #define GUARDED_BY(x)
 #define REQUIRES(...)
@@ -57,18 +55,18 @@ void setAffinity(Affinity affinity);
 struct ThreadImpl;
 
 class Thread {
-  std::unique_ptr<ThreadImpl> impl_;
+    std::unique_ptr<ThreadImpl> impl_;
 
- public:
-  Thread() noexcept;
-  Thread(std::function<void()>&& fn) noexcept;
-  Thread(Thread&& rhs) noexcept;
-  Thread(const Thread&) = delete;
-  Thread& operator=(Thread&& rhs) noexcept;
-  Thread& operator=(const Thread& rhs) = delete;
-  ~Thread();
-  void join();
-  bool joinable();
+public:
+    Thread() noexcept;
+    Thread(std::function<void()>&& fn) noexcept;
+    Thread(Thread&& rhs) noexcept;
+    Thread(const Thread&) = delete;
+    Thread& operator=(Thread&& rhs) noexcept;
+    Thread& operator=(const Thread& rhs) = delete;
+    ~Thread();
+    void join();
+    bool joinable();
 };
 
-}  // namespace swappy
+} // namespace swappy

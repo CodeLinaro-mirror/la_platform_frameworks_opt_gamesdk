@@ -2,15 +2,17 @@ import org.gradle.internal.os.OperatingSystem;
 
 apply plugin: 'com.android.application'
 
-def stlType = 'c++_static'
+def stlType = 'c++_shared'
 
 android {
-    compileSdkVersion 31
+    namespace "com.tuningfork.insightsdemo"
+    compileSdk 31
     ndkVersion '23.1.7779620'
+
     defaultConfig {
         applicationId "com.tuningfork.insightsdemo"
-        minSdkVersion 19
-        targetSdkVersion 35
+        minSdk 21
+        targetSdk 35
         versionCode 31
         versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

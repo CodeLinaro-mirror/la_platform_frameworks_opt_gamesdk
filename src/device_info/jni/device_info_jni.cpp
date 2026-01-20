@@ -24,8 +24,7 @@
 
 extern "C" {
 JNIEXPORT jbyteArray JNICALL
-Java_com_google_androidgamesdk_GameSdkDeviceInfoJni_getProtoSerialized(
-    JNIEnv* env, jobject) {
+Java_com_google_androidgamesdk_GameSdkDeviceInfoJni_getProtoSerialized(JNIEnv* env, jobject) {
     androidgamesdk_deviceinfo_GameSdkDeviceInfoWithErrors proto;
     androidgamesdk_deviceinfo::ProtoDataHolder protoDataHolder;
     androidgamesdk_deviceinfo::createProto(proto, protoDataHolder);
@@ -33,24 +32,19 @@ Java_com_google_androidgamesdk_GameSdkDeviceInfoJni_getProtoSerialized(
     // Serialize the proto, returning nullptr in case of failure.
     jbyteArray result = nullptr;
     size_t bufferSize = -1;
-    if (pb_get_encoded_size(
-            &bufferSize,
-            androidgamesdk_deviceinfo_GameSdkDeviceInfoWithErrors_fields,
-            &proto)) {
+    if (pb_get_encoded_size(&bufferSize,
+                            androidgamesdk_deviceinfo_GameSdkDeviceInfoWithErrors_fields, &proto)) {
         pb_byte_t* buffer = new pb_byte_t[bufferSize];
         pb_ostream_t stream = pb_ostream_from_buffer(buffer, bufferSize);
-        if (pb_encode(
-                &stream,
-                androidgamesdk_deviceinfo_GameSdkDeviceInfoWithErrors_fields,
-                &proto)) {
+        if (pb_encode(&stream, androidgamesdk_deviceinfo_GameSdkDeviceInfoWithErrors_fields,
+                      &proto)) {
             result = env->NewByteArray(bufferSize);
-            env->SetByteArrayRegion(
-                result, 0, bufferSize,
-                static_cast<jbyte*>(static_cast<void*>(buffer)));
+            env->SetByteArrayRegion(result, 0, bufferSize,
+                                    static_cast<jbyte*>(static_cast<void*>(buffer)));
         }
         delete[] buffer;
     }
 
     return result;
 }
-}  // extern "C"
+} // extern "C"

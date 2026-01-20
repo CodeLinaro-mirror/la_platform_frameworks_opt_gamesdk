@@ -42,26 +42,25 @@
 // They are provided here as a non-trivial custom time zone example, and if you really
 // have to have Posix time zones, you're welcome to use this one.
 
-#include "date/tz.h"
 #include <cctype>
 #include <ostream>
 #include <string>
 
-namespace Posix
-{
+#include "date/tz.h"
 
-namespace detail
-{
+namespace Posix {
+
+namespace detail {
 
 #if HAS_STRING_VIEW
 
 using string_t = std::string_view;
 
-#else  // !HAS_STRING_VIEW
+#else // !HAS_STRING_VIEW
 
 using string_t = std::string;
 
-#endif  // !HAS_STRING_VIEW
+#endif // !HAS_STRING_VIEW
 
 class rule;
 
@@ -70,134 +69,123 @@ unsigned read_date(const string_t& s, unsigned i, rule& r);
 unsigned read_name(const string_t& s, unsigned i, std::string& name);
 unsigned read_signed_time(const string_t& s, unsigned i, std::chrono::seconds& t);
 unsigned read_unsigned_time(const string_t& s, unsigned i, std::chrono::seconds& t);
-unsigned read_unsigned(const string_t& s, unsigned i,  unsigned limit, unsigned& u);
+unsigned read_unsigned(const string_t& s, unsigned i, unsigned limit, unsigned& u);
 
-class rule
-{
-    enum {off, J, M, N};
+class rule {
+    enum { off, J, M, N };
 
     date::month m_;
     date::weekday wd_;
-    unsigned short n_    : 14;
+    unsigned short n_ : 14;
     unsigned short mode_ : 2;
     std::chrono::duration<std::int32_t> time_ = std::chrono::hours{2};
 
 public:
     rule() : mode_(off) {}
 
-    bool ok() const {return mode_ != off;}
+    bool ok() const {
+        return mode_ != off;
+    }
     date::local_seconds operator()(date::year y) const;
 
     friend std::ostream& operator<<(std::ostream& os, const rule& r);
     friend unsigned read_date(const string_t& s, unsigned i, rule& r);
 };
 
-inline
-date::local_seconds
-rule::operator()(date::year y) const
-{
-    using date::local_days;
-    using date::January;
+inline date::local_seconds rule::operator()(date::year y) const {
     using date::days;
+    using date::January;
     using date::last;
+    using date::local_days;
     using sec = std::chrono::seconds;
     date::local_seconds t;
-    switch (mode_)
-    {
-    case J:
-        t = local_days{y/January/0} + days{n_ + (y.is_leap() && n_ > 59)} + sec{time_};
-        break;
-    case M:
-        t = (n_ == 5 ? local_days{y/m_/wd_[last]} : local_days{y/m_/wd_[n_]}) + sec{time_};
-        break;
-    case N:
-        t = local_days{y/January/1} + days{n_} + sec{time_};
-        break;
-    default:
-        assert(!"rule called with bad mode");
+    switch (mode_) {
+        case J:
+            t = local_days{y / January / 0} + days{n_ + (y.is_leap() && n_ > 59)} + sec{time_};
+            break;
+        case M:
+            t = (n_ == 5 ? local_days{y / m_ / wd_[last]} : local_days{y / m_ / wd_[n_]}) +
+                    sec{time_};
+            break;
+        case N:
+            t = local_days{y / January / 1} + days{n_} + sec{time_};
+            break;
+        default:
+            assert(!"rule called with bad mode");
     }
     return t;
 }
 
-inline
-std::ostream&
-operator<<(std::ostream& os, const rule& r)
-{
-    switch (r.mode_)
-    {
-    case rule::J:
-        os << 'J' << r.n_ << date::format(" %T", r.time_);
-        break;
-    case rule::M:
-        if (r.n_ == 5)
-            os << r.m_/r.wd_[date::last];
-        else
-            os << r.m_/r.wd_[r.n_];
-        os <<  date::format(" %T", r.time_);
-        break;
-    case rule::N:
-        os << r.n_ << date::format(" %T", r.time_);
-        break;
-    default:
-        break;
+inline std::ostream& operator<<(std::ostream& os, const rule& r) {
+    switch (r.mode_) {
+        case rule::J:
+            os << 'J' << r.n_ << date::format(" %T", r.time_);
+            break;
+        case rule::M:
+            if (r.n_ == 5)
+                os << r.m_ / r.wd_[date::last];
+            else
+                os << r.m_ / r.wd_[r.n_];
+            os << date::format(" %T", r.time_);
+            break;
+        case rule::N:
+            os << r.n_ << date::format(" %T", r.time_);
+            break;
+        default:
+            break;
     }
     return os;
 }
 
-}  // namespace detail
+} // namespace detail
 
-class time_zone
-{
-    std::string          std_abbrev_;
-    std::string          dst_abbrev_ = {};
+class time_zone {
+    std::string std_abbrev_;
+    std::string dst_abbrev_ = {};
     std::chrono::seconds offset_;
     std::chrono::seconds save_ = std::chrono::hours{1};
-    detail::rule         start_rule_;
-    detail::rule         end_rule_;
+    detail::rule start_rule_;
+    detail::rule end_rule_;
 
 public:
     explicit time_zone(const detail::string_t& name);
 
     template <class Duration>
-        date::sys_info   get_info(date::sys_time<Duration> st) const;
+    date::sys_info get_info(date::sys_time<Duration> st) const;
     template <class Duration>
-        date::local_info get_info(date::local_time<Duration> tp) const;
+    date::local_info get_info(date::local_time<Duration> tp) const;
 
     template <class Duration>
-        date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-        to_sys(date::local_time<Duration> tp) const;
+    date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type> to_sys(
+            date::local_time<Duration> tp) const;
 
     template <class Duration>
-        date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-        to_sys(date::local_time<Duration> tp, date::choose z) const;
+    date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type> to_sys(
+            date::local_time<Duration> tp, date::choose z) const;
 
     template <class Duration>
-        date::local_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-        to_local(date::sys_time<Duration> tp) const;
+    date::local_time<typename std::common_type<Duration, std::chrono::seconds>::type> to_local(
+            date::sys_time<Duration> tp) const;
 
     friend std::ostream& operator<<(std::ostream& os, const time_zone& z);
 
-    const time_zone* operator->() const {return this;}
+    const time_zone* operator->() const {
+        return this;
+    }
 };
 
-inline
-time_zone::time_zone(const detail::string_t& s)
-{
+inline time_zone::time_zone(const detail::string_t& s) {
     using detail::read_name;
     using detail::read_signed_time;
     using detail::throw_invalid;
     auto i = read_name(s, 0, std_abbrev_);
     i = read_signed_time(s, i, offset_);
     offset_ = -offset_;
-    if (i != s.size())
-    {
+    if (i != s.size()) {
         i = read_name(s, i, dst_abbrev_);
-        if (i != s.size())
-        {
-            if (s[i] != ',')
-                i = read_signed_time(s, i, save_);
-            if (i != s.size())
-            {
+        if (i != s.size()) {
+            if (s[i] != ',') i = read_signed_time(s, i, save_);
+            if (i != s.size()) {
                 if (s[i] != ',')
                     throw_invalid(s, i, "Expecting end of string or ',' to start rule");
                 ++i;
@@ -206,98 +194,84 @@ time_zone::time_zone(const detail::string_t& s)
                     throw_invalid(s, i, "Expecting ',' and then the ending rule");
                 ++i;
                 i = read_date(s, i, end_rule_);
-                if (i != s.size())
-                    throw_invalid(s, i, "Found unexpected trailing characters");
+                if (i != s.size()) throw_invalid(s, i, "Found unexpected trailing characters");
             }
         }
     }
 }
 
 template <class Duration>
-date::sys_info
-time_zone::get_info(date::sys_time<Duration> st) const
-{
-    using date::sys_info;
-    using date::year_month_day;
-    using date::sys_seconds;
-    using date::sys_days;
-    using date::floor;
+date::sys_info time_zone::get_info(date::sys_time<Duration> st) const {
     using date::ceil;
     using date::days;
-    using date::years;
-    using date::year;
-    using date::January;
     using date::December;
+    using date::floor;
+    using date::January;
     using date::last;
+    using date::sys_days;
+    using date::sys_info;
+    using date::sys_seconds;
+    using date::year;
+    using date::year_month_day;
+    using date::years;
     using std::chrono::minutes;
     sys_info r{};
     r.offset = offset_;
-    if (start_rule_.ok())
-    {
+    if (start_rule_.ok()) {
         auto y = year_month_day{floor<days>(st)}.year();
         auto start = sys_seconds{(start_rule_(y) - offset_).time_since_epoch()};
-        auto end   = sys_seconds{(end_rule_(y) - (offset_ + save_)).time_since_epoch()};
-        if (start <= st && st < end)
-        {
+        auto end = sys_seconds{(end_rule_(y) - (offset_ + save_)).time_since_epoch()};
+        if (start <= st && st < end) {
             r.begin = start;
             r.end = end;
             r.offset += save_;
             r.save = ceil<minutes>(save_);
             r.abbrev = dst_abbrev_;
-        }
-        else if (st < start)
-        {
-            r.begin = sys_seconds{(end_rule_(y-years{1}) -
-                                   (offset_ + save_)).time_since_epoch()};
+        } else if (st < start) {
+            r.begin = sys_seconds{(end_rule_(y - years{1}) - (offset_ + save_)).time_since_epoch()};
             r.end = start;
             r.abbrev = std_abbrev_;
-        }
-        else  // st >= end
+        } else // st >= end
         {
             r.begin = end;
-            r.end = sys_seconds{(start_rule_(y+years{1}) - offset_).time_since_epoch()};
+            r.end = sys_seconds{(start_rule_(y + years{1}) - offset_).time_since_epoch()};
             r.abbrev = std_abbrev_;
         }
-    }
-    else  //  constant offset
+    } else //  constant offset
     {
-        r.begin = sys_days{year::min()/January/1};
-        r.end   = sys_days{year::max()/December/last};
+        r.begin = sys_days{year::min() / January / 1};
+        r.end = sys_days{year::max() / December / last};
         r.abbrev = std_abbrev_;
     }
     return r;
 }
 
 template <class Duration>
-date::local_info
-time_zone::get_info(date::local_time<Duration> tp) const
-{
-    using date::local_info;
-    using date::year_month_day;
+date::local_info time_zone::get_info(date::local_time<Duration> tp) const {
+    using date::ceil;
     using date::days;
+    using date::December;
+    using date::January;
+    using date::last;
+    using date::local_info;
     using date::sys_days;
     using date::sys_seconds;
-    using date::years;
     using date::year;
-    using date::ceil;
-    using date::January;
-    using date::December;
-    using date::last;
-    using std::chrono::seconds;
+    using date::year_month_day;
+    using date::years;
     using std::chrono::minutes;
+    using std::chrono::seconds;
     local_info r{};
     using date::floor;
-    if (start_rule_.ok())
-    {
+    if (start_rule_.ok()) {
         auto y = year_month_day{floor<days>(tp)}.year();
         auto start = sys_seconds{(start_rule_(y) - offset_).time_since_epoch()};
-        auto end   = sys_seconds{(end_rule_(y) - (offset_ + save_)).time_since_epoch()};
+        auto end = sys_seconds{(end_rule_(y) - (offset_ + save_)).time_since_epoch()};
         auto utcs = sys_seconds{floor<seconds>(tp - offset_).time_since_epoch()};
         auto utcd = sys_seconds{floor<seconds>(tp - (offset_ + save_)).time_since_epoch()};
-        if ((utcs < start) != (utcd < start))
-        {
-            r.first.begin = sys_seconds{(end_rule_(y-years{1}) -
-                                         (offset_ + save_)).time_since_epoch()};
+        if ((utcs < start) != (utcd < start)) {
+            r.first.begin =
+                    sys_seconds{(end_rule_(y - years{1}) - (offset_ + save_)).time_since_epoch()};
             r.first.end = start;
             r.first.offset = offset_;
             r.first.abbrev = std_abbrev_;
@@ -306,53 +280,40 @@ time_zone::get_info(date::local_time<Duration> tp) const
             r.second.abbrev = dst_abbrev_;
             r.second.offset = offset_ + save_;
             r.second.save = ceil<minutes>(save_);
-            r.result = save_ > seconds{0} ? local_info::nonexistent
-                                          : local_info::ambiguous;
-        }
-        else if ((utcs < end) != (utcd < end))
-        {
+            r.result = save_ > seconds{0} ? local_info::nonexistent : local_info::ambiguous;
+        } else if ((utcs < end) != (utcd < end)) {
             r.first.begin = start;
             r.first.end = end;
             r.first.offset = offset_ + save_;
             r.first.save = ceil<minutes>(save_);
             r.first.abbrev = dst_abbrev_;
             r.second.begin = end;
-            r.second.end = sys_seconds{(start_rule_(y+years{1}) -
-                                        offset_).time_since_epoch()};
+            r.second.end = sys_seconds{(start_rule_(y + years{1}) - offset_).time_since_epoch()};
             r.second.abbrev = std_abbrev_;
             r.second.offset = offset_;
-            r.result = save_ > seconds{0} ? local_info::ambiguous
-                                          : local_info::nonexistent;
-        }
-        else if (utcs < start)
-        {
-            r.first.begin = sys_seconds{(end_rule_(y-years{1}) -
-                                   (offset_ + save_)).time_since_epoch()};
+            r.result = save_ > seconds{0} ? local_info::ambiguous : local_info::nonexistent;
+        } else if (utcs < start) {
+            r.first.begin =
+                    sys_seconds{(end_rule_(y - years{1}) - (offset_ + save_)).time_since_epoch()};
             r.first.end = start;
             r.first.offset = offset_;
             r.first.abbrev = std_abbrev_;
-        }
-        else if (utcs < end)
-        {
+        } else if (utcs < end) {
             r.first.begin = start;
             r.first.end = end;
             r.first.offset = offset_ + save_;
             r.first.save = ceil<minutes>(save_);
             r.first.abbrev = dst_abbrev_;
-        }
-        else
-        {
+        } else {
             r.first.begin = end;
-            r.first.end = sys_seconds{(start_rule_(y+years{1}) -
-                                       offset_).time_since_epoch()};
+            r.first.end = sys_seconds{(start_rule_(y + years{1}) - offset_).time_since_epoch()};
             r.first.abbrev = std_abbrev_;
             r.first.offset = offset_;
         }
-    }
-    else  //  constant offset
+    } else //  constant offset
     {
-        r.first.begin = sys_days{year::min()/January/1};
-        r.first.end   = sys_days{year::max()/December/last};
+        r.first.begin = sys_days{year::min() / January / 1};
+        r.first.end = sys_days{year::max() / December / last};
         r.first.abbrev = std_abbrev_;
         r.first.offset = offset_;
     }
@@ -360,12 +321,11 @@ time_zone::get_info(date::local_time<Duration> tp) const
 }
 
 template <class Duration>
-date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-time_zone::to_sys(date::local_time<Duration> tp) const
-{
+date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type> time_zone::to_sys(
+        date::local_time<Duration> tp) const {
+    using date::ambiguous_local_time;
     using date::local_info;
     using date::sys_time;
-    using date::ambiguous_local_time;
     auto i = get_info(tp);
     if (i.result == local_info::nonexistent)
         throw nonexistent_local_time(tp, i);
@@ -375,29 +335,23 @@ time_zone::to_sys(date::local_time<Duration> tp) const
 }
 
 template <class Duration>
-date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-time_zone::to_sys(date::local_time<Duration> tp, date::choose z) const
-{
+date::sys_time<typename std::common_type<Duration, std::chrono::seconds>::type> time_zone::to_sys(
+        date::local_time<Duration> tp, date::choose z) const {
+    using date::choose;
     using date::local_info;
     using date::sys_time;
-    using date::choose;
     auto i = get_info(tp);
-    if (i.result == local_info::nonexistent)
-    {
+    if (i.result == local_info::nonexistent) {
         return i.first.end;
-    }
-    else if (i.result == local_info::ambiguous)
-    {
-        if (z == choose::latest)
-            return sys_time<Duration>{tp.time_since_epoch()} - i.second.offset;
+    } else if (i.result == local_info::ambiguous) {
+        if (z == choose::latest) return sys_time<Duration>{tp.time_since_epoch()} - i.second.offset;
     }
     return sys_time<Duration>{tp.time_since_epoch()} - i.first.offset;
 }
 
 template <class Duration>
 date::local_time<typename std::common_type<Duration, std::chrono::seconds>::type>
-time_zone::to_local(date::sys_time<Duration> tp) const
-{
+time_zone::to_local(date::sys_time<Duration> tp) const {
     using date::local_time;
     using std::chrono::seconds;
     using LT = local_time<typename std::common_type<Duration, seconds>::type>;
@@ -405,10 +359,7 @@ time_zone::to_local(date::sys_time<Duration> tp) const
     return LT{(tp + i.offset).time_since_epoch()};
 }
 
-inline
-std::ostream&
-operator<<(std::ostream& os, const time_zone& z)
-{
+inline std::ostream& operator<<(std::ostream& os, const time_zone& z) {
     using date::operator<<;
     os << '{';
     os << z.std_abbrev_ << ", " << z.dst_abbrev_ << date::format(", %T, ", z.offset_)
@@ -416,50 +367,34 @@ operator<<(std::ostream& os, const time_zone& z)
     return os;
 }
 
-namespace detail
-{
+namespace detail {
 
-inline
-void
-throw_invalid(const string_t& s, unsigned i, const string_t& message)
-{
+inline void throw_invalid(const string_t& s, unsigned i, const string_t& message) {
     throw std::runtime_error(std::string("Invalid time_zone initializer.\n") +
-                             std::string(message) + ":\n" +
-                             std::string(s) + '\n' +
-                             "\x1b[1;32m" +
-                             std::string(i, '~') + '^' +
-                             std::string(s.size()-i-1, '~') +
+                             std::string(message) + ":\n" + std::string(s) + '\n' + "\x1b[1;32m" +
+                             std::string(i, '~') + '^' + std::string(s.size() - i - 1, '~') +
                              "\x1b[0m");
 }
 
-inline
-unsigned
-read_date(const string_t& s, unsigned i, rule& r)
-{
+inline unsigned read_date(const string_t& s, unsigned i, rule& r) {
     using date::month;
     using date::weekday;
-    if (i == s.size())
-        throw_invalid(s, i, "Expected rule but found end of string");
-    if (s[i] == 'J')
-    {
+    if (i == s.size()) throw_invalid(s, i, "Expected rule but found end of string");
+    if (s[i] == 'J') {
         ++i;
         unsigned n;
         i = read_unsigned(s, i, 3, n);
         r.mode_ = rule::J;
         r.n_ = n;
-    }
-    else if (s[i] == 'M')
-    {
+    } else if (s[i] == 'M') {
         ++i;
         unsigned m;
         i = read_unsigned(s, i, 2, m);
-        if (i == s.size() || s[i] != '.')
-            throw_invalid(s, i, "Expected '.' after month");
+        if (i == s.size() || s[i] != '.') throw_invalid(s, i, "Expected '.' after month");
         ++i;
         unsigned n;
         i = read_unsigned(s, i, 1, n);
-        if (i == s.size() || s[i] != '.')
-            throw_invalid(s, i, "Expected '.' after weekday index");
+        if (i == s.size() || s[i] != '.') throw_invalid(s, i, "Expected '.' after weekday index");
         ++i;
         unsigned wd;
         i = read_unsigned(s, i, 1, wd);
@@ -467,18 +402,14 @@ read_date(const string_t& s, unsigned i, rule& r)
         r.m_ = month{m};
         r.wd_ = weekday{wd};
         r.n_ = n;
-    }
-    else if (std::isdigit(s[i]))
-    {
+    } else if (std::isdigit(s[i])) {
         unsigned n;
         i = read_unsigned(s, i, 3, n);
         r.mode_ = rule::N;
         r.n_ = n;
-    }
-    else
+    } else
         throw_invalid(s, i, "Expected 'J', 'M', or a digit to start rule");
-    if (i != s.size() && s[i] == '/')
-    {
+    if (i != s.size() && s[i] == '/') {
         ++i;
         std::chrono::seconds t;
         i = read_unsigned_time(s, i, t);
@@ -487,80 +418,55 @@ read_date(const string_t& s, unsigned i, rule& r)
     return i;
 }
 
-inline
-unsigned
-read_name(const string_t& s, unsigned i, std::string& name)
-{
-    if (i == s.size())
-        throw_invalid(s, i, "Expected a name but found end of string");
-    if (s[i] == '<')
-    {
+inline unsigned read_name(const string_t& s, unsigned i, std::string& name) {
+    if (i == s.size()) throw_invalid(s, i, "Expected a name but found end of string");
+    if (s[i] == '<') {
         ++i;
-        while (true)
-        {
+        while (true) {
             if (i == s.size())
-                throw_invalid(s, i,
-                              "Expected to find closing '>', but found end of string");
-            if (s[i] == '>')
-                break;
+                throw_invalid(s, i, "Expected to find closing '>', but found end of string");
+            if (s[i] == '>') break;
             name.push_back(s[i]);
             ++i;
         }
         ++i;
-    }
-    else
-    {
-        while (i != s.size() && std::isalpha(s[i]))
-        {
+    } else {
+        while (i != s.size() && std::isalpha(s[i])) {
             name.push_back(s[i]);
             ++i;
         }
     }
-    if (name.size() < 3)
-        throw_invalid(s, i, "Found name to be shorter than 3 characters");
+    if (name.size() < 3) throw_invalid(s, i, "Found name to be shorter than 3 characters");
     return i;
 }
 
-inline
-unsigned
-read_signed_time(const string_t& s, unsigned i,
-                                  std::chrono::seconds& t)
-{
-    if (i == s.size())
-        throw_invalid(s, i, "Expected to read signed time, but found end of string");
+inline unsigned read_signed_time(const string_t& s, unsigned i, std::chrono::seconds& t) {
+    if (i == s.size()) throw_invalid(s, i, "Expected to read signed time, but found end of string");
     bool negative = false;
-    if (s[i] == '-')
-    {
+    if (s[i] == '-') {
         negative = true;
         ++i;
-    }
-    else if (s[i] == '+')
+    } else if (s[i] == '+')
         ++i;
     i = read_unsigned_time(s, i, t);
-    if (negative)
-        t = -t;
+    if (negative) t = -t;
     return i;
 }
 
-inline
-unsigned
-read_unsigned_time(const string_t& s, unsigned i, std::chrono::seconds& t)
-{
-    using std::chrono::seconds;
-    using std::chrono::minutes;
+inline unsigned read_unsigned_time(const string_t& s, unsigned i, std::chrono::seconds& t) {
     using std::chrono::hours;
+    using std::chrono::minutes;
+    using std::chrono::seconds;
     if (i == s.size())
         throw_invalid(s, i, "Expected to read unsigned time, but found end of string");
     unsigned x;
     i = read_unsigned(s, i, 2, x);
     t = hours{x};
-    if (i != s.size() && s[i] == ':')
-    {
+    if (i != s.size() && s[i] == ':') {
         ++i;
         i = read_unsigned(s, i, 2, x);
         t += minutes{x};
-        if (i != s.size() && s[i] == ':')
-        {
+        if (i != s.size() && s[i] == ':') {
             ++i;
             i = read_unsigned(s, i, 2, x);
             t += seconds{x};
@@ -569,10 +475,7 @@ read_unsigned_time(const string_t& s, unsigned i, std::chrono::seconds& t)
     return i;
 }
 
-inline
-unsigned
-read_unsigned(const string_t& s, unsigned i, unsigned limit, unsigned& u)
-{
+inline unsigned read_unsigned(const string_t& s, unsigned i, unsigned limit, unsigned& u) {
     if (i == s.size() || !std::isdigit(s[i]))
         throw_invalid(s, i, "Expected to find a decimal digit");
     u = static_cast<unsigned>(s[i] - '0');
@@ -582,46 +485,33 @@ read_unsigned(const string_t& s, unsigned i, unsigned limit, unsigned& u)
     return i;
 }
 
-}  // namespace detail
+} // namespace detail
 
-}  // namespace Posix
+} // namespace Posix
 
-namespace date
-{
+namespace date {
 
 template <>
-struct zoned_traits<Posix::time_zone>
-{
-
+struct zoned_traits<Posix::time_zone> {
 #if HAS_STRING_VIEW
 
-    static
-    Posix::time_zone
-    locate_zone(std::string_view name)
-    {
+    static Posix::time_zone locate_zone(std::string_view name) {
         return Posix::time_zone{name};
     }
 
-#else  // !HAS_STRING_VIEW
+#else // !HAS_STRING_VIEW
 
-    static
-    Posix::time_zone
-    locate_zone(const std::string& name)
-    {
+    static Posix::time_zone locate_zone(const std::string& name) {
         return Posix::time_zone{name};
     }
 
-    static
-    Posix::time_zone
-    locate_zone(const char* name)
-    {
+    static Posix::time_zone locate_zone(const char* name) {
         return Posix::time_zone{name};
     }
 
-#endif  // !HAS_STRING_VIEW
-
+#endif // !HAS_STRING_VIEW
 };
 
-}  // namespace date
+} // namespace date
 
-#endif  // PTZ_H
+#endif // PTZ_H

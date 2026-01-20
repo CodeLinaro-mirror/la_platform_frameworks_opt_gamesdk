@@ -24,9 +24,7 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
     month_weekday_last mwdl1 = {feb, sat[last]};
     month_weekday_last mwdl2 = {mar, mon[last]};

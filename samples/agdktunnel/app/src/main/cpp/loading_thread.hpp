@@ -31,62 +31,60 @@ struct AAssetManager;
 #if defined(__clang__) && (!defined(SWIG))
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
 #else
-#define THREAD_ANNOTATION_ATTRIBUTE__(x)  // no-op
+#define THREAD_ANNOTATION_ATTRIBUTE__(x) // no-op
 #endif
 
 #define GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(x))
 
-#define REQUIRES(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+#define REQUIRES(...) THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
 
 struct LoadingCompleteMessage {
-  const char *assetName;
-  size_t bytesRead;
-  void *loadBuffer;
-  bool loadSuccessful;
-  void *userData;  // Opaque pointer to data owned by the load requester.
+    const char* assetName;
+    size_t bytesRead;
+    void* loadBuffer;
+    bool loadSuccessful;
+    void* userData; // Opaque pointer to data owned by the load requester.
 };
 
-typedef void (*LoadingCompleteCallback)(const LoadingCompleteMessage *message);
+typedef void (*LoadingCompleteCallback)(const LoadingCompleteMessage* message);
 
 class LoadingThread {
- public:
-  LoadingThread(AAssetManager *assetManager);
+public:
+    LoadingThread(AAssetManager* assetManager);
 
-  ~LoadingThread();
+    ~LoadingThread();
 
-  // userData is passed without modification to the callback.
-  void StartAssetLoad(const char *assetName, const char *assetPath,
-                      const size_t bufferSize, void *loadBuffer,
-                      LoadingCompleteCallback callback, bool useAssetManager,
-                      void *userData);
+    // userData is passed without modification to the callback.
+    void StartAssetLoad(const char* assetName, const char* assetPath, const size_t bufferSize,
+                        void* loadBuffer, LoadingCompleteCallback callback, bool useAssetManager,
+                        void* userData);
 
- private:
-  void LaunchThread();
+private:
+    void LaunchThread();
 
-  void TerminateThread() REQUIRES(mThreadMutex);
+    void TerminateThread() REQUIRES(mThreadMutex);
 
-  void ThreadMain();
+    void ThreadMain();
 
-  AAssetManager *mAssetManager;
+    AAssetManager* mAssetManager;
 
-  struct LoadingJob {
-    const char *assetName;
-    const char *assetPath;
-    size_t bufferSize;
-    void *loadBuffer;
-    LoadingCompleteCallback callback;
-    bool useAssetManager;
-    void *userData;  // Opaque pointer to data owned by the load requester.
-  };
+    struct LoadingJob {
+        const char* assetName;
+        const char* assetPath;
+        size_t bufferSize;
+        void* loadBuffer;
+        LoadingCompleteCallback callback;
+        bool useAssetManager;
+        void* userData; // Opaque pointer to data owned by the load requester.
+    };
 
-  std::mutex mThreadMutex;
-  std::thread mThread GUARDED_BY(mThreadMutex);
+    std::mutex mThreadMutex;
+    std::thread mThread GUARDED_BY(mThreadMutex);
 
-  std::mutex mWorkMutex;
-  bool mIsActive GUARDED_BY(mWorkMutex) = true;
-  std::queue<LoadingJob *> mWorkQueue GUARDED_BY(mWorkMutex);
-  std::condition_variable_any mWorkCondition;
+    std::mutex mWorkMutex;
+    bool mIsActive GUARDED_BY(mWorkMutex) = true;
+    std::queue<LoadingJob*> mWorkQueue GUARDED_BY(mWorkMutex);
+    std::condition_variable_any mWorkCondition;
 };
 
 #endif

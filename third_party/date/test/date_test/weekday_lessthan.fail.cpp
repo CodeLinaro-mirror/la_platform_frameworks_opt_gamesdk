@@ -24,9 +24,7 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
     auto b = sun < mon;
 }

@@ -15,20 +15,19 @@
  */
 
 // clang-format: do not reorder includes
-#include "common.hpp"
 #include "jni_util.hpp"
+
+#include "common.hpp"
 #include "native_engine.hpp"
 //
 
 static struct JniSetup _jni_setup = {0, 0, 0};
 
-struct JniSetup *GetJNISetup() {
-  if (!_jni_setup.env) {
-    _jni_setup.env = NativeEngine::GetInstance()->GetJniEnv();
-    _jni_setup.thiz = NativeEngine::GetInstance()
-                          ->GetAndroidApp()
-                          ->activity->javaGameActivity;
-    _jni_setup.clazz = _jni_setup.env->GetObjectClass(_jni_setup.thiz);
-  }
-  return &_jni_setup;
+struct JniSetup* GetJNISetup() {
+    if (!_jni_setup.env) {
+        _jni_setup.env = NativeEngine::GetInstance()->GetJniEnv();
+        _jni_setup.thiz = NativeEngine::GetInstance()->GetAndroidApp()->activity->javaGameActivity;
+        _jni_setup.clazz = _jni_setup.env->GetObjectClass(_jni_setup.thiz);
+    }
+    return &_jni_setup;
 }

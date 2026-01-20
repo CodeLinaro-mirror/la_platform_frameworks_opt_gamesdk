@@ -21,14 +21,12 @@
 
 // Internal macros to generate a symbol to track Memory Advice version, do not
 // use directly.
-#define MEMORY_ADVICE_VERSION_CONCAT_NX(PREFIX, MAJOR, MINOR) \
-  PREFIX##_##MAJOR##_##MINOR
+#define MEMORY_ADVICE_VERSION_CONCAT_NX(PREFIX, MAJOR, MINOR) PREFIX##_##MAJOR##_##MINOR
 #define MEMORY_ADVICE_VERSION_CONCAT(PREFIX, MAJOR, MINOR) \
-  MEMORY_ADVICE_VERSION_CONCAT_NX(PREFIX, MAJOR, MINOR)
-#define MEMORY_ADVICE_VERSION_SYMBOL                        \
-  MEMORY_ADVICE_VERSION_CONCAT(MemoryAdvice_version,        \
-                               MEMORY_ADVICE_MAJOR_VERSION, \
-                               MEMORY_ADVICE_MINOR_VERSION)
+    MEMORY_ADVICE_VERSION_CONCAT_NX(PREFIX, MAJOR, MINOR)
+#define MEMORY_ADVICE_VERSION_SYMBOL                                                \
+    MEMORY_ADVICE_VERSION_CONCAT(MemoryAdvice_version, MEMORY_ADVICE_MAJOR_VERSION, \
+                                 MEMORY_ADVICE_MINOR_VERSION)
 
 // Internal function to track MemoryAdvice version bundled in a binary. Do not
 // call directly. If you are getting linker errors related to
@@ -49,9 +47,8 @@ int64_t GetAvailableMemory();
 float GetPercentageAvailableMemory();
 int64_t GetTotalMemory();
 MemoryAdvice_ErrorCode RegisterWatcher(uint64_t intervalMillis,
-                                       MemoryAdvice_WatcherCallback callback,
-                                       void* user_data);
+                                       MemoryAdvice_WatcherCallback callback, void* user_data);
 MemoryAdvice_ErrorCode UnregisterWatcher(MemoryAdvice_WatcherCallback callback);
 int32_t BaseTests();
 
-}  // namespace memory_advice
+} // namespace memory_advice

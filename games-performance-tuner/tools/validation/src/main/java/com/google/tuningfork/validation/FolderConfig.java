@@ -18,10 +18,10 @@ package com.google.tuningfork.validation;
 
 /** Settings and proto file names for assets/tuningfork folder */
 final class FolderConfig {
-
-  public static final String DEV_TUNINGFORK_PROTO = "dev_tuningfork.proto";
-  public static final String DEV_TUNINGFORK_DESCRIPTOR = "dev_tuningfork.descriptor";
-  public static final String TUNINGFORK_SETTINGS_TEXTPROTO = "tuningfork_settings.txt";
-  public static final String TUNINGFORK_SETTINGS_BINARY = "tuningfork_settings.bin";
-  public static final String DEV_FIDELITY_TEXTPROTO = "dev_tuningfork_fidelityparams_.{1,120}.txt";
+    public static final String DEV_TUNINGFORK_PROTO = "dev_tuningfork.proto";
+    public static final String DEV_TUNINGFORK_DESCRIPTOR = "dev_tuningfork.descriptor";
+    public static final String TUNINGFORK_SETTINGS_TEXTPROTO = "tuningfork_settings.txt";
+    public static final String TUNINGFORK_SETTINGS_BINARY = "tuningfork_settings.bin";
+    public static final String DEV_FIDELITY_TEXTPROTO =
+            "dev_tuningfork_fidelityparams_.{1,120}.txt";
 }

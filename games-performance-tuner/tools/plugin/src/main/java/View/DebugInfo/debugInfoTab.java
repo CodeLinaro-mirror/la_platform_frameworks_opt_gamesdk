@@ -48,83 +48,85 @@ import org.jdesktop.swingx.HorizontalLayout;
 import org.jdesktop.swingx.VerticalLayout;
 
 public class debugInfoTab extends TabLayout {
+    private final JLabel debugInfoLabel = new JLabel("Debug Info");
+    private final DebugInfoController debugInfoController;
+    private final Dimension treePanelDimension = new Dimension(300, 200);
+    private LabelScrollPane descriptorPanel;
+    private LabelScrollPane settingsPanel;
+    private JTree jTree;
 
-  private final JLabel debugInfoLabel = new JLabel("Debug Info");
-  private final DebugInfoController debugInfoController;
-  private final Dimension treePanelDimension = new Dimension(300, 200);
-  private LabelScrollPane descriptorPanel;
-  private LabelScrollPane settingsPanel;
-  private JTree jTree;
+    public debugInfoTab() {
+        debugInfoController = new DebugInfoController();
+        this.setLayout(new VerticalLayout());
+        initComponents();
+        addComponents();
+        initRequestServer();
+    }
 
-  public debugInfoTab() {
-    debugInfoController = new DebugInfoController();
-    this.setLayout(new VerticalLayout());
-    initComponents();
-    addComponents();
-    initRequestServer();
-  }
+    private void initRequestServer() {
+        RequestServer.getInstance().setDebugInfoAction(jsonElement -> {
+            String devTuningforkDescriptor =
+                    jsonElement.get("dev_tuningfork_descriptor").getAsString();
+            String settingsBase64 = jsonElement.get("settings").getAsString();
+            List<String> fidelityStrings =
+                    jsonArrayToList(jsonElement.get("fidelity_param_sets").getAsJsonArray());
+            byte[] devTuningforkBytes = Base64.getDecoder().decode(devTuningforkDescriptor);
+            byte[] settingsBytes = Base64.getDecoder().decode(settingsBase64);
+            try {
+                FileDescriptorSet fileDescriptorSet =
+                        FileDescriptorSet.parseFrom(devTuningforkBytes);
+                FileDescriptorProto proto = fileDescriptorSet.getFile(0);
+                FileDescriptor fileDescriptor =
+                        FileDescriptor.buildFrom(proto, new FileDescriptor[] {});
+                Settings settings = Settings.parseFrom(settingsBytes);
+                debugInfoController.setDebugInfo(descriptorPanel, proto.toString());
+                debugInfoController.setDebugInfo(settingsPanel, settings.toBuilder().toString());
+                reloadTree(jTree, fidelityStrings, fileDescriptor);
+            } catch (InvalidProtocolBufferException | DescriptorValidationException e) {
+                e.printStackTrace();
+            }
+        });
+    }
 
-  private void initRequestServer() {
-    RequestServer.getInstance().setDebugInfoAction(jsonElement -> {
-      String devTuningforkDescriptor = jsonElement.get("dev_tuningfork_descriptor").getAsString();
-      String settingsBase64 = jsonElement.get("settings").getAsString();
-      List<String> fidelityStrings = jsonArrayToList(
-          jsonElement.get("fidelity_param_sets").getAsJsonArray());
-      byte[] devTuningforkBytes = Base64.getDecoder().decode(devTuningforkDescriptor);
-      byte[] settingsBytes = Base64.getDecoder().decode(settingsBase64);
-      try {
-        FileDescriptorSet fileDescriptorSet = FileDescriptorSet.parseFrom(devTuningforkBytes);
-        FileDescriptorProto proto = fileDescriptorSet.getFile(0);
-        FileDescriptor fileDescriptor = FileDescriptor.buildFrom(proto, new FileDescriptor[]{});
-        Settings settings = Settings.parseFrom(settingsBytes);
-        debugInfoController.setDebugInfo(descriptorPanel, proto.toString());
-        debugInfoController.setDebugInfo(settingsPanel, settings.toBuilder().toString());
-        reloadTree(jTree, fidelityStrings, fileDescriptor);
-      } catch (InvalidProtocolBufferException | DescriptorValidationException e) {
-        e.printStackTrace();
-      }
-    });
-  }
+    private List<String> jsonArrayToList(JsonArray jsonArray) {
+        return Streams.stream(jsonArray.iterator())
+                .map(JsonElement::getAsString)
+                .collect(Collectors.toList());
+    }
 
-  private List<String> jsonArrayToList(JsonArray jsonArray) {
-    return Streams.stream(jsonArray.iterator())
-        .map(JsonElement::getAsString)
-        .collect(Collectors.toList());
-  }
+    private void initComponents() {
+        jTree = new Tree();
+        jTree.setRootVisible(false);
+        jTree.setSelectionModel(new NonLeafSelection());
+        jTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+        debugInfoLabel.setFont(getMainFont());
+        descriptorPanel = new LabelScrollPane(275, 200);
+        settingsPanel = new LabelScrollPane(275, 200);
+        jTree.setBackground(UIUtil.getWindowColor());
+    }
 
-  private void initComponents() {
-    jTree = new Tree();
-    jTree.setRootVisible(false);
-    jTree.setSelectionModel(new NonLeafSelection());
-    jTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-    debugInfoLabel.setFont(getMainFont());
-    descriptorPanel = new LabelScrollPane(275, 200);
-    settingsPanel = new LabelScrollPane(275, 200);
-    jTree.setBackground(UIUtil.getWindowColor());
-  }
+    private void addComponents() {
+        this.add(debugInfoLabel);
+        JPanel mainPanel = new JPanel(new VerticalLayout(10));
+        JPanel childPanel = new JPanel(new HorizontalLayout(0));
+        childPanel.add(descriptorPanel.getPanel());
+        descriptorPanel.getPanel().setBorder(BorderFactory.createTitledBorder("Descriptor"));
+        childPanel.add(Box.createHorizontalStrut(15));
+        childPanel.add(settingsPanel.getPanel());
+        settingsPanel.getPanel().setBorder(BorderFactory.createTitledBorder("Settings"));
+        mainPanel.setBorder(BorderFactory.createTitledBorder("Debug Info"));
+        mainPanel.add(childPanel);
+        JPanel decoratorPanel = ToolbarDecorator.createDecorator(jTree)
+                                        .setPreferredSize(treePanelDimension)
+                                        .createPanel();
+        decoratorPanel.setBorder(BorderFactory.createTitledBorder("Quality Settings"));
+        mainPanel.add(decoratorPanel);
+        this.add(mainPanel);
+    }
 
-  private void addComponents() {
-    this.add(debugInfoLabel);
-    JPanel mainPanel = new JPanel(new VerticalLayout(10));
-    JPanel childPanel = new JPanel(new HorizontalLayout(0));
-    childPanel.add(descriptorPanel.getPanel());
-    descriptorPanel.getPanel().setBorder(BorderFactory.createTitledBorder("Descriptor"));
-    childPanel.add(Box.createHorizontalStrut(15));
-    childPanel.add(settingsPanel.getPanel());
-    settingsPanel.getPanel().setBorder(BorderFactory.createTitledBorder("Settings"));
-    mainPanel.setBorder(BorderFactory.createTitledBorder("Debug Info"));
-    mainPanel.add(childPanel);
-    JPanel decoratorPanel = ToolbarDecorator
-        .createDecorator(jTree)
-        .setPreferredSize(treePanelDimension)
-        .createPanel();
-    decoratorPanel.setBorder(BorderFactory.createTitledBorder("Quality Settings"));
-    mainPanel.add(decoratorPanel);
-    this.add(mainPanel);
-  }
-
-  public void reloadTree(JTree jTree, List<String> fidelityStrings, FileDescriptor descriptor) {
-    UIUtils.reloadTreeAndKeepState(jTree, debugInfoController.getQualityAsTree(
-        debugInfoController.convertByteStringToModel(fidelityStrings, descriptor)));
-  }
+    public void reloadTree(JTree jTree, List<String> fidelityStrings, FileDescriptor descriptor) {
+        UIUtils.reloadTreeAndKeepState(jTree,
+                debugInfoController.getQualityAsTree(
+                        debugInfoController.convertByteStringToModel(fidelityStrings, descriptor)));
+    }
 }

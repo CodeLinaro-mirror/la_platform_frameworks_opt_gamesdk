@@ -23,50 +23,58 @@ using namespace json11;
 namespace memory_advice_test {
 
 class TestMetricsProvider : public memory_advice::IMetricsProvider {
-  double oom_score_ = 0;
-  double avail_mem_ = 0;
-  double swap_total_ = 0;
-  double total_mem_ = 0;
+    double oom_score_ = 0;
+    double avail_mem_ = 0;
+    double swap_total_ = 0;
+    double total_mem_ = 0;
 
- public:
-  void setOomScore(double oom_score) { oom_score_ = oom_score; }
-  void setSwapTotal(double swap_total) { swap_total_ = swap_total; }
-  void setAvailMem(double avail_mem) { avail_mem_ = avail_mem; }
-  void setTotalMem(double total_mem) { total_mem_ = total_mem; }
+public:
+    void setOomScore(double oom_score) {
+        oom_score_ = oom_score;
+    }
+    void setSwapTotal(double swap_total) {
+        swap_total_ = swap_total;
+    }
+    void setAvailMem(double avail_mem) {
+        avail_mem_ = avail_mem;
+    }
+    void setTotalMem(double total_mem) {
+        total_mem_ = total_mem;
+    }
 
-  Json::object GetMeminfoValues() override {
-    Json::object metrics_map;
-    metrics_map["SwapTotal"] = swap_total_;
-    return metrics_map;
-  }
+    Json::object GetMeminfoValues() override {
+        Json::object metrics_map;
+        metrics_map["SwapTotal"] = swap_total_;
+        return metrics_map;
+    }
 
-  Json::object GetStatusValues() override {
-    Json::object metrics_map;
-    return metrics_map;
-  }
+    Json::object GetStatusValues() override {
+        Json::object metrics_map;
+        return metrics_map;
+    }
 
-  Json::object GetProcValues() override {
-    Json::object metrics_map;
-    metrics_map["oom_score"] = oom_score_;
-    return metrics_map;
-  }
+    Json::object GetProcValues() override {
+        Json::object metrics_map;
+        metrics_map["oom_score"] = oom_score_;
+        return metrics_map;
+    }
 
-  Json::object GetActivityManagerValues() override {
-    Json::object metrics_map;
-    return metrics_map;
-  }
+    Json::object GetActivityManagerValues() override {
+        Json::object metrics_map;
+        return metrics_map;
+    }
 
-  Json::object GetActivityManagerMemoryInfo() override {
-    Json::object metrics_map;
-    metrics_map["availMem"] = avail_mem_;
-    metrics_map["totalMem"] = total_mem_;
-    return metrics_map;
-  }
+    Json::object GetActivityManagerMemoryInfo() override {
+        Json::object metrics_map;
+        metrics_map["availMem"] = avail_mem_;
+        metrics_map["totalMem"] = total_mem_;
+        return metrics_map;
+    }
 
-  Json::object GetDebugValues() override {
-    Json::object metrics_map;
-    return metrics_map;
-  }
+    Json::object GetDebugValues() override {
+        Json::object metrics_map;
+        return metrics_map;
+    }
 };
 
-}  // namespace memory_advice_test
+} // namespace memory_advice_test

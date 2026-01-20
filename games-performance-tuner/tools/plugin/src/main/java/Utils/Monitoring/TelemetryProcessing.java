@@ -16,7 +16,6 @@
 package Utils.Monitoring;
 
 import com.google.android.performanceparameters.v1.PerformanceParameters;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,40 +23,41 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TelemetryProcessing {
+    private static void mergeHistograms(List<PerformanceParameters.RenderTimeHistogram> histograms,
+            LinkedHashMap<String, List<Integer>> renderTimeHistograms) {
+        for (PerformanceParameters.RenderTimeHistogram histogram : histograms) {
+            String idToAdd = Integer.toString(histogram.getInstrumentId());
 
-  private static void mergeHistograms(List<PerformanceParameters.RenderTimeHistogram> histograms,
-      LinkedHashMap<String, List<Integer>> renderTimeHistograms) {
-    for (PerformanceParameters.RenderTimeHistogram histogram : histograms) {
-      String idToAdd = Integer.toString(histogram.getInstrumentId());
-
-      if (!renderTimeHistograms.containsKey(idToAdd)) {
-        renderTimeHistograms.put(idToAdd, histogram.getCountsList());
-      } else {
-        List<Integer> existingHistograms = renderTimeHistograms.get(idToAdd);
-        List<Integer> mergedHistograms = IntStream.range(0, existingHistograms.size())
-            .mapToObj(i -> existingHistograms.get(i) + histogram.getCounts(i))
-            .collect(Collectors.toList());
-        renderTimeHistograms.put(idToAdd, mergedHistograms);
-      }
-    }
-  }
-
-  /*
-   * Each telemetryRequest has more than one histogram for each instrument ID.
-   * Histograms for the same fidelity parameters and the same instrument ID are merged, and added
-   * to renderTimeHIstograms map.
-   */
-  public static LinkedHashMap<String, List<Integer>> processTelemetryData(
-      PerformanceParameters.UploadTelemetryRequest telemetryRequest) {
-    List<PerformanceParameters.Telemetry> telemetry = telemetryRequest.getTelemetryList();
-    List<PerformanceParameters.RenderTimeHistogram> histograms = new ArrayList<>();
-    LinkedHashMap<String, List<Integer>> renderTimeHistograms = new LinkedHashMap<>();
-
-    for (PerformanceParameters.Telemetry telemetryElem : telemetry) {
-      histograms.addAll(telemetryElem.getReport().getRendering().getRenderTimeHistogramList());
+            if (!renderTimeHistograms.containsKey(idToAdd)) {
+                renderTimeHistograms.put(idToAdd, histogram.getCountsList());
+            } else {
+                List<Integer> existingHistograms = renderTimeHistograms.get(idToAdd);
+                List<Integer> mergedHistograms =
+                        IntStream.range(0, existingHistograms.size())
+                                .mapToObj(i -> existingHistograms.get(i) + histogram.getCounts(i))
+                                .collect(Collectors.toList());
+                renderTimeHistograms.put(idToAdd, mergedHistograms);
+            }
+        }
     }
 
-    mergeHistograms(histograms, renderTimeHistograms);
-    return renderTimeHistograms;
-  }
+    /*
+     * Each telemetryRequest has more than one histogram for each instrument ID.
+     * Histograms for the same fidelity parameters and the same instrument ID are merged, and added
+     * to renderTimeHIstograms map.
+     */
+    public static LinkedHashMap<String, List<Integer>> processTelemetryData(
+            PerformanceParameters.UploadTelemetryRequest telemetryRequest) {
+        List<PerformanceParameters.Telemetry> telemetry = telemetryRequest.getTelemetryList();
+        List<PerformanceParameters.RenderTimeHistogram> histograms = new ArrayList<>();
+        LinkedHashMap<String, List<Integer>> renderTimeHistograms = new LinkedHashMap<>();
+
+        for (PerformanceParameters.Telemetry telemetryElem : telemetry) {
+            histograms.addAll(
+                    telemetryElem.getReport().getRendering().getRenderTimeHistogramList());
+        }
+
+        mergeHistograms(histograms, renderTimeHistograms);
+        return renderTimeHistograms;
+    }
 }

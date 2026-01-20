@@ -42,9 +42,8 @@ const int MAX_N_FP_FILES = 32;
 bool encode_b64(const ProtobufSerialization& params, std::string& result) {
     size_t len = params.size();
     std::string dest(modp_b64_encode_len(len), '\0');
-    size_t encoded_len =
-        modp_b64_encode(const_cast<char*>(dest.c_str()),
-                        reinterpret_cast<const char*>(params.data()), len);
+    size_t encoded_len = modp_b64_encode(const_cast<char*>(dest.c_str()),
+                                         reinterpret_cast<const char*>(params.data()), len);
     if (encoded_len != -1) {
         dest.resize(encoded_len);
         result = dest;
@@ -66,13 +65,12 @@ static std::string RequestJson() {
     Json::object request_obj = Json::object{};
     // Add in other info for the debug monitor
     ProtobufSerialization* descriptor_ser =
-        file_descriptor::GetTuningForkFileDescriptorSerialization();
+            file_descriptor::GetTuningForkFileDescriptorSerialization();
     if (descriptor_ser != nullptr) {
         add_params(*descriptor_ser, request_obj, "dev_tuningfork_descriptor");
     }
     ProtobufSerialization settings_ser;
-    if (apk_utils::GetAssetAsSerialization("tuningfork/tuningfork_settings.bin",
-                                           settings_ser)) {
+    if (apk_utils::GetAssetAsSerialization("tuningfork/tuningfork_settings.bin", settings_ser)) {
         add_params(settings_ser, request_obj, "settings");
     }
     std::vector<std::string> fps;
@@ -101,8 +99,7 @@ static std::string RequestJson() {
 TuningFork_ErrorCode HttpBackend::UploadDebugInfo(HttpRequest& request) {
     int response_code;
     std::string body;
-    TuningFork_ErrorCode ret =
-        request.Send(kRpcName, RequestJson(), response_code, body);
+    TuningFork_ErrorCode ret = request.Send(kRpcName, RequestJson(), response_code, body);
     if (ret != TUNINGFORK_ERROR_OK) return ret;
 
     if (response_code >= kSuccessCodeMin && response_code <= kSuccessCodeMax)
@@ -111,4 +108,4 @@ TuningFork_ErrorCode HttpBackend::UploadDebugInfo(HttpRequest& request) {
         return TUNINGFORK_ERROR_BAD_PARAMETER;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

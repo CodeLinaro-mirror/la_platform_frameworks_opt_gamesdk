@@ -28,55 +28,54 @@ import java.util.List;
 import javax.swing.tree.DefaultMutableTreeNode;
 
 public class FidelityChangerController {
+    private final List<QualityDataModel> qualityDataModels;
+    private ByteString currentFidelityByteString;
 
-  private final List<QualityDataModel> qualityDataModels;
-  private ByteString currentFidelityByteString;
-
-  public FidelityChangerController(List<QualityDataModel> qualityDataModelList) {
-    this.qualityDataModels = qualityDataModelList;
-  }
-
-  public ByteString getQualityAsByteString(int qualityIndex) {
-    return getQualityAsByteString(qualityDataModels.get(qualityIndex));
-  }
-
-  public ByteString getQualityAsByteString(QualityDataModel qualityDataModel) {
-    FileDescriptor devTuningForkDesc = DataModelTransformer.getDevTuningforkDesc();
-    if (devTuningForkDesc == null) {
-      return ByteString.EMPTY;
+    public FidelityChangerController(List<QualityDataModel> qualityDataModelList) {
+        this.qualityDataModels = qualityDataModelList;
     }
-    Descriptor fidelityParamsDesc = devTuningForkDesc.findMessageTypeByName("FidelityParams");
-    DynamicMessage.Builder builder = DynamicMessage.newBuilder(fidelityParamsDesc);
-    try {
-      TextFormat.merge(qualityDataModel.toString(), builder);
-    } catch (ParseException e) {
-      e.printStackTrace();
-      return ByteString.EMPTY;
-    }
-    return builder.build().toByteString();
-  }
 
-  public DefaultMutableTreeNode getQualityAsTree() {
-    DefaultMutableTreeNode root = new DefaultMutableTreeNode();
-    for (int i = 0; i < qualityDataModels.size(); i++) {
-      QualityDataModel qualityDataModel = qualityDataModels.get(i);
-      String parentText = "Quality " + (i + 1);
-      if (currentFidelityByteString != null && getQualityAsByteString(qualityDataModel)
-          .equals(currentFidelityByteString)) {
-        parentText = parentText + "(Current)";
-      }
-      DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(parentText);
-      for (int j = 0; j < qualityDataModel.getFieldCount(); j++) {
-        String nodeText = qualityDataModel.getFieldNames().get(j) + ": " +
-            qualityDataModel.getFieldValues().get(j);
-        childNode.add(new DefaultMutableTreeNode(nodeText));
-      }
-      root.add(childNode);
+    public ByteString getQualityAsByteString(int qualityIndex) {
+        return getQualityAsByteString(qualityDataModels.get(qualityIndex));
     }
-    return root;
-  }
 
-  public void setCurrentByteString(ByteString byteString) {
-    currentFidelityByteString = byteString;
-  }
+    public ByteString getQualityAsByteString(QualityDataModel qualityDataModel) {
+        FileDescriptor devTuningForkDesc = DataModelTransformer.getDevTuningforkDesc();
+        if (devTuningForkDesc == null) {
+            return ByteString.EMPTY;
+        }
+        Descriptor fidelityParamsDesc = devTuningForkDesc.findMessageTypeByName("FidelityParams");
+        DynamicMessage.Builder builder = DynamicMessage.newBuilder(fidelityParamsDesc);
+        try {
+            TextFormat.merge(qualityDataModel.toString(), builder);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return ByteString.EMPTY;
+        }
+        return builder.build().toByteString();
+    }
+
+    public DefaultMutableTreeNode getQualityAsTree() {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+        for (int i = 0; i < qualityDataModels.size(); i++) {
+            QualityDataModel qualityDataModel = qualityDataModels.get(i);
+            String parentText = "Quality " + (i + 1);
+            if (currentFidelityByteString != null
+                    && getQualityAsByteString(qualityDataModel).equals(currentFidelityByteString)) {
+                parentText = parentText + "(Current)";
+            }
+            DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(parentText);
+            for (int j = 0; j < qualityDataModel.getFieldCount(); j++) {
+                String nodeText = qualityDataModel.getFieldNames().get(j) + ": "
+                        + qualityDataModel.getFieldValues().get(j);
+                childNode.add(new DefaultMutableTreeNode(nodeText));
+            }
+            root.add(childNode);
+        }
+        return root;
+    }
+
+    public void setCurrentByteString(ByteString byteString) {
+        currentFidelityByteString = byteString;
+    }
 }

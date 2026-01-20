@@ -41,9 +41,8 @@ char _binary_classes_dex_end;
 namespace swappycommon_test {
 
 class SwappyCommonTest : public SwappyCommon {
-   public:
-    SwappyCommonTest(const SwappyCommonSettings& settings)
-        : SwappyCommon(settings) {}
+public:
+    SwappyCommonTest(const SwappyCommonSettings& settings) : SwappyCommon(settings) {}
 };
 
 struct Workload {
@@ -62,7 +61,7 @@ struct Parameters {
 template <typename T>
 struct Event {
     T value;
-    duration time_offset;  // Offset from start of simulation
+    duration time_offset; // Offset from start of simulation
 };
 
 struct ITimeProvider {
@@ -70,10 +69,10 @@ struct ITimeProvider {
 };
 
 class GpuThread {
-   public:
+public:
     enum Fence { NO_SYNC, SIGNALLED, UNSIGNALLED };
 
-   private:
+private:
     Fence fence_;
     duration fenceTimeout_;
     std::mutex fenceMutex_;
@@ -86,13 +85,13 @@ class GpuThread {
     ITimeProvider* timeProvider_;
     duration fenceCreationTime_;
 
-   public:
+public:
     GpuThread(ITimeProvider* timeProvider, duration fenceTimeout)
-        : fence_(NO_SYNC),
-          fenceTimeout_(fenceTimeout),
-          waitTime_(0),
-          running_(true),
-          timeProvider_(timeProvider) {
+          : fence_(NO_SYNC),
+            fenceTimeout_(fenceTimeout),
+            waitTime_(0),
+            running_(true),
+            timeProvider_(timeProvider) {
         thread_ = std::thread(&GpuThread::run, this);
     }
     ~GpuThread() {
@@ -105,13 +104,14 @@ class GpuThread {
         threadCondition_.notify_all();
         thread_.join();
     }
-    Fence fenceStatus() const { return fence_; }
+    Fence fenceStatus() const {
+        return fence_;
+    }
     void waitForFence() {
         std::unique_lock<std::mutex> lock(fenceMutex_);
         [[maybe_unused]] bool fenceAlreadySignalled = fence_ != UNSIGNALLED;
-        if (!fenceCondition_.wait_for(lock, fenceTimeout_, [this]() {
-                return fence_ != UNSIGNALLED;
-            })) {
+        if (!fenceCondition_.wait_for(lock, fenceTimeout_,
+                                      [this]() { return fence_ != UNSIGNALLED; })) {
             ALOGW("Fence Timeout");
         }
         ALOGV("Fence completed in %lld ns (%s)",
@@ -129,8 +129,7 @@ class GpuThread {
         while (running_) {
             {
                 std::unique_lock<std::mutex> lock(threadMutex_);
-                threadCondition_.wait(
-                    lock, [this]() { return fence_ == UNSIGNALLED; });
+                threadCondition_.wait(lock, [this]() { return fence_ == UNSIGNALLED; });
             }
             std::this_thread::sleep_for(waitTime_);
             {
@@ -140,8 +139,12 @@ class GpuThread {
             fenceCondition_.notify_all();
         }
     }
-    duration gpuWorkTime() { return waitTime_; }
-    void setFenceTimeout(duration t) { fenceTimeout_ = t; }
+    duration gpuWorkTime() {
+        return waitTime_;
+    }
+    void setFenceTimeout(duration t) {
+        fenceTimeout_ = t;
+    }
 };
 
 using SwapEvents = std::vector<Event<duration>>;
@@ -154,22 +157,19 @@ struct Result {
 
 std::string DisplayDuration(duration d) {
     std::stringstream str;
-    str << (std::chrono::duration_cast<std::chrono::microseconds>(d).count() /
-            1000.0)
-        << "ms";
+    str << (std::chrono::duration_cast<std::chrono::microseconds>(d).count() / 1000.0) << "ms";
     return str.str();
 }
 
-std::ostream& operator<<(std::ostream& o,
-                         const std::vector<Event<duration>>& es) {
+std::ostream& operator<<(std::ostream& o, const std::vector<Event<duration>>& es) {
     bool first = true;
     for (auto& e : es) {
         if (first)
             first = false;
         else
             o << ", ";
-        o << "{ value: " << DisplayDuration(e.value)
-          << ", time: " << DisplayDuration(e.time_offset) << "}";
+        o << "{ value: " << DisplayDuration(e.value) << ", time: " << DisplayDuration(e.time_offset)
+          << "}";
     }
     return o;
 }
@@ -191,46 +191,41 @@ std::ostream& operator<<(std::ostream& o, const std::vector<Result>& rs) {
 }
 
 class Simulator : public ITimeProvider {
-   public:
+public:
     template <typename T>
     using Schedule = std::vector<Event<T>>;
     using SwapIntervalChangedEvent = Event<duration>;
 
-    Simulator(const SwappyCommonSettings& settings,
-              const Schedule<Workload>& workloadSchedule,
+    Simulator(const SwappyCommonSettings& settings, const Schedule<Workload>& workloadSchedule,
               const Schedule<Parameters>& parametersSchedule)
-        : commonBase_(new SwappyCommonTest(settings)),
-          workloadSchedule_(workloadSchedule),
-          parametersSchedule_(parametersSchedule),
-          tracers_{preWaitTracer,
-                   postWaitTracer,
-                   preSwapBuffersTracer,
-                   postSwapBuffersTracer,
-                   startFrameTracer,
-                   (void*)this,
-                   swapIntervalChangedTracer},
-          gpuThread_(this, commonBase_->getFenceTimeout()),
-          cpuTimeSum_(0),
-          gpuTimeSum_(0),
-          cpuTimeCount_(0) {
+          : commonBase_(new SwappyCommonTest(settings)),
+            workloadSchedule_(workloadSchedule),
+            parametersSchedule_(parametersSchedule),
+            tracers_{preWaitTracer,
+                     postWaitTracer,
+                     preSwapBuffersTracer,
+                     postSwapBuffersTracer,
+                     startFrameTracer,
+                     (void*)this,
+                     swapIntervalChangedTracer},
+            gpuThread_(this, commonBase_->getFenceTimeout()),
+            cpuTimeSum_(0),
+            gpuTimeSum_(0),
+            cpuTimeCount_(0) {
         commonBase_->addTracerCallbacks(tracers_);
         commonBase_->removeTracerCallbacks(tracers_);
         commonBase_->addTracerCallbacks(tracers_);
     }
     void setParameters(const Parameters& p) {
-        if (p.autoModeEnabled)
-            commonBase_->setAutoSwapInterval(*p.autoModeEnabled);
-        if (p.autoPipelineModeEnabled)
-            commonBase_->setAutoPipelineMode(*p.autoPipelineModeEnabled);
+        if (p.autoModeEnabled) commonBase_->setAutoSwapInterval(*p.autoModeEnabled);
+        if (p.autoPipelineModeEnabled) commonBase_->setAutoPipelineMode(*p.autoPipelineModeEnabled);
         if (p.fenceTimeout) {
             // This needs to be propagated to the gpuThread
             commonBase_->setFenceTimeout(*p.fenceTimeout);
             gpuThread_.setFenceTimeout(*p.fenceTimeout);
         }
-        if (p.maxAutoSwapInterval)
-            commonBase_->setMaxAutoSwapDuration(*p.maxAutoSwapInterval);
-        if (p.swapInterval)
-            Settings::getInstance()->setSwapDuration(p.swapInterval->count());
+        if (p.maxAutoSwapInterval) commonBase_->setMaxAutoSwapDuration(*p.maxAutoSwapInterval);
+        if (p.swapInterval) Settings::getInstance()->setSwapDuration(p.swapInterval->count());
     }
     void setWorkload(const Workload& w) {
         if (currentWorkload_) {
@@ -245,10 +240,9 @@ class Simulator : public ITimeProvider {
         bool running = true;
         std::thread choreographer([this, &running]() {
             while (running) {
-                auto t =
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch())
-                        .count();
+                auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                 std::chrono::steady_clock::now().time_since_epoch())
+                                 .count();
                 commonBase_->onChoreographer(t);
                 std::this_thread::sleep_for(16666666ns);
             }
@@ -263,10 +257,8 @@ class Simulator : public ITimeProvider {
             auto dt = timeFromStart();
             if (dt > run_time) break;
             if (parametersScheduleIndex < parametersSchedule_.size() &&
-                dt >=
-                    parametersSchedule_[parametersScheduleIndex].time_offset) {
-                setParameters(
-                    parametersSchedule_[parametersScheduleIndex].value);
+                dt >= parametersSchedule_[parametersScheduleIndex].time_offset) {
+                setParameters(parametersSchedule_[parametersScheduleIndex].value);
                 ++parametersScheduleIndex;
             }
             if (workloadScheduleIndex < workloadSchedule_.size() &&
@@ -281,17 +273,16 @@ class Simulator : public ITimeProvider {
         }
         recordResults();
         ALOGI("Done: %s", resultsString().c_str());
-        running =
-            false;  // This avoids the choreographer ticking during the
-                    // SwappyCommon destructor but we need fixes to make sure
-                    // the choreographer filter shuts down correctly then.
+        running = false; // This avoids the choreographer ticking during the
+                         // SwappyCommon destructor but we need fixes to make sure
+                         // the choreographer filter shuts down correctly then.
         destroy();
         choreographer.join();
     }
     bool swapInternal() {
         const SwappyCommon::SwapHandlers handlers = {
-            .lastFrameIsComplete = [&]() { return lastFrameIsComplete(); },
-            .getPrevFrameGpuTime = [&]() { return getFencePendingTime(); },
+                .lastFrameIsComplete = [&]() { return lastFrameIsComplete(); },
+                .getPrevFrameGpuTime = [&]() { return getFencePendingTime(); },
         };
 
         commonBase_->onPreSwap(handlers);
@@ -307,10 +298,12 @@ class Simulator : public ITimeProvider {
 
         commonBase_->onPostSwap(handlers);
 
-        return true;  // swapBuffers result
+        return true; // swapBuffers result
     }
 
-    void destroy() { commonBase_.reset(); }
+    void destroy() {
+        commonBase_.reset();
+    }
 
     time_point mStartTime;
     duration timeFromStart() const {
@@ -326,7 +319,7 @@ class Simulator : public ITimeProvider {
         switch (gpuThread_.fenceStatus()) {
             case GpuThread::NO_SYNC:
                 ALOGV("Last frame complete = true");
-                return true;  // First time
+                return true; // First time
             case GpuThread::SIGNALLED:
                 ALOGV("Last frame complete = true");
                 return true;
@@ -371,7 +364,7 @@ class Simulator : public ITimeProvider {
     void swapIntervalChanged() {
         auto newSwapInterval = commonBase_->getSwapDuration();
         swapIntervalChangedEvents.push_back(
-            SwapIntervalChangedEvent{newSwapInterval, timeFromStart()});
+                SwapIntervalChangedEvent{newSwapInterval, timeFromStart()});
     }
 
     // Static tracer callbacks
@@ -379,27 +372,22 @@ class Simulator : public ITimeProvider {
         Simulator* sim = (Simulator*)userdata;
         sim->preWait();
     }
-    static void postWaitTracer(void* userdata, int64_t cpuTime_ns,
-                               int64_t gpuTime_ns) {
+    static void postWaitTracer(void* userdata, int64_t cpuTime_ns, int64_t gpuTime_ns) {
         Simulator* sim = (Simulator*)userdata;
-        sim->postWait(std::chrono::nanoseconds(cpuTime_ns),
-                      std::chrono::nanoseconds(gpuTime_ns));
+        sim->postWait(std::chrono::nanoseconds(cpuTime_ns), std::chrono::nanoseconds(gpuTime_ns));
     }
     static void preSwapBuffersTracer(void* userdata) {
         Simulator* sim = (Simulator*)userdata;
         sim->preSwapBuffers();
     }
-    static void postSwapBuffersTracer(void* userdata,
-                                      int64_t desiredPresentationTimeMillis) {
+    static void postSwapBuffersTracer(void* userdata, int64_t desiredPresentationTimeMillis) {
         Simulator* sim = (Simulator*)userdata;
-        sim->postSwapBuffers(
-            std::chrono::milliseconds(desiredPresentationTimeMillis));
+        sim->postSwapBuffers(std::chrono::milliseconds(desiredPresentationTimeMillis));
     }
     static void startFrameTracer(void* userdata, int currentFrame,
                                  int64_t desiredPresentationTimeMillis) {
         Simulator* sim = (Simulator*)userdata;
-        sim->startFrame(currentFrame, std::chrono::milliseconds(
-                                          desiredPresentationTimeMillis));
+        sim->startFrame(currentFrame, std::chrono::milliseconds(desiredPresentationTimeMillis));
     }
     static void swapIntervalChangedTracer(void* userdata) {
         Simulator* sim = (Simulator*)userdata;
@@ -407,8 +395,7 @@ class Simulator : public ITimeProvider {
     }
 
     void recordResults() {
-        results_.push_back({cpuTimeSum_ / cpuTimeCount_,
-                            gpuTimeSum_ / cpuTimeCount_, cpuTimeCount_,
+        results_.push_back({cpuTimeSum_ / cpuTimeCount_, gpuTimeSum_ / cpuTimeCount_, cpuTimeCount_,
                             swapIntervalChangedEvents});
     }
     void resetResults() {
@@ -422,34 +409,23 @@ class Simulator : public ITimeProvider {
     static bool check(T actual, T expected, T error) {
         return (actual <= expected + error && actual >= expected - error);
     }
-    bool resultsCheck(const std::vector<Result>& expected,
-                      const std::vector<Result>& error) const {
+    bool resultsCheck(const std::vector<Result>& expected, const std::vector<Result>& error) const {
         auto& r = results_;
-        if (r.size() != expected.size() || r.size() != error.size())
-            return false;
+        if (r.size() != expected.size() || r.size() != error.size()) return false;
         for (int i = 0; i < r.size(); ++i) {
-            if (!check(r[i].averageCpuTime, expected[i].averageCpuTime,
-                       error[i].averageCpuTime))
+            if (!check(r[i].averageCpuTime, expected[i].averageCpuTime, error[i].averageCpuTime))
                 return false;
-            if (!check(r[i].averageGpuTime, expected[i].averageGpuTime,
-                       error[i].averageGpuTime))
+            if (!check(r[i].averageGpuTime, expected[i].averageGpuTime, error[i].averageGpuTime))
                 return false;
-            if (!check(r[i].numFrames, expected[i].numFrames,
-                       error[i].numFrames))
-                return false;
+            if (!check(r[i].numFrames, expected[i].numFrames, error[i].numFrames)) return false;
             if (expected[i].swapIntervalChangedEvents) {
                 auto& exp = expected[i].swapIntervalChangedEvents;
                 auto& err = error[i].swapIntervalChangedEvents;
                 auto& act = r[i].swapIntervalChangedEvents;
-                if (!act || act->size() != exp->size() ||
-                    act->size() != err->size())
-                    return false;
+                if (!act || act->size() != exp->size() || act->size() != err->size()) return false;
                 for (int j = 0; j < act->size(); ++j) {
-                    if (!check((*act)[j].value, (*exp)[j].value,
-                               (*err)[j].value))
-                        return false;
-                    if (!check((*act)[j].time_offset, (*exp)[j].time_offset,
-                               (*err)[j].time_offset))
+                    if (!check((*act)[j].value, (*exp)[j].value, (*err)[j].value)) return false;
+                    if (!check((*act)[j].time_offset, (*exp)[j].time_offset, (*err)[j].time_offset))
                         return false;
                 }
             }
@@ -462,7 +438,7 @@ class Simulator : public ITimeProvider {
         return str.str();
     }
 
-   private:
+private:
     std::unique_ptr<SwappyCommonTest> commonBase_;
     Schedule<Workload> workloadSchedule_;
     std::optional<Workload> currentWorkload_;
@@ -477,101 +453,99 @@ class Simulator : public ITimeProvider {
     bool firstWait = true;
 };
 
-}  // namespace swappycommon_test
+} // namespace swappycommon_test
 
 using namespace swappycommon_test;
 
-void SingleTest(const SwappyCommonSettings& settings,
-                const Parameters& parameters, duration time,
-                const Simulator::Schedule<Workload>& workload,
-                const std::vector<Result>& expected,
+void SingleTest(const SwappyCommonSettings& settings, const Parameters& parameters, duration time,
+                const Simulator::Schedule<Workload>& workload, const std::vector<Result>& expected,
                 const std::vector<Result>& error) {
     Settings::getInstance()->reset();
     Simulator test(settings, workload, {Event<Parameters>{parameters, 0s}});
     test.run_for(time);
     EXPECT_TRUE(test.resultsCheck(expected, error))
-        << "Bad test result" << test.resultsString() << " vs expected "
-        << expected << " +- " << error;
+            << "Bad test result" << test.resultsString() << " vs expected " << expected << " +- "
+            << error;
 };
 
 SwappyCommonSettings base60HzSettings{
-    {0, 0},      // SDK version
-    16666667ns,  // refresh period
-    0ns,         // app vsync offset
-    0ns          // sf vsync offset
+        {0, 0},     // SDK version
+        16666667ns, // refresh period
+        0ns,        // app vsync offset
+        0ns         // sf vsync offset
 };
 
 Parameters defaultParameters{};
 
 Parameters autoModeOffParameters{
-    false,      // auto-mode
-    false,      // auto pipeline mode
-    50ms,       // fence timeout
-    50ms,       // maxAutoSwapInterval
-    16666667ns  // swap interval
+        false,     // auto-mode
+        false,     // auto pipeline mode
+        50ms,      // fence timeout
+        50ms,      // maxAutoSwapInterval
+        16666667ns // swap interval
 };
 
 Parameters autoModeAndPipeliningOnParameters{
-    true,       // auto-mode
-    true,       // auto pipeline mode
-    50ms,       // fence timeout
-    50ms,       // maxAutoSwapInterval
-    16666667ns  // swap interval
+        true,      // auto-mode
+        true,      // auto pipeline mode
+        50ms,      // fence timeout
+        50ms,      // maxAutoSwapInterval
+        16666667ns // swap interval
 };
 Parameters autoModeOnAutoPipeliningOffParameters{
-    true,       // auto-mode
-    false,      // auto pipeline mode
-    50ms,       // fence timeout
-    50ms,       // maxAutoSwapInterval
-    16666667ns  // swap interval
+        true,      // auto-mode
+        false,     // auto pipeline mode
+        50ms,      // fence timeout
+        50ms,      // maxAutoSwapInterval
+        16666667ns // swap interval
 };
 Parameters autoModeAndPipeliningOn30HzParameters{
-    true,       // auto-mode
-    true,       // auto pipeline mode
-    50ms,       // fence timeout
-    50ms,       // maxAutoSwapInterval
-    33333333ns  // swap interval
+        true,      // auto-mode
+        true,      // auto pipeline mode
+        50ms,      // fence timeout
+        50ms,      // maxAutoSwapInterval
+        33333333ns // swap interval
 };
 Parameters autoModeOnAutoPipeliningOff30HzParameters{
-    true,       // auto-mode
-    false,      // auto pipeline mode
-    50ms,       // fence timeout
-    50ms,       // maxAutoSwapInterval
-    33333333ns  // swap interval
+        true,      // auto-mode
+        false,     // auto pipeline mode
+        50ms,      // fence timeout
+        50ms,      // maxAutoSwapInterval
+        33333333ns // swap interval
 };
 
 Workload lightWorkload{
-    []() { return 10ms; },  // cpu
-    []() { return 10ms; },  // gpu
+        []() { return 10ms; }, // cpu
+        []() { return 10ms; }, // gpu
 };
 
 Workload mediumCpuWorkload{
-    []() { return 30ms; },  // cpu
-    []() { return 10ms; },  // gpu
+        []() { return 30ms; }, // cpu
+        []() { return 10ms; }, // gpu
 };
 
 Workload mediumGpuWorkload{
-    []() { return 10ms; },  // cpu
-    []() { return 30ms; },  // gpu
+        []() { return 10ms; }, // cpu
+        []() { return 30ms; }, // gpu
 };
 
 Workload highWorkload{
-    []() { return 40ms; },  // cpu
-    []() { return 40ms; },  // gpu
+        []() { return 40ms; }, // cpu
+        []() { return 40ms; }, // gpu
 };
 
 // 10% of the time, frames are slow
 Workload aboveThreshold10pc30HzWorkload() {
     static int count = 0;
     return {
-        [&]() {
-            if (++count == 10) {
-                count = 0;
-                return 50ms;
-            } else
-                return 30ms;
-        },                      // cpu
-        []() { return 10ms; },  // gpu
+            [&]() {
+                if (++count == 10) {
+                    count = 0;
+                    return 50ms;
+                } else
+                    return 30ms;
+            },                     // cpu
+            []() { return 10ms; }, // gpu
     };
 }
 
@@ -579,14 +553,14 @@ Workload aboveThreshold10pc30HzWorkload() {
 Workload aboveThreshold10pc60HzWorkload() {
     static int count = 0;
     return {
-        [&]() {
-            if (++count == 10) {
-                count = 0;
-                return 20ms;
-            } else
-                return 10ms;
-        },                      // cpu
-        []() { return 10ms; },  // gpu
+            [&]() {
+                if (++count == 10) {
+                    count = 0;
+                    return 20ms;
+                } else
+                    return 10ms;
+            },                     // cpu
+            []() { return 10ms; }, // gpu
     };
 }
 
@@ -600,15 +574,13 @@ TEST(SwappyCommonTest, DefaultParamsLightWorkload) {
 }
 
 TEST(SwappyCommonTest, DefaultParamsMedCpuWorkload) {
-    SingleTest(base60HzSettings, defaultParameters, 1s,
-               {{mediumCpuWorkload, 0s}}, {Result{30ms, 10ms, 33}},
-               {Result{1ms, 1ms, 1}});
+    SingleTest(base60HzSettings, defaultParameters, 1s, {{mediumCpuWorkload, 0s}},
+               {Result{30ms, 10ms, 33}}, {Result{1ms, 1ms, 1}});
 }
 
 TEST(SwappyCommonTest, DefaultParamsMedGpuWorkload) {
-    SingleTest(base60HzSettings, defaultParameters, 1s,
-               {{mediumGpuWorkload, 0s}}, {Result{10ms, 30ms, 30}},
-               {Result{1ms, 3ms, 4}});
+    SingleTest(base60HzSettings, defaultParameters, 1s, {{mediumGpuWorkload, 0s}},
+               {Result{10ms, 30ms, 30}}, {Result{1ms, 3ms, 4}});
 }
 
 TEST(SwappyCommonTest, DefaultParamsHighWorkload) {
@@ -618,50 +590,42 @@ TEST(SwappyCommonTest, DefaultParamsHighWorkload) {
 
 // Auto-mode off tests
 TEST(SwappyCommonTest, AutoModeOffLightWorkload) {
-    SingleTest(base60HzSettings, autoModeOffParameters, 1s,
-               {{lightWorkload, 0s}}, {Result{10ms, 10ms, 60}},
-               {Result{1ms, 1ms, 2}});
+    SingleTest(base60HzSettings, autoModeOffParameters, 1s, {{lightWorkload, 0s}},
+               {Result{10ms, 10ms, 60}}, {Result{1ms, 1ms, 2}});
 }
 TEST(SwappyCommonTest, AutoModeOffMedCpuWorkload) {
-    SingleTest(base60HzSettings, autoModeOffParameters, 1s,
-               {{mediumCpuWorkload, 0s}}, {Result{30ms, 10ms, 33}},
-               {Result{1ms, 1ms, 1}});
+    SingleTest(base60HzSettings, autoModeOffParameters, 1s, {{mediumCpuWorkload, 0s}},
+               {Result{30ms, 10ms, 33}}, {Result{1ms, 1ms, 1}});
 }
 TEST(SwappyCommonTest, AutoModeOffMedGpuWorkload) {
-    SingleTest(base60HzSettings, autoModeOffParameters, 1s,
-               {{mediumGpuWorkload, 0s}}, {Result{10ms, 30ms, 30}},
-               {Result{1ms, 3ms, 4}});
+    SingleTest(base60HzSettings, autoModeOffParameters, 1s, {{mediumGpuWorkload, 0s}},
+               {Result{10ms, 30ms, 30}}, {Result{1ms, 3ms, 4}});
 }
 
 TEST(SwappyCommonTest, AutoModeOffHighWorkload) {
-    SingleTest(base60HzSettings, autoModeOffParameters, 1s,
-               {{highWorkload, 0s}}, {Result{40ms, 40ms, 21}},
-               {Result{3ms, 3ms, 2}});
+    SingleTest(base60HzSettings, autoModeOffParameters, 1s, {{highWorkload, 0s}},
+               {Result{40ms, 40ms, 21}}, {Result{3ms, 3ms, 2}});
 }
 
 // Auto-mode on tests
 TEST(SwappyCommonTest, AutoModeOnLightWorkload) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s,
-               {{lightWorkload, 0s}}, {Result{10ms, 10ms, 60}},
-               {Result{1ms, 1ms, 1}});
+    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s, {{lightWorkload, 0s}},
+               {Result{10ms, 10ms, 60}}, {Result{1ms, 1ms, 1}});
 }
 
 TEST(SwappyCommonTest, AutoModeOnMedCpuWorkload) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s,
-               {{mediumCpuWorkload, 0s}},
-               {Result{30ms, 10ms, 33}},  // Why is this frame count so high?
+    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s, {{mediumCpuWorkload, 0s}},
+               {Result{30ms, 10ms, 33}}, // Why is this frame count so high?
                {Result{1ms, 1ms, 1}});
 }
 
 TEST(SwappyCommonTest, AutoModeOnMedGpuWorkload) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s,
-               {{mediumGpuWorkload, 0s}}, {Result{10ms, 30ms, 30}},
-               {Result{1ms, 3ms, 3}});
+    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s, {{mediumGpuWorkload, 0s}},
+               {Result{10ms, 30ms, 30}}, {Result{1ms, 3ms, 3}});
 }
 TEST(SwappyCommonTest, AutoModeOnHighWorkload) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s,
-               {{highWorkload, 0s}}, {Result{40ms, 40ms, 22}},
-               {Result{3ms, 3ms, 2}});
+    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 1s, {{highWorkload, 0s}},
+               {Result{40ms, 40ms, 22}}, {Result{3ms, 3ms, 2}});
 }
 
 // Check that we don't swap faster than the app-set swap interval
@@ -671,8 +635,8 @@ TEST(SwappyCommonTest, AutoModeOnLightWorkload30Hz) {
                 {lightWorkload, 4s},
                 {lightWorkload, 8s},
                 {lightWorkload, 12s}},
-               {Result{10ms, 10ms, 120}, Result{10ms, 10ms, 120},
-                Result{10ms, 10ms, 120}, Result{10ms, 10ms, 120}},
+               {Result{10ms, 10ms, 120}, Result{10ms, 10ms, 120}, Result{10ms, 10ms, 120},
+                Result{10ms, 10ms, 120}},
                {Result{1ms, 1ms, 2}, Result{1ms, 1ms, 2}, Result{1ms, 1ms, 2},
                 Result{1ms, 1ms, 2}});
 }
@@ -681,53 +645,42 @@ TEST(SwappyCommonTest, AutoModeOnLightWorkload30Hz) {
 // It decides to swap slower then, because it thinks we are at the threshold,
 // doesn't wait.
 TEST(SwappyCommonTest, DISABLED_AutoModeOnVariableWorkload) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 6s,
-               loHiLo2sWorkload(),
-               {Result{10ms, 10ms, 120}, Result{33ms, 33ms, 50},
-                Result{10ms, 10ms, 120}},
+    SingleTest(base60HzSettings, autoModeAndPipeliningOnParameters, 6s, loHiLo2sWorkload(),
+               {Result{10ms, 10ms, 120}, Result{33ms, 33ms, 50}, Result{10ms, 10ms, 120}},
                {Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}});
 }
 
 // Currently, we are getting frame counts 61, 26, 59 here.
 // This is because pipelining is switched OFF after the first lo sequence.
 TEST(SwappyCommonTest, DISABLED_AutoModeOnVariableWorkload30Hz) {
-    SingleTest(base60HzSettings, autoModeAndPipeliningOn30HzParameters, 6s,
-               loHiLo2sWorkload(),
-               {Result{10ms, 10ms, 60}, Result{40ms, 40ms, 60},
-                Result{10ms, 10ms, 60}},
+    SingleTest(base60HzSettings, autoModeAndPipeliningOn30HzParameters, 6s, loHiLo2sWorkload(),
+               {Result{10ms, 10ms, 60}, Result{40ms, 40ms, 60}, Result{10ms, 10ms, 60}},
                {Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}});
 }
 
 // Currently 61, 56, 145
 // It decides to swap slower then, because it thinks we are at the threshold,
 // doesn't wait.
-TEST(SwappyCommonTest,
-     DISABLED_AutoModeOnAutoPipeliningOffVariableWorkload30Hz) {
-    SingleTest(base60HzSettings, autoModeOnAutoPipeliningOff30HzParameters, 6s,
-               loHiLo2sWorkload(),
-               {Result{10ms, 10ms, 60}, Result{33ms, 33ms, 60},
-                Result{10ms, 10ms, 60}},
+TEST(SwappyCommonTest, DISABLED_AutoModeOnAutoPipeliningOffVariableWorkload30Hz) {
+    SingleTest(base60HzSettings, autoModeOnAutoPipeliningOff30HzParameters, 6s, loHiLo2sWorkload(),
+               {Result{10ms, 10ms, 60}, Result{33ms, 33ms, 60}, Result{10ms, 10ms, 60}},
                {Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}, Result{3ms, 3ms, 2}});
 }
 
-TEST(SwappyCommonTest,
-     AutoModeOnAutoPipeliningOffWorkloadJustBelowThreshold30Hz) {
+TEST(SwappyCommonTest, AutoModeOnAutoPipeliningOffWorkloadJustBelowThreshold30Hz) {
     SingleTest(base60HzSettings, autoModeOnAutoPipeliningOff30HzParameters, 10s,
-               {{mediumCpuWorkload, 0s}}, {Result{30ms, 10ms, 300}},
-               {Result{1ms, 1ms, 2}});
+               {{mediumCpuWorkload, 0s}}, {Result{30ms, 10ms, 300}}, {Result{1ms, 1ms, 2}});
 }
 
-TEST(SwappyCommonTest,
-     AutoModeOnAutoPipeliningOffWorkloadAboveThreshold10pcOfTime30Hz) {
+TEST(SwappyCommonTest, AutoModeOnAutoPipeliningOffWorkloadAboveThreshold10pcOfTime30Hz) {
     SingleTest(base60HzSettings, autoModeOnAutoPipeliningOff30HzParameters, 10s,
-               {{aboveThreshold10pc30HzWorkload(), 0s}},
-               {Result{32ms, 10ms, 286}}, {Result{1ms, 1ms, 5}});
+               {{aboveThreshold10pc30HzWorkload(), 0s}}, {Result{32ms, 10ms, 286}},
+               {Result{1ms, 1ms, 5}});
 }
 
 TEST(SwappyCommonTest, AutoModeOnAutoPipeliningOffSwitchDownFrom60Hz) {
     SingleTest(base60HzSettings, autoModeOnAutoPipeliningOffParameters, 5s,
-               {{mediumCpuWorkload, 0s}},
-               {Result{30ms, 10ms, 155, SwapEvents{{33333us, 2s}}}},
+               {{mediumCpuWorkload, 0s}}, {Result{30ms, 10ms, 155, SwapEvents{{33333us, 2s}}}},
                {Result{1ms, 1ms, 5, SwapEvents{{1ms, 100ms}}}});
 }
 TEST(SwappyCommonTest, AutoModeOnAutoPipeliningOffSwitchDownFrom60HzAndBack) {

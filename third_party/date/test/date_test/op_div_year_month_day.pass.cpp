@@ -29,15 +29,13 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    static_assert(  2015_y/aug/14_d   == year_month_day{year{2015}, month{8}, day{14}}, "");
-    static_assert(  2015_y/aug/14     == year_month_day{year{2015}, month{8}, day{14}}, "");
-    static_assert(  2015_y/(aug/14_d) == year_month_day{year{2015}, month{8}, day{14}}, "");
-    static_assert(    2015/(aug/14_d) == year_month_day{year{2015}, month{8}, day{14}}, "");
-    static_assert(aug/14_d/2015_y     == year_month_day{year{2015}, month{8}, day{14}}, "");
-    static_assert(aug/14_d/2015       == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(2015_y / aug / 14_d == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(2015_y / aug / 14 == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(2015_y / (aug / 14_d) == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(2015 / (aug / 14_d) == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(aug / 14_d / 2015_y == year_month_day{year{2015}, month{8}, day{14}}, "");
+    static_assert(aug / 14_d / 2015 == year_month_day{year{2015}, month{8}, day{14}}, "");
 }

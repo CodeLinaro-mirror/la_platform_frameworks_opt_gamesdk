@@ -65,8 +65,7 @@ bool GetSavedFidelityParams(ProtobufSerialization& params) {
     if (GetSavedFileName(save_filename)) {
         TuningFork_CProtobufSerialization c_params;
         if (file_utils::LoadBytesFromFile(save_filename, &c_params)) {
-            ALOGI("Loaded fps from %s (%u bytes)", save_filename.c_str(),
-                  c_params.size);
+            ALOGI("Loaded fps from %s (%u bytes)", save_filename.c_str(), c_params.size);
             params = ToProtobufSerialization(c_params);
             TuningFork_CProtobufSerialization_free(&c_params);
             return true;
@@ -82,10 +81,8 @@ bool SaveFidelityParams(const ProtobufSerialization& params) {
     if (GetSavedFileName(save_filename)) {
         std::ofstream save_file(save_filename, std::ios::binary);
         if (save_file.good()) {
-            save_file.write(reinterpret_cast<const char*>(params.data()),
-                            params.size());
-            ALOGI("Saved fps to %s (%zu bytes)", save_filename.c_str(),
-                  params.size());
+            save_file.write(reinterpret_cast<const char*>(params.data()), params.size());
+            ALOGI("Saved fps to %s (%zu bytes)", save_filename.c_str(), params.size());
             return true;
         }
         ALOGI("Couldn't save fps to %s", save_filename.c_str());
@@ -107,11 +104,10 @@ static std::unique_ptr<std::thread> s_fp_thread;
 
 // Download FPs on a separate thread
 TuningFork_ErrorCode StartFidelityParamDownloadThread(
-    const ProtobufSerialization& default_params,
-    TuningFork_FidelityParamsCallback fidelity_params_callback,
-    int initialTimeoutMs, int ultimateTimeoutMs) {
-    if (fidelity_params_callback == nullptr)
-        return TUNINGFORK_ERROR_BAD_PARAMETER;
+        const ProtobufSerialization& default_params,
+        TuningFork_FidelityParamsCallback fidelity_params_callback, int initialTimeoutMs,
+        int ultimateTimeoutMs) {
+    if (fidelity_params_callback == nullptr) return TUNINGFORK_ERROR_BAD_PARAMETER;
     static std::mutex threadMutex;
     std::lock_guard<std::mutex> lock(threadMutex);
     if (s_fp_thread.get() && s_fp_thread->joinable()) {
@@ -134,10 +130,8 @@ TuningFork_ErrorCode StartFidelityParamDownloadThread(
         };
         while (!s_kill_thread) {
             auto startTime = std::chrono::steady_clock::now();
-            auto err =
-                GetFidelityParameters(default_params, params, waitTime.count());
-            if (err == TUNINGFORK_ERROR_OK ||
-                err == TUNINGFORK_ERROR_NO_FIDELITY_PARAMS) {
+            auto err = GetFidelityParameters(default_params, params, waitTime.count());
+            if (err == TUNINGFORK_ERROR_OK || err == TUNINGFORK_ERROR_NO_FIDELITY_PARAMS) {
                 if (err == TUNINGFORK_ERROR_NO_FIDELITY_PARAMS) {
                     ALOGI("Got empty fidelity params from server");
                     upload_defaults_first_time();
@@ -153,8 +147,7 @@ TuningFork_ErrorCode StartFidelityParamDownloadThread(
                 }
                 break;
             } else {
-                ALOGI("Could not get fidelity params from server : err = %d",
-                      err);
+                ALOGI("Could not get fidelity params from server : err = %d", err);
                 upload_defaults_first_time();
                 // Wait if the call returned earlier than expected
                 auto dt = std::chrono::steady_clock::now() - startTime;
@@ -163,7 +156,7 @@ TuningFork_ErrorCode StartFidelityParamDownloadThread(
                     ALOGW("Not waiting any longer for fidelity params");
                     break;
                 }
-                waitTime *= 2;  // back off
+                waitTime *= 2; // back off
             }
         }
         if (gamesdk::jni::IsValid()) gamesdk::jni::DetachThread();
@@ -186,19 +179,16 @@ TuningFork_ErrorCode FindFidelityParamsInApk(const std::string& filename,
     return TUNINGFORK_ERROR_OK;
 }
 
-std::unique_ptr<ProtobufSerialization> GetTrainingParams(
-    const Settings& settings) {
+std::unique_ptr<ProtobufSerialization> GetTrainingParams(const Settings& settings) {
     std::unique_ptr<ProtobufSerialization> training_params;
     auto cpbs = settings.c_settings.training_fidelity_params;
     if (cpbs != nullptr) {
-        training_params = std::make_unique<ProtobufSerialization>(
-            ToProtobufSerialization(*cpbs));
+        training_params = std::make_unique<ProtobufSerialization>(ToProtobufSerialization(*cpbs));
     }
     return training_params;
 }
 
-TuningFork_ErrorCode GetDefaultsFromAPKAndDownloadFPs(
-    const Settings& settings) {
+TuningFork_ErrorCode GetDefaultsFromAPKAndDownloadFPs(const Settings& settings) {
     ProtobufSerialization default_params;
     // Use the saved params as default, if they exist
     if (SavedFidelityParamsFileExists()) {
@@ -213,19 +203,18 @@ TuningFork_ErrorCode GetDefaultsFromAPKAndDownloadFPs(
             // Try to get the parameters from file.
             if (settings.default_fidelity_parameters_filename.empty())
                 return TUNINGFORK_ERROR_INVALID_DEFAULT_FIDELITY_PARAMS;
-            auto err = FindFidelityParamsInApk(
-                settings.default_fidelity_parameters_filename.c_str(),
-                default_params);
+            auto err =
+                    FindFidelityParamsInApk(settings.default_fidelity_parameters_filename.c_str(),
+                                            default_params);
             if (err != TUNINGFORK_ERROR_OK) return err;
             ALOGI("Using file %s for default params",
                   settings.default_fidelity_parameters_filename.c_str());
         }
     }
     auto training_params = GetTrainingParams(settings);
-    StartFidelityParamDownloadThread(
-        default_params, settings.c_settings.fidelity_params_callback,
-        settings.initial_request_timeout_ms,
-        settings.ultimate_request_timeout_ms);
+    StartFidelityParamDownloadThread(default_params, settings.c_settings.fidelity_params_callback,
+                                     settings.initial_request_timeout_ms,
+                                     settings.ultimate_request_timeout_ms);
     return TUNINGFORK_ERROR_OK;
 }
 
@@ -239,7 +228,7 @@ TuningFork_ErrorCode KillDownloadThreads() {
     return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork
 
 extern "C" {
 
@@ -247,25 +236,24 @@ using namespace tuningfork;
 
 // Download FPs on a separate thread
 TuningFork_ErrorCode TuningFork_startFidelityParamDownloadThread(
-    const TuningFork_CProtobufSerialization* c_default_params,
-    TuningFork_FidelityParamsCallback fidelity_params_callback) {
+        const TuningFork_CProtobufSerialization* c_default_params,
+        TuningFork_FidelityParamsCallback fidelity_params_callback) {
     if (c_default_params == nullptr) return TUNINGFORK_ERROR_BAD_PARAMETER;
-    if (fidelity_params_callback == nullptr)
-        return TUNINGFORK_ERROR_BAD_PARAMETER;
+    if (fidelity_params_callback == nullptr) return TUNINGFORK_ERROR_BAD_PARAMETER;
     const Settings* settings = GetSettings();
     if (settings == nullptr) return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
-    return StartFidelityParamDownloadThread(
-        ToProtobufSerialization(*c_default_params), fidelity_params_callback,
-        settings->initial_request_timeout_ms,
-        settings->ultimate_request_timeout_ms);
+    return StartFidelityParamDownloadThread(ToProtobufSerialization(*c_default_params),
+                                            fidelity_params_callback,
+                                            settings->initial_request_timeout_ms,
+                                            settings->ultimate_request_timeout_ms);
 }
 
 // Load fidelity params from assets/tuningfork/<filename>
 // Ownership of serializations is passed to the caller: call
 //  TuningFork_CProtobufSerialization_free to deallocate any memory.
-TuningFork_ErrorCode TuningFork_findFidelityParamsInApk(
-    JNIEnv* env, jobject context, const char* filename,
-    TuningFork_CProtobufSerialization* c_fps) {
+TuningFork_ErrorCode TuningFork_findFidelityParamsInApk(JNIEnv* env, jobject context,
+                                                        const char* filename,
+                                                        TuningFork_CProtobufSerialization* c_fps) {
     if (c_fps == nullptr) return TUNINGFORK_ERROR_BAD_PARAMETER;
     gamesdk::jni::Init(env, context);
     ProtobufSerialization fps;
@@ -275,26 +263,22 @@ TuningFork_ErrorCode TuningFork_findFidelityParamsInApk(
     return TUNINGFORK_ERROR_OK;
 }
 
-TuningFork_ErrorCode TuningFork_setUploadCallback(
-    TuningFork_UploadCallback cbk) {
+TuningFork_ErrorCode TuningFork_setUploadCallback(TuningFork_UploadCallback cbk) {
     return tuningfork::SetUploadCallback(cbk);
 }
 
 TuningFork_ErrorCode TuningFork_saveOrDeleteFidelityParamsFile(
-    JNIEnv* env, jobject context,
-    const TuningFork_CProtobufSerialization* fps) {
+        JNIEnv* env, jobject context, const TuningFork_CProtobufSerialization* fps) {
     gamesdk::jni::Init(env, context);
     if (fps) {
-        if (SaveFidelityParams(ToProtobufSerialization(*fps)))
-            return TUNINGFORK_ERROR_OK;
+        if (SaveFidelityParams(ToProtobufSerialization(*fps))) return TUNINGFORK_ERROR_OK;
     } else {
         std::string save_filename;
         if (GetSavedFileName(save_filename)) {
-            if (file_utils::DeleteFile(save_filename))
-                return TUNINGFORK_ERROR_OK;
+            if (file_utils::DeleteFile(save_filename)) return TUNINGFORK_ERROR_OK;
         }
     }
     return TUNINGFORK_ERROR_COULDNT_SAVE_OR_DELETE_FPS;
 }
 
-}  // extern "C"
+} // extern "C"

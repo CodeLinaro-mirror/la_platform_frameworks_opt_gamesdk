@@ -21,51 +21,44 @@ import com.google.gson.annotations.Expose;
 import java.util.List;
 
 public class MonitorFilterModel {
+    @Expose private String phoneModel;
+    @Expose private List<JTreeNode> annotations;
+    @Expose private JTreeNode fidelity;
 
-  @Expose
-  private String phoneModel;
-  @Expose
-  private List<JTreeNode> annotations;
-  @Expose
-  private JTreeNode fidelity;
+    public MonitorFilterModel(String phoneModel, List<JTreeNode> annotations, JTreeNode fidelity) {
+        this.phoneModel = phoneModel;
+        this.annotations = annotations;
+        this.fidelity = fidelity;
+    }
 
-  public MonitorFilterModel(String phoneModel, List<JTreeNode> annotations,
-      JTreeNode fidelity) {
-    this.phoneModel = phoneModel;
-    this.annotations = annotations;
-    this.fidelity = fidelity;
-  }
+    public String getPhoneModel() {
+        return phoneModel;
+    }
 
-  public String getPhoneModel() {
-    return phoneModel;
-  }
+    public List<JTreeNode> getAnnotations() {
+        return annotations;
+    }
 
-  public List<JTreeNode> getAnnotations() {
-    return annotations;
-  }
+    public JTreeNode getFidelity() {
+        return fidelity;
+    }
 
-  public JTreeNode getFidelity() {
-    return fidelity;
-  }
+    public void setFidelity(JTreeNode fidelity) {
+        this.fidelity = fidelity;
+    }
 
-  public void setFidelity(JTreeNode fidelity) {
-    this.fidelity = fidelity;
-  }
+    public void setPhoneMode(String phoneModel) {
+        this.phoneModel = phoneModel;
+    }
 
-  public void setPhoneMode(String phoneModel) {
-    this.phoneModel = phoneModel;
-  }
+    public void setAnnotations(List<JTreeNode> annotations) {
+        this.annotations = annotations;
+    }
 
-  public void setAnnotations(List<JTreeNode> annotations) {
-    this.annotations = annotations;
-  }
-
-  @Override
-  public String toString() {
-    return "MonitorFilterModel{" +
-        "phoneModel='" + phoneModel + '\'' +
-        ", annotations=" + annotations +
-        ", fidelity=" + fidelity +
-        '}';
-  }
+    @Override
+    public String toString() {
+        return "MonitorFilterModel{"
+                + "phoneModel='" + phoneModel + '\'' + ", annotations=" + annotations
+                + ", fidelity=" + fidelity + '}';
+    }
 }

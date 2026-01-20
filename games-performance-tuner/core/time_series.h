@@ -22,18 +22,28 @@ namespace tuningfork {
 
 template <typename T>
 class TimeSeries {
-  std::vector<T> data_;
+    std::vector<T> data_;
 
- public:
-  TimeSeries(size_t capacity) { data_.reserve(capacity); }
+public:
+    TimeSeries(size_t capacity) {
+        data_.reserve(capacity);
+    }
 
-  size_t Count() const { return data_.size(); }
+    size_t Count() const {
+        return data_.size();
+    }
 
-  void Add(const T& value) { data_.push_back(value); }
+    void Add(const T& value) {
+        data_.push_back(value);
+    }
 
-  void Clear() { data_.clear(); }
+    void Clear() {
+        data_.clear();
+    }
 
-  const std::vector<T>& Samples() const { return data_; }
+    const std::vector<T>& Samples() const {
+        return data_;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

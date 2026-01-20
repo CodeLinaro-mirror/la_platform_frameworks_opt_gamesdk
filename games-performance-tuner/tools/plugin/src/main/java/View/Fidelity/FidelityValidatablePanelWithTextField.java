@@ -30,28 +30,26 @@ for validation. As using the normal validation icon place would look glitchy.
 Only meant to be used with fidelity panel.
  */
 public class FidelityValidatablePanelWithTextField extends JPanel {
+    private JTextField jTextField;
+    private JLabel errorLabel;
 
-  private JTextField jTextField;
-  private JLabel errorLabel;
+    public FidelityValidatablePanelWithTextField() {
+        jTextField = new JTextField();
+        errorLabel = new JLabel();
+        setLayout(new BorderLayout(0, 0));
+        add(jTextField, BorderLayout.CENTER);
+        add(errorLabel, BorderLayout.EAST);
+        setBorder(new RoundedCornerBorder());
+        setBackground(UIUtil.getTableBackground());
+        jTextField.setBorder(null);
+        jTextField.setBackground(UIUtil.getTableBackground());
+    }
 
-  public FidelityValidatablePanelWithTextField() {
-    jTextField = new JTextField();
-    errorLabel = new JLabel();
-    setLayout(new BorderLayout(0, 0));
-    add(jTextField, BorderLayout.CENTER);
-    add(errorLabel, BorderLayout.EAST);
-    setBorder(new RoundedCornerBorder());
-    setBackground(UIUtil.getTableBackground());
-    jTextField.setBorder(null);
-    jTextField.setBackground(UIUtil.getTableBackground());
-  }
+    public JLabel getErrorLabel() {
+        return errorLabel;
+    }
 
-  public JLabel getErrorLabel() {
-    return errorLabel;
-  }
-
-  public JTextField getTextField() {
-    return jTextField;
-  }
-
+    public JTextField getTextField() {
+        return jTextField;
+    }
 }

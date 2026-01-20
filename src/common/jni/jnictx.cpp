@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include <unistd.h>
 #include "jnictx.h"
+
+#include <unistd.h>
 
 #include <memory>
 
@@ -42,7 +43,9 @@ static thread_local JNIEnv* theEnv = nullptr;
     return theCtx.get();
 }
 
-/*static*/ void Ctx::Destroy() { theCtx.reset(); }
+/*static*/ void Ctx::Destroy() {
+    theCtx.reset();
+}
 
 Ctx::Ctx(JNIEnv* env, jobject ctx, ConstructorTag) {
     if (env) {
@@ -75,6 +78,6 @@ void Ctx::DetachThread() const {
     theEnv = nullptr;
 }
 
-}  // namespace jni
+} // namespace jni
 
-}  // namespace gamesdk
+} // namespace gamesdk

@@ -27,43 +27,45 @@
 namespace swappy {
 
 struct SdkVersion {
-  int sdkInt;         // Build.VERSION.SDK_INT
-  int previewSdkInt;  // Build.VERSION.PREVIEW_SDK_INT
+    int sdkInt;        // Build.VERSION.SDK_INT
+    int previewSdkInt; // Build.VERSION.PREVIEW_SDK_INT
 };
 
 class SwappyDisplayManager {
- public:
-  static const char* SDM_CLASS;
-  static const JNINativeMethod SDMNativeMethods[];
-  static constexpr int SDMNativeMethodsSize = 2;
-  static constexpr int MIN_SDK_VERSION = 28;
+public:
+    static const char* SDM_CLASS;
+    static const JNINativeMethod SDMNativeMethods[];
+    static constexpr int SDMNativeMethodsSize = 2;
+    static constexpr int MIN_SDK_VERSION = 28;
 
-  static bool useSwappyDisplayManager(SdkVersion sdkVersion);
-  static bool usesMinSdkOrLater(SdkVersion sdkVersion);
+    static bool useSwappyDisplayManager(SdkVersion sdkVersion);
+    static bool usesMinSdkOrLater(SdkVersion sdkVersion);
 
-  SwappyDisplayManager(JavaVM*, jobject mainActivity);
-  ~SwappyDisplayManager();
+    SwappyDisplayManager(JavaVM*, jobject mainActivity);
+    ~SwappyDisplayManager();
 
-  bool isInitialized() { return mInitialized; }
+    bool isInitialized() {
+        return mInitialized;
+    }
 
-  // Map from refresh period to display mode id
-  using RefreshPeriodMap = std::map<std::chrono::nanoseconds, int>;
+    // Map from refresh period to display mode id
+    using RefreshPeriodMap = std::map<std::chrono::nanoseconds, int>;
 
-  std::shared_ptr<RefreshPeriodMap> getSupportedRefreshPeriods();
+    std::shared_ptr<RefreshPeriodMap> getSupportedRefreshPeriods();
 
-  void setPreferredDisplayModeId(int index);
+    void setPreferredDisplayModeId(int index);
 
- private:
-  JavaVM* mJVM;
-  std::mutex mMutex;
-  std::condition_variable mCondition;
-  std::shared_ptr<RefreshPeriodMap> mSupportedRefreshPeriods;
-  jobject mJthis = nullptr;
-  jmethodID mSetPreferredDisplayModeId = nullptr;
-  jmethodID mTerminate = nullptr;
-  bool mInitialized = false;
+private:
+    JavaVM* mJVM;
+    std::mutex mMutex;
+    std::condition_variable mCondition;
+    std::shared_ptr<RefreshPeriodMap> mSupportedRefreshPeriods;
+    jobject mJthis = nullptr;
+    jmethodID mSetPreferredDisplayModeId = nullptr;
+    jmethodID mTerminate = nullptr;
+    bool mInitialized = false;
 
-  friend class SwappyDisplayManagerJNI;
+    friend class SwappyDisplayManagerJNI;
 };
 
-}  // namespace swappy
+} // namespace swappy

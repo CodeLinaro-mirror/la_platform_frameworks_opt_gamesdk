@@ -21,29 +21,28 @@
 
 /* Represents an OpenGL texture */
 class Texture {
- private:
-  GLuint mTextureH;
-  GLuint mTextureMipCount;
+private:
+    GLuint mTextureH;
+    GLuint mTextureMipCount;
 
- public:
-  inline Texture() {
-    mTextureH = 0;
-    mTextureMipCount = 0;
-  }
+public:
+    inline Texture() {
+        mTextureH = 0;
+        mTextureMipCount = 0;
+    }
 
-  inline Texture(const GLuint textureH, const GLuint textureMipCount) {
-    mTextureH = textureH;
-    mTextureMipCount = textureMipCount;
-  }
+    inline Texture(const GLuint textureH, const GLuint textureMipCount) {
+        mTextureH = textureH;
+        mTextureMipCount = textureMipCount;
+    }
 
-  // Initialize from raw RGB data. If hasAlpha is true, then it's 4 bytes per
-  // pixel (RGBA), otherwise it's interpreted as 3 bytes per pixel (RGB).
-  void InitFromRawRGB(int width, int height, bool hasAlpha,
-                      const unsigned char *data);
+    // Initialize from raw RGB data. If hasAlpha is true, then it's 4 bytes per
+    // pixel (RGBA), otherwise it's interpreted as 3 bytes per pixel (RGB).
+    void InitFromRawRGB(int width, int height, bool hasAlpha, const unsigned char* data);
 
-  void Bind(int unit);
+    void Bind(int unit);
 
-  void Unbind();
+    void Unbind();
 };
 
 #endif

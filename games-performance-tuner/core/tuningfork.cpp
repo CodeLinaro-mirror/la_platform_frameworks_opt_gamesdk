@@ -68,22 +68,19 @@ static std::unique_ptr<SwappyTraceWrapper> s_swappy_tracer;
 // False by default to hide sensitive information in the logs
 bool g_verbose_logging_enabled = false;
 
-TuningFork_ErrorCode Init(const Settings &settings,
-                          const RequestInfo *request_info, IBackend *backend,
-                          ITimeProvider *time_provider,
-                          IMemInfoProvider *meminfo_provider,
-                          IBatteryProvider *battery_provider, bool first_run) {
+TuningFork_ErrorCode Init(const Settings& settings, const RequestInfo* request_info,
+                          IBackend* backend, ITimeProvider* time_provider,
+                          IMemInfoProvider* meminfo_provider, IBatteryProvider* battery_provider,
+                          bool first_run) {
     if (s_impl.get() != nullptr) return TUNINGFORK_ERROR_ALREADY_INITIALIZED;
 
     if (request_info != nullptr) {
         RequestInfo::CachedValue() = *request_info;
     } else {
-        RequestInfo::CachedValue() =
-            RequestInfo::ForThisGameAndDevice(settings);
+        RequestInfo::CachedValue() = RequestInfo::ForThisGameAndDevice(settings);
     }
 
-    s_impl = std::make_unique<TuningForkImpl>(settings, backend, time_provider,
-                                              meminfo_provider,
+    s_impl = std::make_unique<TuningForkImpl>(settings, backend, time_provider, meminfo_provider,
                                               battery_provider, first_run);
 
     if (s_impl->InitializationErrorCode() != TUNINGFORK_ERROR_OK) {
@@ -94,15 +91,13 @@ TuningFork_ErrorCode Init(const Settings &settings,
 
     // Set up the Swappy tracer after TuningFork is initialized
     if (settings.c_settings.swappy_tracer_fn != nullptr) {
-        s_swappy_tracer = std::unique_ptr<SwappyTraceWrapper>(
-            new SwappyTraceWrapper(settings));
+        s_swappy_tracer = std::unique_ptr<SwappyTraceWrapper>(new SwappyTraceWrapper(settings));
     }
     return TUNINGFORK_ERROR_OK;
 }
 
-TuningFork_ErrorCode GetFidelityParameters(
-    const ProtobufSerialization &defaultParams, ProtobufSerialization &params,
-    uint32_t timeout_ms) {
+TuningFork_ErrorCode GetFidelityParameters(const ProtobufSerialization& defaultParams,
+                                           ProtobufSerialization& params, uint32_t timeout_ms) {
     if (!s_impl) {
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     } else {
@@ -126,7 +121,7 @@ TuningFork_ErrorCode FrameDeltaTimeNanos(InstrumentationKey id, Duration dt) {
     }
 }
 
-TuningFork_ErrorCode StartTrace(InstrumentationKey key, TraceHandle &handle) {
+TuningFork_ErrorCode StartTrace(InstrumentationKey key, TraceHandle& handle) {
     if (!s_impl) {
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     } else {
@@ -142,12 +137,11 @@ TuningFork_ErrorCode EndTrace(TraceHandle h) {
     }
 }
 
-TuningFork_ErrorCode SetCurrentAnnotation(const ProtobufSerialization &ann) {
+TuningFork_ErrorCode SetCurrentAnnotation(const ProtobufSerialization& ann) {
     if (!s_impl) {
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     } else {
-        if (s_impl->SetCurrentAnnotation(ann).detail.type ==
-            Metric::Type::ERROR) {
+        if (s_impl->SetCurrentAnnotation(ann).detail.type == Metric::Type::ERROR) {
             return TUNINGFORK_ERROR_INVALID_ANNOTATION;
         } else {
             return TUNINGFORK_ERROR_OK;
@@ -181,15 +175,14 @@ TuningFork_ErrorCode Destroy() {
     }
 }
 
-const Settings *GetSettings() {
+const Settings* GetSettings() {
     if (!s_impl)
         return nullptr;
     else
         return &s_impl->GetSettings();
 }
 
-TuningFork_ErrorCode SetFidelityParameters(
-    const ProtobufSerialization &params) {
+TuningFork_ErrorCode SetFidelityParameters(const ProtobufSerialization& params) {
     if (!s_impl)
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     else
@@ -224,19 +217,17 @@ TuningFork_ErrorCode ResumeFrameTimeLogging() {
         return s_impl->ResumeFrameTimeLogging();
 }
 
-TuningFork_ErrorCode RecordLoadingTime(
-    Duration duration, const LoadingTimeMetadata &d,
-    const ProtobufSerialization &annotation) {
+TuningFork_ErrorCode RecordLoadingTime(Duration duration, const LoadingTimeMetadata& d,
+                                       const ProtobufSerialization& annotation) {
     if (!s_impl)
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     else
-        return s_impl->RecordLoadingTime(duration, d, annotation,
-                                         false /*relativeToStart*/);
+        return s_impl->RecordLoadingTime(duration, d, annotation, false /*relativeToStart*/);
 }
 
-TuningFork_ErrorCode StartRecordingLoadingTime(
-    const LoadingTimeMetadata &d, const ProtobufSerialization &annotation,
-    LoadingHandle &handle) {
+TuningFork_ErrorCode StartRecordingLoadingTime(const LoadingTimeMetadata& d,
+                                               const ProtobufSerialization& annotation,
+                                               LoadingHandle& handle) {
     if (!s_impl)
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     else
@@ -249,9 +240,9 @@ TuningFork_ErrorCode StopRecordingLoadingTime(LoadingHandle handle) {
     else
         return s_impl->StopRecordingLoadingTime(handle);
 }
-TuningFork_ErrorCode StartLoadingGroup(const LoadingTimeMetadata *d,
-                                       const ProtobufSerialization *annotation,
-                                       LoadingHandle *handle) {
+TuningFork_ErrorCode StartLoadingGroup(const LoadingTimeMetadata* d,
+                                       const ProtobufSerialization* annotation,
+                                       LoadingHandle* handle) {
     if (!s_impl)
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     else
@@ -294,13 +285,12 @@ std::string DefaultTuningForkSaveDirectory() {
     return save_dir.str();
 }
 
-TuningFork_ErrorCode SetAggregationStrategyInterval(
-    TuningFork_Submission method, uint32_t interval_ms_or_count) {
+TuningFork_ErrorCode SetAggregationStrategyInterval(TuningFork_Submission method,
+                                                    uint32_t interval_ms_or_count) {
     if (!s_impl)
         return TUNINGFORK_ERROR_TUNINGFORK_NOT_INITIALIZED;
     else
-        return s_impl->SetAggregationStrategyInterval(method,
-                                                      interval_ms_or_count);
+        return s_impl->SetAggregationStrategyInterval(method, interval_ms_or_count);
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

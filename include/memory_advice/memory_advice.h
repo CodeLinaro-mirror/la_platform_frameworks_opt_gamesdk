@@ -31,48 +31,60 @@
 extern "C" {
 #endif
 
+#define MEMORY_ADVICE_DEPRECATED_MSG                                                          \
+    "The Memory Advice API is deprecated. Use Android Vitals for Low Memory Kill monitoring " \
+    "(https://developer.android.com/topic/performance/vitals/lmk#lmk_metric_on_android_vitals)."
+
+#ifdef __cplusplus
+#define MEMORY_ADVICE_DEPRECATED(msg) [[deprecated(msg)]]
+#elif defined(__GNUC__) || defined(__clang__)
+#define MEMORY_ADVICE_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#else
+// Fallback for other compilers, does nothing
+#define MEMORY_ADVICE_DEPRECATED(msg)
+#endif
+
+#define MEMORY_ADVICE_VERSION_REVISION 7cd950d0022d01f1e7e2b470aba5a7b1abacdfaa
 #define MEMORY_ADVICE_MAJOR_VERSION 2
-#define MEMORY_ADVICE_MINOR_VERSION 1
+#define MEMORY_ADVICE_MINOR_VERSION 3
 #define MEMORY_ADVICE_BUGFIX_VERSION 0
-#define MEMORY_ADVICE_PACKED_VERSION                       \
-  ANDROID_GAMESDK_PACKED_VERSION(TUNINGFORK_MAJOR_VERSION, \
-                                 TUNINGFORK_MINOR_VERSION, \
-                                 TUNINGFORK_BUGFIX_VERSION)
+#define MEMORY_ADVICE_PACKED_VERSION                                                   \
+    ANDROID_GAMESDK_PACKED_VERSION(TUNINGFORK_MAJOR_VERSION, TUNINGFORK_MINOR_VERSION, \
+                                   TUNINGFORK_BUGFIX_VERSION)
 
 /**
  * @brief All the error codes that can be returned by MemoryAdvice functions.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 typedef enum MemoryAdvice_ErrorCode : int32_t {
-  MEMORYADVICE_ERROR_OK = 0,  ///< No error
-  MEMORYADVICE_ERROR_NOT_INITIALIZED =
-      -1,  ///< A call was made before MemoryAdvice was initialized.
-  MEMORYADVICE_ERROR_ALREADY_INITIALIZED =
-      -2,  ///< MemoryAdvice_init was called more than once.
-  MEMORYADVICE_ERROR_LOOKUP_TABLE_INVALID =
-      -3,  ///< The provided lookup table was not a valid json object.
-  MEMORYADVICE_ERROR_ADVISOR_PARAMETERS_INVALID =
-      -4,  ///< The provided advisor parameters was not a valid json object.
-  MEMORYADVICE_ERROR_WATCHER_NOT_FOUND =
-      -5,  ///< UnregisterWatcher was called with an invalid callback.
-  MEMORYADVICE_ERROR_TFLITE_MODEL_INVALID =
-      -6,  ///< A correct TFLite model was not provided.
+    MEMORYADVICE_ERROR_OK = 0, ///< No error
+    MEMORYADVICE_ERROR_NOT_INITIALIZED =
+            -1, ///< A call was made before MemoryAdvice was initialized.
+    MEMORYADVICE_ERROR_ALREADY_INITIALIZED = -2, ///< MemoryAdvice_init was called more than once.
+    MEMORYADVICE_ERROR_LOOKUP_TABLE_INVALID =
+            -3, ///< The provided lookup table was not a valid json object.
+    MEMORYADVICE_ERROR_ADVISOR_PARAMETERS_INVALID =
+            -4, ///< The provided advisor parameters was not a valid json object.
+    MEMORYADVICE_ERROR_WATCHER_NOT_FOUND =
+            -5, ///< UnregisterWatcher was called with an invalid callback.
+    MEMORYADVICE_ERROR_TFLITE_MODEL_INVALID = -6, ///< A correct TFLite model was not provided.
 } MemoryAdvice_ErrorCode;
 
 /**
  * @brief All possible memory states that can be reported by the library.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 typedef enum MemoryAdvice_MemoryState : int32_t {
-  MEMORYADVICE_STATE_UNKNOWN = 0,  ///< The memory state cannot be determined.
-  MEMORYADVICE_STATE_OK = 1,  ///< The application can safely allocate memory.
-  MEMORYADVICE_STATE_APPROACHING_LIMIT =
-      2,  ///< The application should minimize memory allocation.
-  MEMORYADVICE_STATE_CRITICAL =
-      3,  ///< The application should free memory as soon as possible, until
-          ///< the memory state changes.
+    MEMORYADVICE_STATE_UNKNOWN = 0, ///< The memory state cannot be determined.
+    MEMORYADVICE_STATE_OK = 1,      ///< The application can safely allocate memory.
+    MEMORYADVICE_STATE_APPROACHING_LIMIT =
+            2,                       ///< The application should minimize memory allocation.
+    MEMORYADVICE_STATE_CRITICAL = 3, ///< The application should free memory as soon as possible,
+                                     ///< until the memory state changes.
 } MemoryAdvice_MemoryState;
 
-typedef void (*MemoryAdvice_WatcherCallback)(MemoryAdvice_MemoryState state,
-                                             void *user_data);
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
+typedef void (*MemoryAdvice_WatcherCallback)(MemoryAdvice_MemoryState state, void* user_data);
 
 /**
  * @brief Initialize the Memory Advice library. This must be called before any
@@ -88,7 +100,8 @@ typedef void (*MemoryAdvice_WatcherCallback)(MemoryAdvice_MemoryState state,
  * @return MEMORYADVICE_ERROR_ALREADY_INITIALIZED if Memory Advice was already
  * initialized.
  */
-MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv *env, jobject context);
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
+MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv* env, jobject context);
 
 /**
  * @brief Initialize the Memory Advice library. This must be called before any
@@ -109,8 +122,9 @@ MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv *env, jobject context);
  * @return MEMORYADVICE_ERROR_ALREADY_INITIALIZED if Memory Advice was already
  * initialized.
  */
-MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv *env, jobject context,
-                                                   const char *params);
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
+MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv* env, jobject context,
+                                                   const char* params);
 
 /**
  * @brief Returns the current memory state.
@@ -122,6 +136,7 @@ MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv *env, jobject context,
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 MemoryAdvice_MemoryState MemoryAdvice_getMemoryState();
 
 /**
@@ -133,6 +148,7 @@ MemoryAdvice_MemoryState MemoryAdvice_getMemoryState();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 int64_t MemoryAdvice_getAvailableMemory();
 
 /**
@@ -144,6 +160,7 @@ int64_t MemoryAdvice_getAvailableMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 float MemoryAdvice_getPercentageAvailableMemory();
 
 /**
@@ -154,6 +171,7 @@ float MemoryAdvice_getPercentageAvailableMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED (a negative number) if Memory
  * Advice was not yet initialized.
  */
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
 int64_t MemoryAdvice_getTotalMemory();
 
 /**
@@ -175,9 +193,10 @@ int64_t MemoryAdvice_getTotalMemory();
  * @return MEMORYADVICE_ERROR_NOT_INITIALIZED if Memory Advice was not yet
  * initialized,
  */
-MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(
-    uint64_t intervalMillis, MemoryAdvice_WatcherCallback callback,
-    void *user_data);
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
+MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(uint64_t intervalMillis,
+                                                    MemoryAdvice_WatcherCallback callback,
+                                                    void* user_data);
 
 /**
  * @brief Removes all watchers with the given callback that were previously
@@ -190,9 +209,9 @@ MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(
  * @return MEMORYADVICE_ERROR_WATCHER_NOT_FOUND if the given callback wasn't
  * previously registered.
  */
-MemoryAdvice_ErrorCode MemoryAdvice_unregisterWatcher(
-    MemoryAdvice_WatcherCallback callback);
+MEMORY_ADVICE_DEPRECATED(MEMORY_ADVICE_DEPRECATED_MSG)
+MemoryAdvice_ErrorCode MemoryAdvice_unregisterWatcher(MemoryAdvice_WatcherCallback callback);
 
 #ifdef __cplusplus
-}  // extern "C" {
+} // extern "C" {
 #endif

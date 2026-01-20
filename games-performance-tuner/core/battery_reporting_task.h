@@ -28,24 +28,24 @@
 namespace tuningfork {
 
 class BatteryReportingTask : public RepeatingTask {
- private:
-  ActivityLifecycleState* activity_lifecycle_state_;
-  ITimeProvider* time_provider_;
-  IBatteryProvider* battery_provider_;
-  std::mutex mutex_;
-  MetricId id_;
+private:
+    ActivityLifecycleState* activity_lifecycle_state_;
+    ITimeProvider* time_provider_;
+    IBatteryProvider* battery_provider_;
+    std::mutex mutex_;
+    MetricId id_;
 
- public:
-  BatteryReportingTask(ActivityLifecycleState* activity_lifecycle_state,
-                       ITimeProvider* time_provider,
-                       IBatteryProvider* battery_provider, MetricId id)
-      : RepeatingTask(std::chrono::seconds(60)),
-        activity_lifecycle_state_(activity_lifecycle_state),
-        time_provider_(time_provider),
-        battery_provider_(battery_provider),
-        id_(id) {}
-  virtual void DoWork(Session* session) override;
-  void UpdateMetricId(MetricId id);
+public:
+    BatteryReportingTask(ActivityLifecycleState* activity_lifecycle_state,
+                         ITimeProvider* time_provider, IBatteryProvider* battery_provider,
+                         MetricId id)
+          : RepeatingTask(std::chrono::seconds(60)),
+            activity_lifecycle_state_(activity_lifecycle_state),
+            time_provider_(time_provider),
+            battery_provider_(battery_provider),
+            id_(id) {}
+    virtual void DoWork(Session* session) override;
+    void UpdateMetricId(MetricId id);
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

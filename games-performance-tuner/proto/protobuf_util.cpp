@@ -16,8 +16,7 @@
 
 #include "protobuf_util.h"
 
-extern "C" void TuningFork_CProtobufSerialization_Dealloc(
-    TuningFork_CProtobufSerialization *c) {
+extern "C" void TuningFork_CProtobufSerialization_Dealloc(TuningFork_CProtobufSerialization* c) {
     if (c->bytes) {
         ::free(c->bytes);
         c->bytes = nullptr;

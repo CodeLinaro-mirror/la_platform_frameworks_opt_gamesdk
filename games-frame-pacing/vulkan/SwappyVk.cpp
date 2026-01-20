@@ -46,16 +46,15 @@ static bool operator==(const SwappyTracer& t1, const SwappyTracer& t2) {
                   "SwappyTracer struct appears to have changed, please "
                   "consider updating locally.");
     return (t1.preWait == t2.preWait) && (t1.postWait == t2.postWait) &&
-           (t1.preSwapBuffers == t2.preSwapBuffers) &&
-           (t1.postSwapBuffers == t2.postSwapBuffers) &&
-           (t1.startFrame == t2.startFrame) && (t1.userData == t2.userData) &&
-           (t1.swapIntervalChanged == t2.swapIntervalChanged);
+            (t1.preSwapBuffers == t2.preSwapBuffers) &&
+            (t1.postSwapBuffers == t2.postSwapBuffers) && (t1.startFrame == t2.startFrame) &&
+            (t1.userData == t2.userData) && (t1.swapIntervalChanged == t2.swapIntervalChanged);
 }
 
 namespace swappy {
 
 class DefaultSwappyVkFunctionProvider {
-   public:
+public:
     static bool Init() {
         if (!mLibVulkan) {
             // This is the first time we've been called
@@ -78,7 +77,7 @@ class DefaultSwappyVkFunctionProvider {
         }
     }
 
-   private:
+private:
     static void* mLibVulkan;
 };
 
@@ -99,8 +98,7 @@ bool SwappyVk::InitFunctions() {
         return false;
     }
 }
-void SwappyVk::SetFunctionProvider(
-    const SwappyVkFunctionProvider* functionProvider) {
+void SwappyVk::SetFunctionProvider(const SwappyVkFunctionProvider* functionProvider) {
     if (pFunctionProvider != nullptr) pFunctionProvider->close();
     pFunctionProvider = functionProvider;
 }
@@ -108,10 +106,11 @@ void SwappyVk::SetFunctionProvider(
 /**
  * Generic/Singleton implementation of swappyVkDetermineDeviceExtensions.
  */
-void SwappyVk::swappyVkDetermineDeviceExtensions(
-    VkPhysicalDevice physicalDevice, uint32_t availableExtensionCount,
-    VkExtensionProperties* pAvailableExtensions,
-    uint32_t* pRequiredExtensionCount, char** pRequiredExtensions) {
+void SwappyVk::swappyVkDetermineDeviceExtensions(VkPhysicalDevice physicalDevice,
+                                                 uint32_t availableExtensionCount,
+                                                 VkExtensionProperties* pAvailableExtensions,
+                                                 uint32_t* pRequiredExtensionCount,
+                                                 char** pRequiredExtensions) {
 #if (not defined ANDROID_NDK_VERSION) || ANDROID_NDK_VERSION >= 15
     // TODO: Refactor this to be more concise:
     if (!pRequiredExtensions) {
@@ -127,10 +126,8 @@ void SwappyVk::swappyVkDetermineDeviceExtensions(
             if (!strcmp(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
                         pAvailableExtensions[i].extensionName)) {
                 if (j < *pRequiredExtensionCount) {
-                    strcpy(pRequiredExtensions[j++],
-                           VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
-                    doesPhysicalDeviceHaveGoogleDisplayTiming[physicalDevice] =
-                        true;
+                    strcpy(pRequiredExtensions[j++], VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
+                    doesPhysicalDeviceHaveGoogleDisplayTiming[physicalDevice] = true;
                 }
             }
         }
@@ -140,8 +137,7 @@ void SwappyVk::swappyVkDetermineDeviceExtensions(
 #endif
 }
 
-void SwappyVk::SetQueueFamilyIndex(VkDevice device, VkQueue queue,
-                                   uint32_t queueFamilyIndex) {
+void SwappyVk::SetQueueFamilyIndex(VkDevice device, VkQueue queue, uint32_t queueFamilyIndex) {
     perQueueFamilyIndex[queue] = {device, queueFamilyIndex};
 }
 
@@ -149,10 +145,8 @@ void SwappyVk::SetQueueFamilyIndex(VkDevice device, VkQueue queue,
  * Generic/Singleton implementation of swappyVkGetRefreshCycleDuration.
  */
 bool SwappyVk::GetRefreshCycleDuration(JNIEnv* env, jobject jactivity,
-                                       VkPhysicalDevice physicalDevice,
-                                       VkDevice device,
-                                       VkSwapchainKHR swapchain,
-                                       uint64_t* pRefreshDuration) {
+                                       VkPhysicalDevice physicalDevice, VkDevice device,
+                                       VkSwapchainKHR swapchain, uint64_t* pRefreshDuration) {
     auto& pImplementation = perSwapchainImplementation[swapchain];
     if (!pImplementation) {
         if (!InitFunctions()) {
@@ -165,28 +159,25 @@ bool SwappyVk::GetRefreshCycleDuration(JNIEnv* env, jobject jactivity,
         // (determined and cached by swappyVkDetermineDeviceExtensions),
         // determine which derived class to use to implement the rest of the API
         if (doesPhysicalDeviceHaveGoogleDisplayTiming[physicalDevice]) {
-            pImplementation = std::make_shared<SwappyVkGoogleDisplayTiming>(
-                env, jactivity, physicalDevice, device, pFunctionProvider);
-            SWAPPY_LOGV(
-                "SwappyVk initialized for VkDevice %p using "
-                "VK_GOOGLE_display_timing on Android",
-                device);
+            pImplementation =
+                    std::make_shared<SwappyVkGoogleDisplayTiming>(env, jactivity, physicalDevice,
+                                                                  device, pFunctionProvider);
+            SWAPPY_LOGV("SwappyVk initialized for VkDevice %p using "
+                        "VK_GOOGLE_display_timing on Android",
+                        device);
         } else
 #endif
         {
-            pImplementation = std::make_shared<SwappyVkFallback>(
-                env, jactivity, physicalDevice, device, pFunctionProvider);
-            SWAPPY_LOGV(
-                "SwappyVk initialized for VkDevice %p using Android fallback",
-                device);
+            pImplementation = std::make_shared<SwappyVkFallback>(env, jactivity, physicalDevice,
+                                                                 device, pFunctionProvider);
+            SWAPPY_LOGV("SwappyVk initialized for VkDevice %p using Android fallback", device);
         }
 
-        if (!pImplementation) {  // should never happen
-            SWAPPY_LOGE(
-                "SwappyVk could not find or create correct implementation for "
-                "the current environment: "
-                "%p, %p",
-                physicalDevice, device);
+        if (!pImplementation) { // should never happen
+            SWAPPY_LOGE("SwappyVk could not find or create correct implementation for "
+                        "the current environment: "
+                        "%p, %p",
+                        physicalDevice, device);
             return false;
         }
     }
@@ -200,15 +191,13 @@ bool SwappyVk::GetRefreshCycleDuration(JNIEnv* env, jobject jactivity,
         }
     }
     // Now, call that derived class to get the refresh duration to return
-    return pImplementation->doGetRefreshCycleDuration(swapchain,
-                                                      pRefreshDuration);
+    return pImplementation->doGetRefreshCycleDuration(swapchain, pRefreshDuration);
 }
 
 /**
  * Generic/Singleton implementation of swappyVkSetWindow.
  */
-void SwappyVk::SetWindow(VkDevice device, VkSwapchainKHR swapchain,
-                         ANativeWindow* window) {
+void SwappyVk::SetWindow(VkDevice device, VkSwapchainKHR swapchain, ANativeWindow* window) {
     auto& pImplementation = perSwapchainImplementation[swapchain];
     if (!pImplementation) {
         return;
@@ -219,8 +208,7 @@ void SwappyVk::SetWindow(VkDevice device, VkSwapchainKHR swapchain,
 /**
  * Generic/Singleton implementation of swappyVkSetSwapInterval.
  */
-void SwappyVk::SetSwapDuration(VkDevice device, VkSwapchainKHR swapchain,
-                               uint64_t swapNs) {
+void SwappyVk::SetSwapDuration(VkDevice device, VkSwapchainKHR swapchain, uint64_t swapNs) {
     auto& pImplementation = perSwapchainImplementation[swapchain];
     if (!pImplementation) {
         return;
@@ -231,12 +219,9 @@ void SwappyVk::SetSwapDuration(VkDevice device, VkSwapchainKHR swapchain,
 /**
  * Generic/Singleton implementation of swappyVkQueuePresent.
  */
-VkResult SwappyVk::QueuePresent(VkQueue queue,
-                                const VkPresentInfoKHR* pPresentInfo) {
+VkResult SwappyVk::QueuePresent(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
     if (perQueueFamilyIndex.find(queue) == perQueueFamilyIndex.end()) {
-        SWAPPY_LOGE(
-            "Unknown queue %p. Did you call SwappyVkSetQueueFamilyIndex ?",
-            queue);
+        SWAPPY_LOGE("Unknown queue %p. Did you call SwappyVkSetQueueFamilyIndex ?", queue);
         return VK_INCOMPLETE;
     }
 
@@ -247,11 +232,10 @@ VkResult SwappyVk::QueuePresent(VkQueue queue,
         // This shouldn't happen, but if it does, something is really wrong.
         return VK_ERROR_DEVICE_LOST;
     }
-    auto& pImplementation =
-        perSwapchainImplementation[*pPresentInfo->pSwapchains];
+    auto& pImplementation = perSwapchainImplementation[*pPresentInfo->pSwapchains];
     if (pImplementation) {
-        return pImplementation->doQueuePresent(
-            queue, perQueueFamilyIndex[queue].queueFamilyIndex, pPresentInfo);
+        return pImplementation->doQueuePresent(queue, perQueueFamilyIndex[queue].queueFamilyIndex,
+                                               pPresentInfo);
     } else {
         // This should only happen if the API was used wrong (e.g. they never
         // called swappyVkGetRefreshCycleDuration).
@@ -326,8 +310,7 @@ std::chrono::nanoseconds SwappyVk::GetFenceTimeout() const {
 
 std::chrono::nanoseconds SwappyVk::GetSwapInterval(VkSwapchainKHR swapchain) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        return it->second->getSwapInterval();
+    if (it != perSwapchainImplementation.end()) return it->second->getSwapInterval();
     return std::chrono::nanoseconds(0);
 }
 
@@ -353,11 +336,10 @@ void SwappyVk::removeTracer(const SwappyTracer* t) {
     }
 }
 
-int SwappyVk::GetSupportedRefreshPeriodsNS(uint64_t* out_refreshrates,
-                                           int allocated_entries,
+int SwappyVk::GetSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries,
                                            VkSwapchainKHR swapchain) {
     return (*perSwapchainImplementation[swapchain])
-        .getSupportedRefreshPeriodsNS(out_refreshrates, allocated_entries);
+            .getSupportedRefreshPeriodsNS(out_refreshrates, allocated_entries);
 }
 
 bool SwappyVk::IsEnabled(VkSwapchainKHR swapchain, bool* isEnabled) {
@@ -369,21 +351,17 @@ bool SwappyVk::IsEnabled(VkSwapchainKHR swapchain, bool* isEnabled) {
 
 void SwappyVk::enableStats(VkSwapchainKHR swapchain, bool enabled) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        it->second->enableStats(enabled);
+    if (it != perSwapchainImplementation.end()) it->second->enableStats(enabled);
 }
 
 void SwappyVk::getStats(VkSwapchainKHR swapchain, SwappyStats* swappyStats) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        it->second->getStats(swappyStats);
+    if (it != perSwapchainImplementation.end()) it->second->getStats(swappyStats);
 }
 
-void SwappyVk::recordFrameStart(VkQueue queue, VkSwapchainKHR swapchain,
-                                uint32_t image) {
+void SwappyVk::recordFrameStart(VkQueue queue, VkSwapchainKHR swapchain, uint32_t image) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        it->second->recordFrameStart(queue, image);
+    if (it != perSwapchainImplementation.end()) it->second->recordFrameStart(queue, image);
 }
 
 void SwappyVk::clearStats(VkSwapchainKHR swapchain) {
@@ -398,14 +376,12 @@ void SwappyVk::resetFramePacing(VkSwapchainKHR swapchain) {
 
 void SwappyVk::enableFramePacing(VkSwapchainKHR swapchain, bool enable) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        it->second->enableFramePacing(enable);
+    if (it != perSwapchainImplementation.end()) it->second->enableFramePacing(enable);
 }
 
 void SwappyVk::enableBlockingWait(VkSwapchainKHR swapchain, bool enable) {
     auto it = perSwapchainImplementation.find(swapchain);
-    if (it != perSwapchainImplementation.end())
-        it->second->enableBlockingWait(enable);
+    if (it != perSwapchainImplementation.end()) it->second->enableBlockingWait(enable);
 }
 
-}  // namespace swappy
+} // namespace swappy

@@ -35,66 +35,66 @@ import javax.swing.border.Border;
 import javax.swing.table.TableCellRenderer;
 import org.jetbrains.annotations.NotNull;
 
-public class ValidationTextFieldRendererWrapper extends CellRendererPanel implements
-    TableCellRenderer {
+public class ValidationTextFieldRendererWrapper
+        extends CellRendererPanel implements TableCellRenderer {
+    private final TableCellRenderer delegate;
+    private final JLabel iconLabel = new JLabel();
+    private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
+    private TableCellValidator cellValidator;
 
-  private final TableCellRenderer delegate;
-  private final JLabel iconLabel = new JLabel();
-  private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
-  private TableCellValidator cellValidator;
-
-  public ValidationTextFieldRendererWrapper(TableCellRenderer delegate) {
-    this.delegate = delegate;
-    this.setLayout(new BorderLayout(0, 0));
-    this.add(this.iconLabel, BorderLayout.EAST);
-    this.iconLabel.setOpaque(false);
-  }
-
-  public ValidationTextFieldRendererWrapper withCellValidator(
-      @NotNull TableCellValidator cellValidator) {
-    this.cellValidator = cellValidator;
-    return this;
-  }
-
-  @Override
-  public Dimension getPreferredSize() {
-    Dimension size = super.getPreferredSize();
-    size.height = Math.max(size.height, editorSizeSupplier.get().height);
-    return size;
-  }
-
-  @Override
-  public final Component getTableCellRendererComponent(JTable table, Object value,
-      boolean isSelected, boolean hasFocus, int row, int column) {
-    JComponent delegateRenderer = (JComponent) this.delegate
-        .getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-    if (cellValidator != null) {
-      ValidationInfo result = cellValidator.validate(value, row, column);
-      iconLabel.setIcon(
-          result == null ? null : (result.warning ? General.BalloonWarning : General.BalloonError));
-      iconLabel.setBorder(result == null ? null : iconBorder());
-      putClientProperty("CellRenderer.validationInfo", result);
-      if (result != null) {
-        setToolTipText(result.message);
-      } else {
-        setToolTipText("");
-      }
+    public ValidationTextFieldRendererWrapper(TableCellRenderer delegate) {
+        this.delegate = delegate;
+        this.setLayout(new BorderLayout(0, 0));
+        this.add(this.iconLabel, BorderLayout.EAST);
+        this.iconLabel.setOpaque(false);
     }
 
-    add(delegateRenderer, BorderLayout.CENTER);
-    setBorder(delegateRenderer.getBorder());
-    delegateRenderer.setBorder((Border) null);
-    setBackground(delegateRenderer.getBackground());
-    return this;
-  }
+    public ValidationTextFieldRendererWrapper withCellValidator(
+            @NotNull TableCellValidator cellValidator) {
+        this.cellValidator = cellValidator;
+        return this;
+    }
 
-  private static Border iconBorder() {
-    return Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
-  }
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension size = super.getPreferredSize();
+        size.height = Math.max(size.height, editorSizeSupplier.get().height);
+        return size;
+    }
 
-  @Override
-  protected void paintComponent(Graphics g) {
-    g.setColor(getBackground());
-    g.fillRect(0, 0, getWidth(), getHeight());
-  }
+    @Override
+    public final Component getTableCellRendererComponent(
+            JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        JComponent delegateRenderer = (JComponent) this.delegate.getTableCellRendererComponent(
+                table, value, isSelected, hasFocus, row, column);
+        if (cellValidator != null) {
+            ValidationInfo result = cellValidator.validate(value, row, column);
+            iconLabel.setIcon(result == null
+                            ? null
+                            : (result.warning ? General.BalloonWarning : General.BalloonError));
+            iconLabel.setBorder(result == null ? null : iconBorder());
+            putClientProperty("CellRenderer.validationInfo", result);
+            if (result != null) {
+                setToolTipText(result.message);
+            } else {
+                setToolTipText("");
+            }
+        }
+
+        add(delegateRenderer, BorderLayout.CENTER);
+        setBorder(delegateRenderer.getBorder());
+        delegateRenderer.setBorder((Border) null);
+        setBackground(delegateRenderer.getBackground());
+        return this;
+    }
+
+    private static Border iconBorder() {
+        return Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        g.setColor(getBackground());
+        g.fillRect(0, 0, getWidth(), getHeight());
+    }
 }

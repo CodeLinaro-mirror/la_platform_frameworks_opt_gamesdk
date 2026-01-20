@@ -27,43 +27,41 @@
 namespace swappy {
 
 class ChoreographerFilter {
- public:
-  using Worker = std::function<std::chrono::nanoseconds(
-      std::optional<std::chrono::nanoseconds>)>;
+public:
+    using Worker = std::function<std::chrono::nanoseconds(std::optional<std::chrono::nanoseconds>)>;
 
-  explicit ChoreographerFilter(std::chrono::nanoseconds refreshPeriod,
-                               std::chrono::nanoseconds appToSfDelay,
-                               Worker doWork);
-  ~ChoreographerFilter();
+    explicit ChoreographerFilter(std::chrono::nanoseconds refreshPeriod,
+                                 std::chrono::nanoseconds appToSfDelay, Worker doWork);
+    ~ChoreographerFilter();
 
-  void onChoreographer(std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
+    void onChoreographer(std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
 
- private:
-  void launchThreadsLocked();
-  void terminateThreadsLocked();
+private:
+    void launchThreadsLocked();
+    void terminateThreadsLocked();
 
-  void onSettingsChanged();
+    void onSettingsChanged();
 
-  void threadMain(bool useAffinity, int32_t thread);
+    void threadMain(bool useAffinity, int32_t thread);
 
-  std::mutex mThreadPoolMutex;
-  bool mUseAffinity = true;
-  std::vector<Thread> mThreadPool;
+    std::mutex mThreadPoolMutex;
+    bool mUseAffinity = true;
+    std::vector<Thread> mThreadPool;
 
-  std::mutex mMutex;
-  std::condition_variable mCondition;
-  bool mIsRunning = true;
-  int64_t mSequenceNumber = 0;
-  std::chrono::steady_clock::time_point mLastTimestamp;
-  std::optional<std::chrono::nanoseconds> mSfToVsyncDelay;
+    std::mutex mMutex;
+    std::condition_variable mCondition;
+    bool mIsRunning = true;
+    int64_t mSequenceNumber = 0;
+    std::chrono::steady_clock::time_point mLastTimestamp;
+    std::optional<std::chrono::nanoseconds> mSfToVsyncDelay;
 
-  std::mutex mWorkMutex;
-  std::chrono::steady_clock::time_point mLastWorkRun;
-  std::chrono::nanoseconds mWorkDuration;
+    std::mutex mWorkMutex;
+    std::chrono::steady_clock::time_point mLastWorkRun;
+    std::chrono::nanoseconds mWorkDuration;
 
-  std::chrono::nanoseconds mRefreshPeriod;
-  std::chrono::nanoseconds mAppToSfDelay;
-  const Worker mDoWork;
+    std::chrono::nanoseconds mRefreshPeriod;
+    std::chrono::nanoseconds mAppToSfDelay;
+    const Worker mDoWork;
 };
 
-}  // namespace swappy
+} // namespace swappy

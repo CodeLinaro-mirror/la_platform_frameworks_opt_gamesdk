@@ -44,30 +44,28 @@
 //
 // std::ostream& operator<<(std::ostream& os, const weeknum_weekday& md);
 
-#include "iso_week.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<iso_week::weeknum_weekday>{}, "");
+#include "iso_week.h"
+
+static_assert(std::is_trivially_destructible<iso_week::weeknum_weekday>{}, "");
 static_assert(!std::is_default_constructible<iso_week::weeknum_weekday>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::weeknum_weekday>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::weeknum_weekday>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::weeknum_weekday>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::weeknum_weekday>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::weeknum_weekday>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::weeknum_weekday>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::weeknum_weekday>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::weeknum_weekday>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::weeknum_weekday>{}, "");
 static_assert(std::is_standard_layout<iso_week::weeknum_weekday>{}, "");
 static_assert(std::is_literal_type<iso_week::weeknum_weekday>{}, "");
 
-static_assert( std::is_nothrow_constructible<iso_week::weeknum_weekday,
-                                                 iso_week::weeknum,
-                                                 iso_week::weekday>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::weeknum_weekday, iso_week::weeknum,
+                                            iso_week::weekday>{},
+              "");
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
 
     constexpr auto wn_wd = weeknum_weekday{52_w, tue};

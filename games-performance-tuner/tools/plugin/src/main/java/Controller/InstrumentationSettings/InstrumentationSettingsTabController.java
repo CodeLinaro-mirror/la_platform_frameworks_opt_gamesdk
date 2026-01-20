@@ -27,157 +27,176 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 
 public class InstrumentationSettingsTabController {
+    private Settings settingsModel;
 
-  private Settings settingsModel;
-
-  public InstrumentationSettingsTabController(
-      Settings settingsModel) {
-    this.settingsModel = settingsModel;
-  }
-
-  public void setInitialData(JTable jTable) {
-    InstrumentationSettingsTableModel model = (InstrumentationSettingsTableModel) jTable.getModel();
-    ArrayList<String[]> histograms = new ArrayList<>();
-    for (Histogram histogram : settingsModel.getHistogramsList()) {
-      histograms.add(new String[]{String.valueOf(histogram.getInstrumentKey()),
-          String.valueOf(histogram.getBucketMin()),
-          String.valueOf(histogram.getBucketMax()),
-          String.valueOf(histogram.getNBuckets())});
+    public InstrumentationSettingsTabController(Settings settingsModel) {
+        this.settingsModel = settingsModel;
     }
-    model.setData(histograms);
-  }
 
-  public void setAggregation(JRadioButton timeButton, JRadioButton tickButton,
-      JSlider intervalSlider) {
-    if (settingsModel.getAggregationStrategy().getMethod().equals(Submission.TIME_BASED)) {
-      timeButton.setSelected(true);
-      intervalSlider
-          .setValue(settingsModel.getAggregationStrategy().getIntervalmsOrCount() / (10 * 1000));
-    } else if (settingsModel.getAggregationStrategy().getMethod().equals(Submission.TICK_BASED)) {
-      tickButton.setSelected(true);
-      intervalSlider.setValue(settingsModel.getAggregationStrategy().getIntervalmsOrCount());
+    public void setInitialData(JTable jTable) {
+        InstrumentationSettingsTableModel model =
+                (InstrumentationSettingsTableModel) jTable.getModel();
+        ArrayList<String[]> histograms = new ArrayList<>();
+        for (Histogram histogram : settingsModel.getHistogramsList()) {
+            histograms.add(new String[] {String.valueOf(histogram.getInstrumentKey()),
+                    String.valueOf(histogram.getBucketMin()),
+                    String.valueOf(histogram.getBucketMax()),
+                    String.valueOf(histogram.getNBuckets())});
+        }
+        model.setData(histograms);
     }
-  }
 
-  public void setBaseUrlTextBox(JTextField baseUrl) {
-    baseUrl.setText(settingsModel.getBaseUri());
-  }
-
-  public void setApiKeyTextBox(JTextField apiKey) {
-    apiKey.setText(settingsModel.getApiKey());
-  }
-
-  public void setEnumData() {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
-    settingsModel = settingsBuilder.setAggregationStrategy(strategy.setMaxInstrumentationKeys(
-        settingsModel.getHistogramsCount()
-    )).build();
-  }
-
-  public void addRowAction(JTable jTable) {
-    InstrumentationSettingsTableModel model = (InstrumentationSettingsTableModel) jTable.getModel();
-    model.addRow();
-  }
-
-  public void removeRowAction(JTable jTable) {
-    InstrumentationSettingsTableModel model = (InstrumentationSettingsTableModel) jTable.getModel();
-    int row = jTable.getSelectedRow();
-    if (jTable.getCellEditor() != null) {
-      jTable.getCellEditor().stopCellEditing();
+    public void setAggregation(
+            JRadioButton timeButton, JRadioButton tickButton, JSlider intervalSlider) {
+        if (settingsModel.getAggregationStrategy().getMethod().equals(Submission.TIME_BASED)) {
+            timeButton.setSelected(true);
+            intervalSlider.setValue(
+                    settingsModel.getAggregationStrategy().getIntervalmsOrCount() / (10 * 1000));
+        } else if (settingsModel.getAggregationStrategy().getMethod().equals(
+                           Submission.TICK_BASED)) {
+            tickButton.setSelected(true);
+            intervalSlider.setValue(settingsModel.getAggregationStrategy().getIntervalmsOrCount());
+        }
     }
-    model.removeRow(row);
-  }
 
-  public void setDefaultQuality(int value) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    // + 1 was added to shift to 1-indexing
-    settingsModel = settingsBuilder.setDefaultFidelityParametersFilename(
-        "dev_tuningfork_fidelityparams_" + (value + 1) + ".bin").build();
-  }
-
-  public void addNewHistogram() {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    settingsModel = settingsBuilder.addHistograms(Histogram.newBuilder().build()).build();
-  }
-
-  public void removeHistogram(int row) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    settingsModel = settingsBuilder.removeHistograms(row).build();
-  }
-
-  public void setHistogramInstrumentID(int histogramRow, String id) {
-    if (!id.isEmpty()) {
-      Settings.Builder settingsBuilder = settingsModel.toBuilder();
-      Histogram histogram = settingsBuilder.getHistograms(histogramRow);
-      settingsModel = settingsModel.toBuilder().setHistograms(histogramRow,
-          histogram.toBuilder().setInstrumentKey(Integer.parseInt(id))).build();
+    public void setBaseUrlTextBox(JTextField baseUrl) {
+        baseUrl.setText(settingsModel.getBaseUri());
     }
-  }
 
-  public void setHistogramMinimumBucketSize(int histogramRow, String bucketSize) {
-    if (!bucketSize.isEmpty()) {
-      Settings.Builder settingsBuilder = settingsModel.toBuilder();
-      Histogram histogram = settingsBuilder.getHistograms(histogramRow);
-      settingsModel = settingsModel.toBuilder().setHistograms(histogramRow,
-          histogram.toBuilder().setBucketMin(Float.parseFloat(bucketSize))).build();
+    public void setApiKeyTextBox(JTextField apiKey) {
+        apiKey.setText(settingsModel.getApiKey());
     }
-  }
 
-  public void setHistogramMaximumBucketSize(int histogramRow, String bucketSize) {
-    if (!bucketSize.isEmpty()) {
-      Settings.Builder settingsBuilder = settingsModel.toBuilder();
-      Histogram histogram = settingsBuilder.getHistograms(histogramRow);
-      settingsModel = settingsModel.toBuilder().setHistograms(histogramRow,
-          histogram.toBuilder().setBucketMax(Float.parseFloat(bucketSize))).build();
+    public void setEnumData() {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
+        settingsModel = settingsBuilder
+                                .setAggregationStrategy(strategy.setMaxInstrumentationKeys(
+                                        settingsModel.getHistogramsCount()))
+                                .build();
     }
-  }
 
-  public void setHistogramNumberOfBuckets(int histogramRow, String buckets) {
-    if (!buckets.isEmpty()) {
-      Settings.Builder settingsBuilder = settingsModel.toBuilder();
-      Histogram histogram = settingsBuilder.getHistograms(histogramRow);
-      settingsModel = settingsModel.toBuilder().setHistograms(histogramRow,
-          histogram.toBuilder().setNBuckets(Integer.parseInt(buckets))).build();
+    public void addRowAction(JTable jTable) {
+        InstrumentationSettingsTableModel model =
+                (InstrumentationSettingsTableModel) jTable.getModel();
+        model.addRow();
     }
-  }
 
-  public void setAggregationMethod(String uploadMethod) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
-    Submission submission = (uploadMethod.equals("Time Based") ? Submission.TIME_BASED
-        : Submission.TICK_BASED);
-    settingsModel = settingsBuilder.setAggregationStrategy(strategy.setMethod(submission).build())
-        .build();
-  }
+    public void removeRowAction(JTable jTable) {
+        InstrumentationSettingsTableModel model =
+                (InstrumentationSettingsTableModel) jTable.getModel();
+        int row = jTable.getSelectedRow();
+        if (jTable.getCellEditor() != null) {
+            jTable.getCellEditor().stopCellEditing();
+        }
+        model.removeRow(row);
+    }
 
-  public void setBaseUrl(String url) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    settingsModel = settingsBuilder.setBaseUri(url).build();
-  }
+    public void setDefaultQuality(int value) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        // + 1 was added to shift to 1-indexing
+        settingsModel = settingsBuilder
+                                .setDefaultFidelityParametersFilename(
+                                        "dev_tuningfork_fidelityparams_" + (value + 1) + ".bin")
+                                .build();
+    }
 
-  public void setMaxInstrumentationKeys(int keys) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
-    settingsModel = settingsBuilder
-        .setAggregationStrategy(strategy.setMaxInstrumentationKeys(keys))
-        .build();
-  }
+    public void addNewHistogram() {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        settingsModel = settingsBuilder.addHistograms(Histogram.newBuilder().build()).build();
+    }
 
-  public void setApiKey(String key) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    settingsModel = settingsBuilder.setApiKey(key).build();
-  }
+    public void removeHistogram(int row) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        settingsModel = settingsBuilder.removeHistograms(row).build();
+    }
 
-  public void setUploadInterval(Integer uploadInterval) {
-    Settings.Builder settingsBuilder = settingsModel.toBuilder();
-    AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
-    settingsModel = settingsBuilder
-        .setAggregationStrategy(strategy.setIntervalmsOrCount(uploadInterval))
-        .build();
-  }
+    public void setHistogramInstrumentID(int histogramRow, String id) {
+        if (!id.isEmpty()) {
+            Settings.Builder settingsBuilder = settingsModel.toBuilder();
+            Histogram histogram = settingsBuilder.getHistograms(histogramRow);
+            settingsModel =
+                    settingsModel.toBuilder()
+                            .setHistograms(histogramRow,
+                                    histogram.toBuilder().setInstrumentKey(Integer.parseInt(id)))
+                            .build();
+        }
+    }
 
-  public Settings getDataModel() {
-    return settingsModel;
-  }
+    public void setHistogramMinimumBucketSize(int histogramRow, String bucketSize) {
+        if (!bucketSize.isEmpty()) {
+            Settings.Builder settingsBuilder = settingsModel.toBuilder();
+            Histogram histogram = settingsBuilder.getHistograms(histogramRow);
+            settingsModel = settingsModel.toBuilder()
+                                    .setHistograms(histogramRow,
+                                            histogram.toBuilder().setBucketMin(
+                                                    Float.parseFloat(bucketSize)))
+                                    .build();
+        }
+    }
+
+    public void setHistogramMaximumBucketSize(int histogramRow, String bucketSize) {
+        if (!bucketSize.isEmpty()) {
+            Settings.Builder settingsBuilder = settingsModel.toBuilder();
+            Histogram histogram = settingsBuilder.getHistograms(histogramRow);
+            settingsModel = settingsModel.toBuilder()
+                                    .setHistograms(histogramRow,
+                                            histogram.toBuilder().setBucketMax(
+                                                    Float.parseFloat(bucketSize)))
+                                    .build();
+        }
+    }
+
+    public void setHistogramNumberOfBuckets(int histogramRow, String buckets) {
+        if (!buckets.isEmpty()) {
+            Settings.Builder settingsBuilder = settingsModel.toBuilder();
+            Histogram histogram = settingsBuilder.getHistograms(histogramRow);
+            settingsModel =
+                    settingsModel.toBuilder()
+                            .setHistograms(histogramRow,
+                                    histogram.toBuilder().setNBuckets(Integer.parseInt(buckets)))
+                            .build();
+        }
+    }
+
+    public void setAggregationMethod(String uploadMethod) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
+        Submission submission =
+                (uploadMethod.equals("Time Based") ? Submission.TIME_BASED : Submission.TICK_BASED);
+        settingsModel =
+                settingsBuilder.setAggregationStrategy(strategy.setMethod(submission).build())
+                        .build();
+    }
+
+    public void setBaseUrl(String url) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        settingsModel = settingsBuilder.setBaseUri(url).build();
+    }
+
+    public void setMaxInstrumentationKeys(int keys) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
+        settingsModel =
+                settingsBuilder.setAggregationStrategy(strategy.setMaxInstrumentationKeys(keys))
+                        .build();
+    }
+
+    public void setApiKey(String key) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        settingsModel = settingsBuilder.setApiKey(key).build();
+    }
+
+    public void setUploadInterval(Integer uploadInterval) {
+        Settings.Builder settingsBuilder = settingsModel.toBuilder();
+        AggregationStrategy.Builder strategy = settingsBuilder.getAggregationStrategy().toBuilder();
+        settingsModel =
+                settingsBuilder
+                        .setAggregationStrategy(strategy.setIntervalmsOrCount(uploadInterval))
+                        .build();
+    }
+
+    public Settings getDataModel() {
+        return settingsModel;
+    }
 }

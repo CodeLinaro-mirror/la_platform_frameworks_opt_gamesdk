@@ -15,43 +15,52 @@
  */
 package com.google.androidgamesdk.gametextinput.test;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
-import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.util.Log;
 import android.widget.TextView;
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.androidgamesdk.gametextinput.test.R;
-
-// import com.google.androidgamesdk.gametextinput.InputConnection;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
-  InputEnabledTextView inputEnabledTextView;
-  TextView displayedText;
+    InputEnabledTextView inputEnabledTextView;
+    TextView displayedText;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        applyInsets();
+        inputEnabledTextView = (InputEnabledTextView) findViewById(R.id.input_enabled_text_view);
+        assert (inputEnabledTextView != null);
 
-    inputEnabledTextView = (InputEnabledTextView) findViewById(R.id.input_enabled_text_view);
-    assert (inputEnabledTextView != null);
+        displayedText = (TextView) findViewById(R.id.displayed_text);
+        assert (displayedText != null);
 
-    displayedText = (TextView) findViewById(R.id.displayed_text);
-    assert (displayedText != null);
+        inputEnabledTextView.createInputConnection(InputType.TYPE_CLASS_TEXT, this);
+    }
 
-    inputEnabledTextView.createInputConnection(InputType.TYPE_CLASS_TEXT, this);
-  }
+    public void setDisplayedText(String text, int selectionStart, int selectionEnd) {
+        SpannableString str = new SpannableString(text);
 
-  public void setDisplayedText(String text) {
-    displayedText.setText(text);
-  }
+        if (selectionStart != selectionEnd) {
+            str.setSpan(new BackgroundColorSpan(Color.YELLOW), selectionStart, selectionEnd, 0);
+        }
+        displayedText.setText(str);
+    }
 
-  public String getTestString() {
-    return "abc";
-  }
-
-  public void enableSoftKeyboard() {
-    inputEnabledTextView.enableSoftKeyboard();
-  }
+    private void applyInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+    }
 }

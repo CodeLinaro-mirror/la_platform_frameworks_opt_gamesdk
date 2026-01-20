@@ -24,37 +24,37 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
 public class SettingsActivity
-    extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
-  private final SettingsFragment mSettingsFragment = new SettingsFragment();
+        extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
+    private final SettingsFragment mSettingsFragment = new SettingsFragment();
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-    getSupportFragmentManager()
-        .beginTransaction()
-        .replace(android.R.id.content, mSettingsFragment)
-        .commit();
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(android.R.id.content, mSettingsFragment)
+                .commit();
 
-    ActionBar actionBar = getSupportActionBar();
-    if (actionBar != null) {
-      actionBar.setTitle("Settings");
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.setTitle("Settings");
+        }
+
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .registerOnSharedPreferenceChangeListener(this);
     }
 
-    PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-        .registerOnSharedPreferenceChangeListener(this);
-  }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
 
-  @Override
-  protected void onDestroy() {
-    super.onDestroy();
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                .unregisterOnSharedPreferenceChangeListener(this);
+    }
 
-    PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
-        .unregisterOnSharedPreferenceChangeListener(this);
-  }
-
-  @Override
-  public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
-    Log.i("SettingsActivity.java", "onSharedPreferenceChanged");
-  }
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        Log.i("SettingsActivity.java", "onSharedPreferenceChanged");
+    }
 }

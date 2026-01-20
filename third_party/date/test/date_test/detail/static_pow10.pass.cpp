@@ -26,25 +26,23 @@
 //     static constepxr std::uint64_t value = ...;
 // };
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-int
-main()
-{
+#include "date.h"
+
+int main() {
     using namespace date::detail;
-    static_assert(static_pow10<0>::value ==  1, "");
-    static_assert(static_pow10<1>::value ==  10, "");
-    static_assert(static_pow10<2>::value ==  100, "");
-    static_assert(static_pow10<3>::value ==  1000, "");
-    static_assert(static_pow10<4>::value ==  10000, "");
-    static_assert(static_pow10<5>::value ==  100000, "");
-    static_assert(static_pow10<6>::value ==  1000000, "");
-    static_assert(static_pow10<7>::value ==  10000000, "");
-    static_assert(static_pow10<8>::value ==  100000000, "");
-    static_assert(static_pow10<9>::value ==  1000000000, "");
+    static_assert(static_pow10<0>::value == 1, "");
+    static_assert(static_pow10<1>::value == 10, "");
+    static_assert(static_pow10<2>::value == 100, "");
+    static_assert(static_pow10<3>::value == 1000, "");
+    static_assert(static_pow10<4>::value == 10000, "");
+    static_assert(static_pow10<5>::value == 100000, "");
+    static_assert(static_pow10<6>::value == 1000000, "");
+    static_assert(static_pow10<7>::value == 10000000, "");
+    static_assert(static_pow10<8>::value == 100000000, "");
+    static_assert(static_pow10<9>::value == 1000000000, "");
     static_assert(static_pow10<10>::value == 10000000000, "");
 }

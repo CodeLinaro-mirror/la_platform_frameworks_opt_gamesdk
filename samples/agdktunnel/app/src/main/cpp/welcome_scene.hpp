@@ -26,55 +26,60 @@
 #include "util.hpp"
 
 struct OwnedGameTextInputState {
-  OwnedGameTextInputState(const std::string &initial_string);
+    OwnedGameTextInputState(const std::string& initial_string);
 
-  OwnedGameTextInputState &operator=(const GameTextInputState &rhs);
+    OwnedGameTextInputState& operator=(const GameTextInputState& rhs);
 
-  GameTextInputState inner;
-  std::string owned_string;
+    GameTextInputState inner;
+    std::string owned_string;
 };
 
 /* The "welcome scene" (main menu) */
 class WelcomeScene : public UiScene {
- protected:
-  // IDs for our buttons:
-  int mPlayButtonId;
-  int mStoryButtonId;
-  int mAboutButtonId;
-  UiWidget *mNameEdit;
-  int mTestButtonId;
-  int mQuitButtonId;
-  int mMemoryButtonId;
+protected:
+    // IDs for our buttons:
+    int mPlayButtonId;
+    int mStoryButtonId;
+    int mAboutButtonId;
+    UiWidget* mNameEdit;
+    int mTestButtonId;
+    int mQuitButtonId;
+    int mMemoryButtonId;
 
-  OwnedGameTextInputState mTextInputState;
+    OwnedGameTextInputState mTextInputState;
 
-  virtual void RenderBackground() override;
+    virtual void OnPointerDown(int pointerId, const struct PointerCoords* coords) override;
+    virtual void OnPointerUp(int pointerId, const struct PointerCoords* coords) override;
 
-  virtual void OnButtonClicked(int id) override;
+    virtual void RenderBackground() override;
 
-  void UpdateWidgetStates();
+    virtual void OnButtonClicked(int id) override;
 
-  virtual void OnTextInput() override;
+    virtual bool OnBackKeyPressed() override;
 
- public:
-  WelcomeScene();
+    void UpdateWidgetStates();
 
-  ~WelcomeScene();
+    virtual void OnTextInput() override;
 
-  virtual void OnCreateWidgets() override;
+public:
+    WelcomeScene();
 
-  virtual void OnStartGraphics() override;
+    ~WelcomeScene();
 
-  virtual void OnKillGraphics() override;
+    virtual void OnCreateWidgets() override;
 
-  virtual void DoFrame() override;
+    virtual void OnStartGraphics() override;
 
-  // Static info, including app and sdk versions.
-  static void InitAboutText(JNIEnv *env, jobject context);
+    virtual void OnKillGraphics() override;
 
- private:
-  // Complete about text, including insets.
-  std::string AboutMessage();
+    virtual void DoFrame() override;
+
+    // Static info, including app and sdk versions.
+    static void InitAboutText(JNIEnv* env, jobject context);
+
+private:
+    // Complete about text, including insets.
+    std::string AboutMessage();
 };
 
 #endif

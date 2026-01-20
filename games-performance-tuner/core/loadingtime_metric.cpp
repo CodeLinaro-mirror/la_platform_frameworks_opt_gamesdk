@@ -31,4 +31,4 @@ void LoadingTimeMetricData::Record(ProcessTimeInterval dt) {
     duration_ += dt.Duration();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -34,13 +34,11 @@ struct RepeatingTaskPtrComparator {
     }
 };
 
-AsyncTelemetry::AsyncTelemetry(ITimeProvider* time_provider)
-    : Runnable(time_provider) {}
+AsyncTelemetry::AsyncTelemetry(ITimeProvider* time_provider) : Runnable(time_provider) {}
 
 void AsyncTelemetry::AddTask(const std::shared_ptr<RepeatingTask>& m) {
     metrics_.push_back(m);
-    std::push_heap(metrics_.begin(), metrics_.end(),
-                   RepeatingTaskPtrComparator());
+    std::push_heap(metrics_.begin(), metrics_.end(), RepeatingTaskPtrComparator());
 }
 
 Duration AsyncTelemetry::DoWork() {
@@ -53,9 +51,8 @@ Duration AsyncTelemetry::DoWork() {
         m->DoWork(session_);
         auto elapsed = time_provider_->Now() - now;
         m->next_time = now + elapsed + m->min_work_interval;
-        std::make_heap(metrics_.begin(), metrics_.end(),
-                       RepeatingTaskPtrComparator());
+        std::make_heap(metrics_.begin(), metrics_.end(), RepeatingTaskPtrComparator());
     }
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

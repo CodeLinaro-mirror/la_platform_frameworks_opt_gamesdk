@@ -20,15 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "date.h"
 #include <cassert>
 #include <sstream>
 
+#include "date.h"
+
 template <class T>
-void
-test(const std::string& in_fmt, const std::string& input,
-     const std::string& out_fmt, const std::string& output)
-{
+void test(const std::string& in_fmt, const std::string& input, const std::string& out_fmt,
+          const std::string& output) {
     using namespace date;
     std::istringstream in{input};
     T t;
@@ -38,9 +37,7 @@ test(const std::string& in_fmt, const std::string& input,
     assert(s == output);
 }
 
-int
-main()
-{
+int main() {
     using namespace date;
     test<year>("%Y", "2017", "%Y", "2017");
     test<month>("%m", "3", "%m", "03");

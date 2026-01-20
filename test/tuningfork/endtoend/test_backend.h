@@ -21,58 +21,55 @@
 namespace tuningfork_test {
 
 class TestBackend : public tf::IBackend {
- public:
-  TestBackend(
-      std::shared_ptr<std::condition_variable> cv_,
-      std::shared_ptr<std::mutex> mutex_,
-      std::shared_ptr<IBackend> dl_backend_ = std::shared_ptr<IBackend>())
-      : cv(cv_), mutex(mutex_), dl_backend(dl_backend_) {}
+public:
+    TestBackend(std::shared_ptr<std::condition_variable> cv_, std::shared_ptr<std::mutex> mutex_,
+                std::shared_ptr<IBackend> dl_backend_ = std::shared_ptr<IBackend>())
+          : cv(cv_), mutex(mutex_), dl_backend(dl_backend_) {}
 
-  TuningFork_ErrorCode UploadTelemetry(
-      const TuningForkLogEvent& evt_ser) override {
-    ALOGI("Process");
-    {
-      std::lock_guard<std::mutex> lock(*mutex);
-      result = evt_ser;
+    TuningFork_ErrorCode UploadTelemetry(const TuningForkLogEvent& evt_ser) override {
+        ALOGI("Process");
+        {
+            std::lock_guard<std::mutex> lock(*mutex);
+            result = evt_ser;
+        }
+        cv->notify_all();
+        return TUNINGFORK_ERROR_OK;
     }
-    cv->notify_all();
-    return TUNINGFORK_ERROR_OK;
-  }
 
-  TuningFork_ErrorCode GenerateTuningParameters(
-      tf::HttpRequest& request,
-      const tf::ProtobufSerialization* training_mode_params,
-      tf::ProtobufSerialization& fidelity_params,
-      std::string& experiment_id) override {
-    if (dl_backend) {
-      return dl_backend->GenerateTuningParameters(
-          request, training_mode_params, fidelity_params, experiment_id);
-    } else {
-      return TUNINGFORK_ERROR_OK;
+    TuningFork_ErrorCode GenerateTuningParameters(
+            tf::HttpRequest& request, const tf::ProtobufSerialization* training_mode_params,
+            tf::ProtobufSerialization& fidelity_params, std::string& experiment_id) override {
+        if (dl_backend) {
+            return dl_backend->GenerateTuningParameters(request, training_mode_params,
+                                                        fidelity_params, experiment_id);
+        } else {
+            return TUNINGFORK_ERROR_OK;
+        }
     }
-  }
 
-  TuningFork_ErrorCode PredictQualityLevels(
-      tf::HttpRequest& request, tf::QLTimePredictions& predictions) override {
-    return TUNINGFORK_ERROR_OK;
-  }
+    TuningFork_ErrorCode PredictQualityLevels(tf::HttpRequest& request,
+                                              tf::QLTimePredictions& predictions) override {
+        return TUNINGFORK_ERROR_OK;
+    }
 
-  TuningFork_ErrorCode UploadDebugInfo(tf::HttpRequest& request) override {
-    return TUNINGFORK_ERROR_OK;
-  }
+    TuningFork_ErrorCode UploadDebugInfo(tf::HttpRequest& request) override {
+        return TUNINGFORK_ERROR_OK;
+    }
 
-  void Stop() override {}
+    void Stop() override {}
 
-  void Clear() { result = ""; }
+    void Clear() {
+        result = "";
+    }
 
-  void SetDownloadBackend(const std::shared_ptr<tf::IBackend>& dl) {
-    dl_backend = dl;
-  }
+    void SetDownloadBackend(const std::shared_ptr<tf::IBackend>& dl) {
+        dl_backend = dl;
+    }
 
-  TuningForkLogEvent result;
-  std::shared_ptr<std::condition_variable> cv;
-  std::shared_ptr<std::mutex> mutex;
-  std::shared_ptr<IBackend> dl_backend;
+    TuningForkLogEvent result;
+    std::shared_ptr<std::condition_variable> cv;
+    std::shared_ptr<std::mutex> mutex;
+    std::shared_ptr<IBackend> dl_backend;
 };
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

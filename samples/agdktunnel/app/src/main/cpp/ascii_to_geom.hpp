@@ -38,6 +38,6 @@
  *
  * The + sign represents a vertex; lines are represented by -, /, ` and |.
  */
-SimpleGeom *AsciiArtToGeom(const char *art, float scale);
+SimpleGeom* AsciiArtToGeom(const char* art, float scale);
 
 #endif

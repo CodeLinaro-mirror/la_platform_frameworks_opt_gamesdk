@@ -59,4 +59,4 @@ int32_t MemoryAdviceImpl::BaseTests() {
     return OK_TEST;
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

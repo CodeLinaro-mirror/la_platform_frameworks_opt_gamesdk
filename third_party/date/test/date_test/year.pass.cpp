@@ -57,37 +57,31 @@
 // constexpr year operator "" _y(unsigned long long y) noexcept;
 // std::ostream& operator<<(std::ostream& os, const year& y);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::year>{}, "");
-static_assert( std::is_default_constructible<date::year>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::year>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::year>{}, "");
-static_assert( std::is_trivially_move_constructible<date::year>{}, "");
-static_assert( std::is_trivially_move_assignable<date::year>{}, "");
+#include "date.h"
 
-static_assert( std::is_nothrow_constructible<date::year, int>{}, "");
+static_assert(std::is_trivially_destructible<date::year>{}, "");
+static_assert(std::is_default_constructible<date::year>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::year>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::year>{}, "");
+static_assert(std::is_trivially_move_constructible<date::year>{}, "");
+static_assert(std::is_trivially_move_assignable<date::year>{}, "");
+
+static_assert(std::is_nothrow_constructible<date::year, int>{}, "");
 static_assert(!std::is_convertible<int, date::year>{}, "");
-static_assert( std::is_nothrow_constructible<int, date::year>{}, "");
+static_assert(std::is_nothrow_constructible<int, date::year>{}, "");
 static_assert(!std::is_convertible<date::year, int>{}, "");
 static_assert(static_cast<int>(date::year{-1}) == -1, "");
 
 template <class Rep0, class Rep, class Period>
-constexpr
-inline
-std::chrono::duration<Rep0, Period>
-as(std::chrono::duration<Rep, Period> d)
-{
-   return d;
+constexpr inline std::chrono::duration<Rep0, Period> as(std::chrono::duration<Rep, Period> d) {
+    return d;
 }
 
-int
-main()
-{
+int main() {
     using namespace date;
     using namespace std::chrono;
 
@@ -99,7 +93,7 @@ main()
     static_assert(year{2016} >= 2015_y, "");
 
     static_assert(!year{2015}.is_leap(), "");
-    static_assert( year{2016}.is_leap(), "");
+    static_assert(year{2016}.is_leap(), "");
 
     static_assert(year::min().ok(), "");
     static_assert(year{2015}.ok(), "");
@@ -108,30 +102,42 @@ main()
 
 #if __cplusplus >= 201402
     using std::int64_t;
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(days::min()), "");
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(hours::min()), "");
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(minutes::min()), "");
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(seconds::min()), "");
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(milliseconds::min()), "");
-    static_assert(sys_days(year::min()/jan/1)  - sys_days(1970_y/jan/1)
-        >= as<int64_t>(microseconds::min()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(microseconds::max()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(milliseconds::max()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(seconds::max()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(minutes::max()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(hours::max()), "");
-    static_assert(sys_days(year::max()/dec/31) - sys_days(1970_y/jan/1)
-        <= as<int64_t>(days::max()), "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(days::min()),
+                  "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(hours::min()),
+                  "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(minutes::min()),
+                  "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(seconds::min()),
+                  "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(milliseconds::min()),
+                  "");
+    static_assert(sys_days(year::min() / jan / 1) - sys_days(1970_y / jan / 1) >=
+                          as<int64_t>(microseconds::min()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(microseconds::max()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(milliseconds::max()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(seconds::max()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(minutes::max()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(hours::max()),
+                  "");
+    static_assert(sys_days(year::max() / dec / 31) - sys_days(1970_y / jan / 1) <=
+                          as<int64_t>(days::max()),
+                  "");
 #endif
 
     static_assert(2015_y - 2010_y == years{5}, "");

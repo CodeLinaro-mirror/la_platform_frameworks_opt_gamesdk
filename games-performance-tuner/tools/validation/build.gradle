@@ -4,7 +4,6 @@ apply plugin: 'com.google.protobuf'
 repositories {
     mavenCentral()
     google()
-    jcenter()
 }
 
 sourceSets {
@@ -52,7 +51,7 @@ task createJar(type: Jar) {
             'Implementation-Version': 1.0,
             'Main-Class': 'com.google.tuningfork.validation.TuningforkApkValidationTool'
     }
-    baseName = 'TuningforkApkValidationTool'
+    archiveBaseName = 'TuningforkApkValidationTool'
     from {
         configurations.runtimeClasspath.collect {
             it.isDirectory()? it:zipTree(it)

@@ -23,22 +23,19 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 TuningForkLogEvent TestEndToEndWithLoadingTimes() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
     const uint64_t kOneGigaBitPerSecond = 1000000000L;
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
-                     NTICKS - 1, 2, {}, {}, 0 /* use default */, 3);
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
+                                 NTICKS - 1, 2, {}, {}, 0 /* use default */, 3);
     TuningForkTest test(settings, milliseconds(10));
     tf::SerializedAnnotation loading_annotation = {1, 2, 3};
     Annotation ann;
     tf::LoadingHandle loading_handle;
-    tf::StartRecordingLoadingTime(
-        {tf::LoadingTimeMetadata::LoadingState::WARM_START,
-         tf::LoadingTimeMetadata::LoadingSource::NETWORK, 100,
-         tf::LoadingTimeMetadata::NetworkConnectivity::WIFI,
-         kOneGigaBitPerSecond, 0},
-        loading_annotation, loading_handle);
+    tf::StartRecordingLoadingTime({tf::LoadingTimeMetadata::LoadingState::WARM_START,
+                                   tf::LoadingTimeMetadata::LoadingSource::NETWORK, 100,
+                                   tf::LoadingTimeMetadata::NetworkConnectivity::WIFI,
+                                   kOneGigaBitPerSecond, 0},
+                                  loading_annotation, loading_handle);
     test.IncrementTime(10);
     tf::StopRecordingLoadingTime(loading_handle);
     std::unique_lock<std::mutex> lock(*test.rmutex_);
@@ -49,9 +46,8 @@ TuningForkLogEvent TestEndToEndWithLoadingTimes() {
         tf::FrameTick(TFTICK_PACED_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -61,7 +57,7 @@ TuningForkLogEvent ExpectedResultWithLoading() {
 {
   "name": "applications//apks/0",
   "session_context":)TF" +
-           session_context_loading + R"TF(,
+            session_context_loading + R"TF(,
   "telemetry":[
     {
       "context":{
@@ -149,4 +145,4 @@ TEST(EndToEndTest, WithLoadingTimes) {
     CheckStrings("LoadingTimes", result, ExpectedResultWithLoading());
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

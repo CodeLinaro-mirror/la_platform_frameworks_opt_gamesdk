@@ -29,52 +29,50 @@ class GameAssetManager;
  * files and generating GLES textures.
  */
 class TextureManager {
- public:
-  static const uint64_t INVALID_TEXTURE_REF = 0xFFFFFFFFFFFFFFFFULL;
+public:
+    static const uint64_t INVALID_TEXTURE_REF = 0xFFFFFFFFFFFFFFFFULL;
 
-  enum TextureFormat {
-    TEXTUREFORMAT_RGBA8888 = 0,
-    TEXTUREFORMAT_ETC2,
-    TEXTUREFORMAT_ASTC
-  };
+    enum TextureFormat { TEXTUREFORMAT_RGBA8888 = 0, TEXTUREFORMAT_ETC2, TEXTUREFORMAT_ASTC };
 
-  TextureManager();
+    TextureManager();
 
-  ~TextureManager();
+    ~TextureManager();
 
-  bool IsTextureLoaded(const char *textureName);
+    bool IsTextureLoaded(const char* textureName);
 
-  bool LoadTexture(const char *textureName);
+    bool LoadTexture(const char* textureName);
 
-  bool CreateTexture(const char *textureName, const size_t textureSize,
-                     const uint8_t *textureData);
+    bool CreateTexture(const char* textureName, const size_t textureSize,
+                       const uint8_t* textureData);
 
-  uint32_t GetTextureMipCount(const char *textureName);
+    uint32_t GetTextureMipCount(const char* textureName);
 
-  uint64_t GetTextureReference(const char *textureName);
+    uint64_t GetTextureReference(const char* textureName);
 
-  TextureFormat GetTextureFormatInUse() { return mLastTextureFormat; }
+    TextureFormat GetTextureFormatInUse() {
+        return mLastTextureFormat;
+    }
 
- private:
-  struct TextureReference {
-    TextureReference() = default;
+private:
+    struct TextureReference {
+        TextureReference() = default;
 
-    TextureReference(const uint32_t textureMipCount, const char *textureName,
-                     const uint64_t textureReference)
-        : mTextureMipCount(textureMipCount),
-          mTextureName(textureName),
-          mTextureReference(textureReference) {}
+        TextureReference(const uint32_t textureMipCount, const char* textureName,
+                         const uint64_t textureReference)
+              : mTextureMipCount(textureMipCount),
+                mTextureName(textureName),
+                mTextureReference(textureReference) {}
 
-    uint32_t mTextureMipCount;
-    const char *mTextureName;
-    uint64_t mTextureReference;
-  };
+        uint32_t mTextureMipCount;
+        const char* mTextureName;
+        uint64_t mTextureReference;
+    };
 
-  TextureReference FindReferenceForName(const char *textureName);
+    TextureReference FindReferenceForName(const char* textureName);
 
-  std::vector<TextureReference> mTextures;
-  TextureFormat mLastTextureFormat;
-  bool mDeviceSupportsASTC;
+    std::vector<TextureReference> mTextures;
+    TextureFormat mLastTextureFormat;
+    bool mDeviceSupportsASTC;
 };
 
 #endif

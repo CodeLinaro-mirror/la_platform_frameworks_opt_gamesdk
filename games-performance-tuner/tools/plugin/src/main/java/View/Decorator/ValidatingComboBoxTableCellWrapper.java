@@ -34,54 +34,53 @@ import org.jetbrains.annotations.NotNull;
 ValidatingComboBoxTableCellWrapper is designed specifically for ValidatableComboBox and any
 object that inherits from it.
  */
-public class ValidatingComboBoxTableCellWrapper extends CellRendererPanel implements
-    TableCellRenderer {
+public class ValidatingComboBoxTableCellWrapper
+        extends CellRendererPanel implements TableCellRenderer {
+    public static final String CELL_VALIDATION_PROPERTY = "CellRenderer.validationInfo";
 
-  public static final String CELL_VALIDATION_PROPERTY = "CellRenderer.validationInfo";
+    private final TableCellRenderer delegate;
 
-  private final TableCellRenderer delegate;
+    private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
+    private TableCellValidator cellValidator;
 
-  private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
-  private TableCellValidator cellValidator;
-
-  public ValidatingComboBoxTableCellWrapper(TableCellRenderer delegate) {
-    this.delegate = delegate;
-    setLayout(new BorderLayout(0, 0));
-  }
-
-  public ValidatingComboBoxTableCellWrapper withCellValidator(
-      @NotNull TableCellValidator cellValidator) {
-    this.cellValidator = cellValidator;
-    return this;
-  }
-
-  @Override
-  public Dimension getPreferredSize() {
-    Dimension size = super.getPreferredSize();
-    size.height = Math.max(size.height, editorSizeSupplier.get().height);
-    return size;
-  }
-
-  @Override
-  public final Component getTableCellRendererComponent(JTable table, Object value,
-      boolean isSelected, boolean hasFocus, int row, int column) {
-    JComponent delegateRenderer = (JComponent) delegate
-        .getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-    if (cellValidator != null) {
-      ValidationInfo result = cellValidator.validate(value, row, column);
-      delegateRenderer.putClientProperty(CELL_VALIDATION_PROPERTY, result);
-      if (result != null) {
-        delegateRenderer.setToolTipText(result.message);
-      } else {
-        delegateRenderer.setToolTipText("");
-      }
+    public ValidatingComboBoxTableCellWrapper(TableCellRenderer delegate) {
+        this.delegate = delegate;
+        setLayout(new BorderLayout(0, 0));
     }
-    return delegateRenderer;
-  }
 
-  @Override
-  protected void paintComponent(Graphics g) {
-    g.setColor(getBackground());
-    g.fillRect(0, 0, getWidth(), getHeight());
-  }
+    public ValidatingComboBoxTableCellWrapper withCellValidator(
+            @NotNull TableCellValidator cellValidator) {
+        this.cellValidator = cellValidator;
+        return this;
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension size = super.getPreferredSize();
+        size.height = Math.max(size.height, editorSizeSupplier.get().height);
+        return size;
+    }
+
+    @Override
+    public final Component getTableCellRendererComponent(
+            JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        JComponent delegateRenderer = (JComponent) delegate.getTableCellRendererComponent(
+                table, value, isSelected, hasFocus, row, column);
+        if (cellValidator != null) {
+            ValidationInfo result = cellValidator.validate(value, row, column);
+            delegateRenderer.putClientProperty(CELL_VALIDATION_PROPERTY, result);
+            if (result != null) {
+                delegateRenderer.setToolTipText(result.message);
+            } else {
+                delegateRenderer.setToolTipText("");
+            }
+        }
+        return delegateRenderer;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        g.setColor(getBackground());
+        g.fillRect(0, 0, getWidth(), getHeight());
+    }
 }

@@ -39,8 +39,7 @@ ActivityLifecycleState::ActivityLifecycleState() {
     ALOGV("Path to lifecycle file: %s", tf_lifecycle_path_str_.c_str());
 
     std::stringstream crash_info_path_builder;
-    crash_info_path_builder << DefaultTuningForkSaveDirectory()
-                            << "/crash_info.bin";
+    crash_info_path_builder << DefaultTuningForkSaveDirectory() << "/crash_info.bin";
     tf_crash_info_file_ = crash_info_path_builder.str();
     ALOGV("Path to crash info file: %s", tf_crash_info_file_.c_str());
 }
@@ -55,17 +54,14 @@ bool ActivityLifecycleState::SetNewState(TuningFork_LifecycleState new_state) {
         app_on_foreground_ = false;
     TuningFork_LifecycleState saved_state = GetStoredState();
     StoreStateToDisk(current_state_);
-    ALOGV(
-        "New lifecycle state recorded: %s, app on foreground: %d, saved state: "
-        "%s",
-        GetStateName(current_state_), app_on_foreground_,
-        GetStateName(saved_state));
+    ALOGV("New lifecycle state recorded: %s, app on foreground: %d, saved state: "
+          "%s",
+          GetStateName(current_state_), app_on_foreground_, GetStateName(saved_state));
     return !(current_state_ == TUNINGFORK_STATE_ONCREATE &&
              saved_state == TUNINGFORK_STATE_ONSTART);
 }
 
-const char* ActivityLifecycleState::GetStateName(
-    TuningFork_LifecycleState state) {
+const char* ActivityLifecycleState::GetStateName(TuningFork_LifecycleState state) {
     switch (state) {
         case TUNINGFORK_STATE_UNINITIALIZED:
             return "uninitialized";
@@ -80,8 +76,7 @@ const char* ActivityLifecycleState::GetStateName(
     }
 }
 
-TuningFork_LifecycleState ActivityLifecycleState::GetStateFromString(
-    const std::string& name) {
+TuningFork_LifecycleState ActivityLifecycleState::GetStateFromString(const std::string& name) {
     if (name == "onCreate") {
         return TUNINGFORK_STATE_ONCREATE;
     } else if (name == "onStart") {
@@ -118,7 +113,9 @@ TuningFork_LifecycleState ActivityLifecycleState::GetCurrentState() {
     return current_state_;
 }
 
-bool ActivityLifecycleState::IsAppOnForeground() { return app_on_foreground_; }
+bool ActivityLifecycleState::IsAppOnForeground() {
+    return app_on_foreground_;
+}
 
 CrashReason ActivityLifecycleState::GetLatestCrashReason() {
     if (!file_utils::FileExists(tf_crash_info_file_)) {
@@ -157,21 +154,18 @@ CrashReason ActivityLifecycleState::GetReasonFromActivityManager() {
         std::string package_name = app_context.getPackageName().C();
         CHECK_FOR_JNI_EXCEPTION_AND_RETURN(CRASH_REASON_UNSPECIFIED);
 
-        java::Object obj = app_context.getSystemService(
-            android::content::Context::ACTIVITY_SERVICE);
+        java::Object obj =
+                app_context.getSystemService(android::content::Context::ACTIVITY_SERVICE);
         CHECK_FOR_JNI_EXCEPTION_AND_RETURN(CRASH_REASON_UNSPECIFIED);
         if (!obj.IsNull()) {
             android::app::ActivityManager activity_manager(std::move(obj));
             java::util::List reasons =
-                activity_manager.getHistoricalProcessExitReasons(package_name,
-                                                                 0, 0);
+                    activity_manager.getHistoricalProcessExitReasons(package_name, 0, 0);
             CHECK_FOR_JNI_EXCEPTION_AND_RETURN(CRASH_REASON_UNSPECIFIED);
             if (!reasons.isEmpty()) {
-                android::app::ApplicationExitInfo exit_info(
-                    std::move(reasons.get(0)));
+                android::app::ApplicationExitInfo exit_info(std::move(reasons.get(0)));
                 int reason = exit_info.getReason();
-                if (reason ==
-                    android::app::ApplicationExitInfo::REASON_LOW_MEMORY) {
+                if (reason == android::app::ApplicationExitInfo::REASON_LOW_MEMORY) {
                     return LOW_MEMORY;
                 }
             }
@@ -179,4 +173,4 @@ CrashReason ActivityLifecycleState::GetReasonFromActivityManager() {
     }
     return CRASH_REASON_UNSPECIFIED;
 }
-}  // namespace tuningfork
+} // namespace tuningfork

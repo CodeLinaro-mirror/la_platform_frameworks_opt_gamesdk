@@ -38,25 +38,23 @@
 
 // std::ostream& operator<<(std::ostream& os, const month_day_last& mdl);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::month_day_last>{}, "");
+#include "date.h"
+
+static_assert(std::is_trivially_destructible<date::month_day_last>{}, "");
 static_assert(!std::is_default_constructible<date::month_day_last>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::month_day_last>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::month_day_last>{}, "");
-static_assert( std::is_trivially_move_constructible<date::month_day_last>{}, "");
-static_assert( std::is_trivially_move_assignable<date::month_day_last>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::month_day_last>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::month_day_last>{}, "");
+static_assert(std::is_trivially_move_constructible<date::month_day_last>{}, "");
+static_assert(std::is_trivially_move_assignable<date::month_day_last>{}, "");
 
 static_assert(std::is_nothrow_constructible<date::month_day_last, date::month>{}, "");
 static_assert(!std::is_convertible<date::month, date::month_day_last>{}, "");
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     constexpr month_day_last mdl1{feb};

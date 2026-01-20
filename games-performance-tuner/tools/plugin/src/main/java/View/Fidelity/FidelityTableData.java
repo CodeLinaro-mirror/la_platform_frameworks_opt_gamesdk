@@ -18,49 +18,47 @@ package View.Fidelity;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 public final class FidelityTableData {
+    private String fieldEnumName, fieldParamName;
+    private FieldType fieldType;
 
-  private String fieldEnumName, fieldParamName;
-  private FieldType fieldType;
+    public FidelityTableData() {}
 
-  public FidelityTableData() {
-  }
+    public FidelityTableData(FieldType fieldType, String fieldEnumName, String fieldName) {
+        this.fieldType = fieldType;
+        this.fieldEnumName = fieldEnumName;
+        this.fieldParamName = fieldName;
+    }
 
-  public FidelityTableData(FieldType fieldType, String fieldEnumName, String fieldName) {
-    this.fieldType = fieldType;
-    this.fieldEnumName = fieldEnumName;
-    this.fieldParamName = fieldName;
-  }
+    public String getFieldEnumName() {
+        return fieldEnumName;
+    }
 
-  public String getFieldEnumName() {
-    return fieldEnumName;
-  }
+    public void setFieldEnumName(String fieldEnumName) {
+        this.fieldEnumName = fieldEnumName;
+    }
 
-  public void setFieldEnumName(String fieldEnumName) {
-    this.fieldEnumName = fieldEnumName;
-  }
+    public String getFieldParamName() {
+        return fieldParamName;
+    }
 
-  public String getFieldParamName() {
-    return fieldParamName;
-  }
+    public void setFieldParamName(String fieldParamName) {
+        this.fieldParamName = fieldParamName;
+    }
 
-  public void setFieldParamName(String fieldParamName) {
-    this.fieldParamName = fieldParamName;
-  }
+    public FieldType getFieldType() {
+        return fieldType;
+    }
 
-  public FieldType getFieldType() {
-    return fieldType;
-  }
+    public void setFieldType(FieldType fieldType) {
+        this.fieldType = fieldType;
+    }
 
-  public void setFieldType(FieldType fieldType) {
-    this.fieldType = fieldType;
-  }
-
-  @Override
-  public String toString() {
-    return new ToStringBuilder(this)
-        .append("fieldType", fieldType.getName())
-        .append("fieldEnumName", fieldEnumName)
-        .append("fieldName", fieldParamName)
-        .toString();
-  }
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("fieldType", fieldType.getName())
+                .append("fieldEnumName", fieldEnumName)
+                .append("fieldName", fieldParamName)
+                .toString();
+    }
 }

@@ -39,47 +39,45 @@ using namespace json11;
 A class to help predict memory limits using tensorflow lite models.
 */
 class IPredictor {
- public:
-  /**
-   * Initializes the predictor with the given model.
-   *
-   * @param model_file the location of the asset containing a predictor model
-   * file
-   * @param features_file the location of the asset containing the feature
-   * list matching the model
-   * @return MEMORYADVICE_ERROR_TFLITE_MODEL_INVALID if the provided model was
-   * invalid, or MEMORYADVICE_ERROR_OK if there are no errors.
-   */
-  virtual MemoryAdvice_ErrorCode Init(std::string model_file,
-                                      std::string features_file) = 0;
+public:
+    /**
+     * Initializes the predictor with the given model.
+     *
+     * @param model_file the location of the asset containing a predictor model
+     * file
+     * @param features_file the location of the asset containing the feature
+     * list matching the model
+     * @return MEMORYADVICE_ERROR_TFLITE_MODEL_INVALID if the provided model was
+     * invalid, or MEMORYADVICE_ERROR_OK if there are no errors.
+     */
+    virtual MemoryAdvice_ErrorCode Init(std::string model_file, std::string features_file) = 0;
 
-  /**
-   * Runs the tensorflow model with the provided data.
-   *
-   * @param data the memory data from the device.
-   * @return the result from the model.
-   */
-  virtual float Predict(Json::object data) = 0;
+    /**
+     * Runs the tensorflow model with the provided data.
+     *
+     * @param data the memory data from the device.
+     * @return the result from the model.
+     */
+    virtual float Predict(Json::object data) = 0;
 
-  virtual ~IPredictor() {}
+    virtual ~IPredictor() {}
 
- protected:
-  float GetFromPath(std::string feature, Json::object data);
+protected:
+    float GetFromPath(std::string feature, Json::object data);
 };
 
 class DefaultPredictor : public IPredictor {
- private:
-  std::vector<std::string> features;
-  TfLiteModel* model;
-  TfLiteInterpreterOptions* options;
-  TfLiteInterpreter* interpreter;
-  std::unique_ptr<apk_utils::NativeAsset> model_asset;
+private:
+    std::vector<std::string> features;
+    TfLiteModel* model;
+    TfLiteInterpreterOptions* options;
+    TfLiteInterpreter* interpreter;
+    std::unique_ptr<apk_utils::NativeAsset> model_asset;
 
- public:
-  MemoryAdvice_ErrorCode Init(std::string model_file,
-                              std::string features_file) override;
-  float Predict(Json::object data) override;
-  ~DefaultPredictor() override;
+public:
+    MemoryAdvice_ErrorCode Init(std::string model_file, std::string features_file) override;
+    float Predict(Json::object data) override;
+    ~DefaultPredictor() override;
 };
 
-}  // namespace memory_advice
+} // namespace memory_advice

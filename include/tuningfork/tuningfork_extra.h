@@ -41,8 +41,8 @@ extern "C" {
  * @return TUNINGFORK_ERROR_OK if no error
  */
 TuningFork_ErrorCode TuningFork_findFidelityParamsInApk(
-    JNIEnv* env, jobject context, const char* filename,
-    TuningFork_CProtobufSerialization* fidelity_params);
+        JNIEnv* env, jobject context, const char* filename,
+        TuningFork_CProtobufSerialization* fidelity_params);
 
 /**
  * @brief Download fidelity parameters on a separate thread.
@@ -61,8 +61,8 @@ TuningFork_ErrorCode TuningFork_findFidelityParamsInApk(
  * @return TUNINGFORK_ERROR_OK if no error
  */
 TuningFork_ErrorCode TuningFork_startFidelityParamDownloadThread(
-    const TuningFork_CProtobufSerialization* default_params,
-    TuningFork_FidelityParamsCallback fidelity_params_callback);
+        const TuningFork_CProtobufSerialization* default_params,
+        TuningFork_FidelityParamsCallback fidelity_params_callback);
 
 /**
  * @brief The TuningFork_init function will save fidelity params to a file
@@ -75,8 +75,7 @@ TuningFork_ErrorCode TuningFork_startFidelityParamDownloadThread(
  * @return TUNINGFORK_ERROR_OK if no error
  */
 TuningFork_ErrorCode TuningFork_saveOrDeleteFidelityParamsFile(
-    JNIEnv* env, jobject context,
-    const TuningFork_CProtobufSerialization* fidelity_params);
+        JNIEnv* env, jobject context, const TuningFork_CProtobufSerialization* fidelity_params);
 
 #ifdef __cplusplus
 }

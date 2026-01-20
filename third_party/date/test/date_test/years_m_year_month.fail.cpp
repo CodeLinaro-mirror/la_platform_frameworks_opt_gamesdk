@@ -24,9 +24,7 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     auto x = years{1} - year_month{2015_y, jan};

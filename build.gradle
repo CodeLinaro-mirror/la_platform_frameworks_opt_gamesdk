@@ -33,10 +33,10 @@ import groovy.transform.Field
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.2.0'
+        classpath 'com.android.tools.build:gradle:8.8.1'
     }
 }
 
@@ -50,7 +50,6 @@ if (isRunningOnBuildBot) {
         properties.load(project.rootProject.file('local.properties').newDataInputStream())
     }
     properties.setProperty('sdk.dir', System.getenv("ANDROID_HOME"))
-    properties.setProperty('ndk.dir', System.getenv("ANDROID_NDK_HOME"))
     properties.setProperty('cmake.dir', System.getenv("BUILDBOT_CMAKE"))
 
     properties.store(project.rootProject.file('local.properties').newDataOutputStream(), '')
@@ -91,7 +90,7 @@ allprojects {
     buildDir = getOutPath()
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
 

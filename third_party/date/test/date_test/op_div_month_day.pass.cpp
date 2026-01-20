@@ -28,14 +28,12 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    static_assert( aug/14_d == month_day{month{8}, day{14}}, "");
-    static_assert( aug/14   == month_day{month{8}, day{14}}, "");
-    static_assert(   8/14_d == month_day{month{8}, day{14}}, "");
-    static_assert(14_d/aug  == month_day{month{8}, day{14}}, "");
-    static_assert(14_d/8    == month_day{month{8}, day{14}}, "");
+    static_assert(aug / 14_d == month_day{month{8}, day{14}}, "");
+    static_assert(aug / 14 == month_day{month{8}, day{14}}, "");
+    static_assert(8 / 14_d == month_day{month{8}, day{14}}, "");
+    static_assert(14_d / aug == month_day{month{8}, day{14}}, "");
+    static_assert(14_d / 8 == month_day{month{8}, day{14}}, "");
 }

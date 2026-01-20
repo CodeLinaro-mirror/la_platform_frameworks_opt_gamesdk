@@ -27,7 +27,9 @@ Settings* Settings::getInstance() {
     return instance.get();
 }
 
-void Settings::reset() { instance.reset(); }
+void Settings::reset() {
+    instance.reset();
+}
 
 void Settings::addListener(Listener listener) {
     std::lock_guard<std::mutex> lock(mMutex);
@@ -94,4 +96,4 @@ void Settings::notifyListeners() {
     }
 }
 
-}  // namespace swappy
+} // namespace swappy

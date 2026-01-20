@@ -28,8 +28,8 @@ namespace android {
 namespace os {
 constexpr const char Build::class_name[];
 }
-}  // namespace android
+} // namespace android
 
-}  // namespace jni
+} // namespace jni
 
-}  // namespace gamesdk
+} // namespace gamesdk

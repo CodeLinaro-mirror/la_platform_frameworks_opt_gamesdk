@@ -21,77 +21,75 @@ import java.util.stream.Collectors;
 import javax.swing.table.AbstractTableModel;
 
 public class AnnotationTableModel extends AbstractTableModel {
+    private final String[] columnNames = {"Type", "Name"};
+    private List<String[]> data;
+    private final AnnotationTabController annotationTabController;
 
-  private final String[] columnNames = {"Type", "Name"};
-  private List<String[]> data;
-  private final AnnotationTabController annotationTabController;
-
-  public AnnotationTableModel(AnnotationTabController annotationTabController) {
-    this.data = new ArrayList<>();
-    this.annotationTabController = annotationTabController;
-  }
-
-  public void setData(List<String[]> data) {
-    this.data = data;
-  }
-
-
-  @Override
-  public int getRowCount() {
-    return data.size();
-  }
-
-  @Override
-  public int getColumnCount() {
-    return columnNames.length;
-  }
-
-  @Override
-  public Object getValueAt(int rowIndex, int columnIndex) {
-    return data.get(rowIndex)[columnIndex];
-  }
-
-  @Override
-  public String getColumnName(int column) {
-    return columnNames[column];
-  }
-
-  public void addRow(String[] row) {
-    data.add(row);
-    annotationTabController.addEnumField();
-    fireTableRowsInserted(getRowCount() - 1, getRowCount());
-  }
-
-  @Override
-  public boolean isCellEditable(int row, int column) {
-    return true;
-  }
-
-  @Override
-  public void setValueAt(Object value, int row, int column) {
-    if (column == 0) {
-      if (value == null) {
-        data.get(row)[column] = "";
-        annotationTabController.setEnumFieldType(row, "");
-      } else {
-        data.get(row)[column] = value.toString();
-        annotationTabController.setEnumFieldType(row, value.toString());
-      }
-    } else if (column == 1) {
-      if (value == null) {
-        data.get(row)[column] = "";
-        annotationTabController.setEnumFieldName(row, "");
-      } else {
-        data.get(row)[column] = value.toString();
-        annotationTabController.setEnumFieldName(row, value.toString());
-      }
+    public AnnotationTableModel(AnnotationTabController annotationTabController) {
+        this.data = new ArrayList<>();
+        this.annotationTabController = annotationTabController;
     }
-    fireTableCellUpdated(row, column);
-  }
 
-  public void removeRow(int row) {
-    data.remove(row);
-    annotationTabController.removeEnumField(row);
-    fireTableDataChanged();
-  }
+    public void setData(List<String[]> data) {
+        this.data = data;
+    }
+
+    @Override
+    public int getRowCount() {
+        return data.size();
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columnNames.length;
+    }
+
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex) {
+        return data.get(rowIndex)[columnIndex];
+    }
+
+    @Override
+    public String getColumnName(int column) {
+        return columnNames[column];
+    }
+
+    public void addRow(String[] row) {
+        data.add(row);
+        annotationTabController.addEnumField();
+        fireTableRowsInserted(getRowCount() - 1, getRowCount());
+    }
+
+    @Override
+    public boolean isCellEditable(int row, int column) {
+        return true;
+    }
+
+    @Override
+    public void setValueAt(Object value, int row, int column) {
+        if (column == 0) {
+            if (value == null) {
+                data.get(row)[column] = "";
+                annotationTabController.setEnumFieldType(row, "");
+            } else {
+                data.get(row)[column] = value.toString();
+                annotationTabController.setEnumFieldType(row, value.toString());
+            }
+        } else if (column == 1) {
+            if (value == null) {
+                data.get(row)[column] = "";
+                annotationTabController.setEnumFieldName(row, "");
+            } else {
+                data.get(row)[column] = value.toString();
+                annotationTabController.setEnumFieldName(row, value.toString());
+            }
+        }
+        fireTableCellUpdated(row, column);
+    }
+
+    public void removeRow(int row) {
+        data.remove(row);
+        annotationTabController.removeEnumField(row);
+        fireTableDataChanged();
+    }
 }

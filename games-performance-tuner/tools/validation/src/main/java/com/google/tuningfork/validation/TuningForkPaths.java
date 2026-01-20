@@ -14,26 +14,24 @@
  * limitations under the License
  */
 
-
 package com.google.tuningfork.validation;
 
 import java.util.regex.Pattern;
 
 /** Exposes Tuning Fork location patterns for apks/bundles. */
 final class TuningForkPaths {
+    static final String BUNDLE_TUNINGFORK_PATH = "base/assets/tuningfork/";
+    static final String APK_TUNINGFORK_PATH = "assets/tuningfork/";
 
-  static final String BUNDLE_TUNINGFORK_PATH = "base/assets/tuningfork/";
-  static final String APK_TUNINGFORK_PATH = "assets/tuningfork/";
+    static Pattern getDescriptorFilePattern(String base) {
+        return Pattern.compile(String.format("(%s)dev_tuningfork.descriptor", base));
+    }
 
-  static Pattern getDescriptorFilePattern(String base) {
-    return Pattern.compile(String.format("(%s)dev_tuningfork.descriptor", base));
-  }
+    static Pattern getSettingsFilePattern(String base) {
+        return Pattern.compile(String.format("(%s)tuningfork_settings.bin", base));
+    }
 
-  static Pattern getSettingsFilePattern(String base) {
-    return Pattern.compile(String.format("(%s)tuningfork_settings.bin", base));
-  }
-
-  static Pattern getFidelityParamFilePattern(String base) {
-    return Pattern.compile(String.format("(%s)dev_tuningfork_fidelityparams_(\\d+).bin", base));
-  }
+    static Pattern getFidelityParamFilePattern(String base) {
+        return Pattern.compile(String.format("(%s)dev_tuningfork_fidelityparams_(\\d+).bin", base));
+    }
 }

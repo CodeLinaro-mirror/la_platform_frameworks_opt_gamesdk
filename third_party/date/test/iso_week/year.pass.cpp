@@ -57,32 +57,30 @@
 // constexpr year operator "" _y(unsigned long long y) noexcept;
 // }
 
-#include "iso_week.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<iso_week::year>{}, "");
+#include "iso_week.h"
+
+static_assert(std::is_trivially_destructible<iso_week::year>{}, "");
 static_assert(!std::is_default_constructible<iso_week::year>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::year>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::year>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::year>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::year>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::year>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::year>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::year>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::year>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::year>{}, "");
 static_assert(std::is_standard_layout<iso_week::year>{}, "");
 static_assert(std::is_literal_type<iso_week::year>{}, "");
 
-static_assert( std::is_nothrow_constructible<iso_week::year, int>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::year, int>{}, "");
 static_assert(!std::is_convertible<int, iso_week::year>{}, "");
-static_assert( std::is_nothrow_constructible<int, iso_week::year>{}, "");
+static_assert(std::is_nothrow_constructible<int, iso_week::year>{}, "");
 static_assert(!std::is_convertible<iso_week::year, int>{}, "");
 static_assert(static_cast<int>(iso_week::year{-1}) == -1, "");
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
 
     static_assert(year{2015} == 2015_y, "");

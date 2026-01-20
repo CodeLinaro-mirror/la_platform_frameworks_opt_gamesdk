@@ -53,7 +53,9 @@ static inline void vec3_mul_cross(vec3 r, vec3 const a, vec3 const b) {
     r[1] = a[2] * b[0] - a[0] * b[2];
     r[2] = a[0] * b[1] - a[1] * b[0];
 }
-static inline float vec3_len(vec3 const v) { return sqrtf(vec3_mul_inner(v, v)); }
+static inline float vec3_len(vec3 const v) {
+    return sqrtf(vec3_mul_inner(v, v));
+}
 static inline void vec3_norm(vec3 r, vec3 const v) {
     float k = 1.f / vec3_len(v);
     vec3_scale(r, v, k);
@@ -89,7 +91,9 @@ static inline void vec4_mul_cross(vec4 r, vec4 a, vec4 b) {
     r[2] = a[0] * b[1] - a[1] * b[0];
     r[3] = 1.f;
 }
-static inline float vec4_len(vec4 v) { return sqrtf(vec4_mul_inner(v, v)); }
+static inline float vec4_len(vec4 v) {
+    return sqrtf(vec4_mul_inner(v, v));
+}
 static inline void vec4_norm(vec4 r, vec4 v) {
     float k = 1.f / vec4_len(v);
     vec4_scale(r, v, k);
@@ -244,7 +248,8 @@ static inline void mat4x4_invert(mat4x4 T, mat4x4 M) {
     c[5] = M[2][2] * M[3][3] - M[3][2] * M[2][3];
 
     /* Assumes it is invertible */
-    float idet = 1.0f / (s[0] * c[5] - s[1] * c[4] + s[2] * c[3] + s[3] * c[2] - s[4] * c[1] + s[5] * c[0]);
+    float idet = 1.0f /
+            (s[0] * c[5] - s[1] * c[4] + s[2] * c[3] + s[3] * c[2] - s[4] * c[1] + s[5] * c[0]);
 
     T[0][0] = (M[1][1] * c[5] - M[1][2] * c[4] + M[1][3] * c[3]) * idet;
     T[0][1] = (-M[0][1] * c[5] + M[0][2] * c[4] - M[0][3] * c[3]) * idet;
@@ -475,7 +480,7 @@ static inline void quat_from_mat4x4(quat q, mat4x4 M) {
     int i;
 
     int perm[] = {0, 1, 2, 0, 1};
-    int *p = perm;
+    int* p = perm;
 
     for (i = 0; i < 3; i++) {
         float m = M[i][i];

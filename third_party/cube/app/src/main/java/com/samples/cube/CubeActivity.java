@@ -23,7 +23,7 @@ import android.widget.TextView;
 import java.util.Locale;
 
 public class CubeActivity
-    extends Activity implements Choreographer.FrameCallback, SurfaceHolder.Callback {
+        extends Activity implements Choreographer.FrameCallback, SurfaceHolder.Callback {
     private static final String GPU_WORKLOAD = "com.samples.GPU_WORKLOAD";
     private static final String CPU_WORKLOAD = "com.samples.CPU_WORKLOAD";
     private static final String APP_NAME = "CubeActivity";
@@ -352,8 +352,8 @@ public class CubeActivity
                 }
             }
             TextView appOffsetView = findViewById(R.id.swappy_stats);
-            appOffsetView.setText(
-                String.format(Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));
+            appOffsetView.setText(String.format(
+                    Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));
             // Trim off excess precision so we don't drift forward over time
             mLastDumpTime = now - (now % SWAPPY_GET_STATS_PERIOD);
         }

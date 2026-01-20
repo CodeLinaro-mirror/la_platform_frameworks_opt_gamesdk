@@ -30,84 +30,82 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 
 public class AssetsParser {
+    private static final Logger LOGGER = Logger.getLogger(AssetsParser.class.getName());
+    private final File assetsDirectory;
+    private Optional<File> devTuningForkFile = Optional.empty();
+    private Optional<byte[]> tuningForkSettings = Optional.empty();
+    private Optional<List<File>> devFidelityParamFiles = Optional.empty();
 
-  private static final Logger LOGGER = Logger.getLogger(AssetsParser.class.getName());
-  private final File assetsDirectory;
-  private Optional<File> devTuningForkFile = Optional.empty();
-  private Optional<byte[]> tuningForkSettings = Optional.empty();
-  private Optional<List<File>> devFidelityParamFiles = Optional.empty();
-
-  public AssetsParser(File directory) {
-    this.assetsDirectory = directory;
-  }
-
-  private static int getDevFidelityFileNumber(File file) {
-    Pattern p = Pattern.compile("[\\d]+");
-    Matcher matcher = p.matcher(file.getName());
-    if (matcher.find()) {
-      return Integer.parseInt(matcher.group(0));
+    public AssetsParser(File directory) {
+        this.assetsDirectory = directory;
     }
-    return 0;
-  }
 
-  public Optional<File> getDevTuningForkFile() {
-    return devTuningForkFile;
-  }
-
-  public Optional<List<File>> getDevFidelityParamFiles() {
-    return devFidelityParamFiles;
-  }
-
-  public Optional<byte[]> getTuningForkSettings() {
-    return tuningForkSettings;
-  }
-
-  public void parseFiles() throws IOException {
-    devTuningForkFile = findDevTuningFork(assetsDirectory);
-    devFidelityParamFiles = findDevFidelityParams(assetsDirectory);
-    tuningForkSettings = findTuningForkSetting(assetsDirectory);
-    if (devTuningForkFile.isPresent()) {
-      LOGGER.info(String.format("File %s exists: OK", FolderConfig.DEV_TUNINGFORK_PROTO));
-    } else {
-      LOGGER.info(String.format("File %s exists: FAIL", FolderConfig.DEV_TUNINGFORK_PROTO));
+    private static int getDevFidelityFileNumber(File file) {
+        Pattern p = Pattern.compile("[\\d]+");
+        Matcher matcher = p.matcher(file.getName());
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(0));
+        }
+        return 0;
     }
-    if (tuningForkSettings.isPresent()) {
-      LOGGER.info(
-          String.format("File %s exists: OK", FolderConfig.TUNINGFORK_SETTINGS_BINARY));
-    } else {
-      LOGGER.info(
-          String.format("File %s exists: FAIL", FolderConfig.TUNINGFORK_SETTINGS_BINARY));
-    }
-  }
 
-  private Optional<File> findDevTuningFork(File folder) {
-    File file = new File(folder, FolderConfig.DEV_TUNINGFORK_PROTO);
-    if (!file.exists()) {
-      return Optional.empty();
+    public Optional<File> getDevTuningForkFile() {
+        return devTuningForkFile;
     }
-    return Optional.of(file);
-  }
 
-  private Optional<byte[]> findTuningForkSetting(File folder) throws IOException {
-    File file = new File(folder, FolderConfig.TUNINGFORK_SETTINGS_BINARY);
-    if (!file.exists()) {
-      return Optional.empty();
+    public Optional<List<File>> getDevFidelityParamFiles() {
+        return devFidelityParamFiles;
     }
-    byte[] byteContent = FileUtils.readFileToByteArray(file);
-    return Optional.of(byteContent);
-  }
 
-  private Optional<List<File>> findDevFidelityParams(File folder) {
-    Pattern devFidelityPattern = Pattern.compile(FolderConfig.DEV_FIDELITY_BINARY);
-    File[] devFidelityFiles =
-        folder.listFiles((dir, filename) -> devFidelityPattern.matcher(filename).find());
-    if (devFidelityFiles == null || devFidelityFiles.length == 0) {
-      return Optional.empty();
-    } else {
-      return Optional.of(
-          Arrays.stream(devFidelityFiles)
-              .sorted(Comparator.comparingInt(file -> getDevFidelityFileNumber(file)))
-              .collect(Collectors.toList()));
+    public Optional<byte[]> getTuningForkSettings() {
+        return tuningForkSettings;
     }
-  }
+
+    public void parseFiles() throws IOException {
+        devTuningForkFile = findDevTuningFork(assetsDirectory);
+        devFidelityParamFiles = findDevFidelityParams(assetsDirectory);
+        tuningForkSettings = findTuningForkSetting(assetsDirectory);
+        if (devTuningForkFile.isPresent()) {
+            LOGGER.info(String.format("File %s exists: OK", FolderConfig.DEV_TUNINGFORK_PROTO));
+        } else {
+            LOGGER.info(String.format("File %s exists: FAIL", FolderConfig.DEV_TUNINGFORK_PROTO));
+        }
+        if (tuningForkSettings.isPresent()) {
+            LOGGER.info(
+                    String.format("File %s exists: OK", FolderConfig.TUNINGFORK_SETTINGS_BINARY));
+        } else {
+            LOGGER.info(
+                    String.format("File %s exists: FAIL", FolderConfig.TUNINGFORK_SETTINGS_BINARY));
+        }
+    }
+
+    private Optional<File> findDevTuningFork(File folder) {
+        File file = new File(folder, FolderConfig.DEV_TUNINGFORK_PROTO);
+        if (!file.exists()) {
+            return Optional.empty();
+        }
+        return Optional.of(file);
+    }
+
+    private Optional<byte[]> findTuningForkSetting(File folder) throws IOException {
+        File file = new File(folder, FolderConfig.TUNINGFORK_SETTINGS_BINARY);
+        if (!file.exists()) {
+            return Optional.empty();
+        }
+        byte[] byteContent = FileUtils.readFileToByteArray(file);
+        return Optional.of(byteContent);
+    }
+
+    private Optional<List<File>> findDevFidelityParams(File folder) {
+        Pattern devFidelityPattern = Pattern.compile(FolderConfig.DEV_FIDELITY_BINARY);
+        File[] devFidelityFiles =
+                folder.listFiles((dir, filename) -> devFidelityPattern.matcher(filename).find());
+        if (devFidelityFiles == null || devFidelityFiles.length == 0) {
+            return Optional.empty();
+        } else {
+            return Optional.of(Arrays.stream(devFidelityFiles)
+                            .sorted(Comparator.comparingInt(file -> getDevFidelityFileNumber(file)))
+                            .collect(Collectors.toList()));
+        }
+    }
 }

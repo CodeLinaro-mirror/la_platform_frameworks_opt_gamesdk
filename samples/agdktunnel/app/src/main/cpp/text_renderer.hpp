@@ -22,53 +22,56 @@
 /* Renders text to the screen. Uses the "normalized 2D coordinate system" as
  * described in the README. */
 class TextRenderer {
- private:
-  static const int CHAR_CODES = 128;
-  static const int UNSUPPORTED_CODE = 63; /* "?" is rendered instead. */
-  SimpleGeom *mCharGeom[CHAR_CODES];
-  TrivialShader *mTrivialShader;
+private:
+    static const int CHAR_CODES = 128;
+    static const int UNSUPPORTED_CODE = 63; /* "?" is rendered instead. */
+    SimpleGeom* mCharGeom[CHAR_CODES];
+    TrivialShader* mTrivialShader;
 
-  float mFontScale;
-  float mColor[3];
-  glm::mat4 mMatrix;
+    float mFontScale;
+    float mColor[3];
+    glm::mat4 mMatrix;
 
- public:
-  TextRenderer(TrivialShader *t);
+public:
+    TextRenderer(TrivialShader* t);
 
-  ~TextRenderer();
+    ~TextRenderer();
 
-  void SetMatrix(glm::mat4 mat);
+    void SetMatrix(glm::mat4 mat);
 
-  void SetFontScale(float size);
+    void SetFontScale(float size);
 
-  void RenderText(const char *str, float centerX, float centerY);
+    void RenderText(const char* str, float centerX, float centerY);
 
-  void SetColor(float r, float g, float b) {
-    mColor[0] = r, mColor[1] = g, mColor[2] = b;
-  }
+    void SetColor(float r, float g, float b) {
+        mColor[0] = r, mColor[1] = g, mColor[2] = b;
+    }
 
-  void SetColor(const float *c) {
-    mColor[0] = c[0], mColor[1] = c[1], mColor[2] = c[2];
-  }
+    void SetColor(const float* c) {
+        mColor[0] = c[0], mColor[1] = c[1], mColor[2] = c[2];
+    }
 
-  void ResetColor() { SetColor(1.0f, 1.0f, 1.0f); }
+    void ResetColor() {
+        SetColor(1.0f, 1.0f, 1.0f);
+    }
 
-  void ResetMatrix() { return SetMatrix(glm::mat4(1.0f)); }
+    void ResetMatrix() {
+        return SetMatrix(glm::mat4(1.0f));
+    }
 
-  static void MeasureText(const char *str, float fontScale, float *outWidth,
-                          float *outHeight);
+    static void MeasureText(const char* str, float fontScale, float* outWidth, float* outHeight);
 
-  static float MeasureTextWidth(const char *str, float fontScale) {
-    float w;
-    TextRenderer::MeasureText(str, fontScale, &w, NULL);
-    return w;
-  }
+    static float MeasureTextWidth(const char* str, float fontScale) {
+        float w;
+        TextRenderer::MeasureText(str, fontScale, &w, NULL);
+        return w;
+    }
 
-  static float MeasureTextHeight(const char *str, float fontScale) {
-    float h;
-    TextRenderer::MeasureText(str, fontScale, NULL, &h);
-    return h;
-  }
+    static float MeasureTextHeight(const char* str, float fontScale) {
+        float h;
+        TextRenderer::MeasureText(str, fontScale, NULL, &h);
+        return h;
+    }
 };
 
 #endif

@@ -34,4 +34,4 @@ TuningFork_ErrorCode KillDownloadThreads();
 TuningFork_ErrorCode FindFidelityParamsInApk(const std::string& filename,
                                              ProtobufSerialization& fp);
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -32,66 +32,68 @@ class IndexBuf;
  * render the same geometry in multiple places efficiently. If you just want to
  * render a geometry once (simple use case), you can call RenderSimpleGeom(). */
 class Shader {
- protected:
-  // OpenGL handles
-  int mVertShaderH, mFragShaderH;
-  GLuint mProgramH;
-  int mMVPMatrixLoc;
-  int mPositionAttribLoc;
+protected:
+    // OpenGL handles
+    int mVertShaderH, mFragShaderH;
+    GLuint mProgramH;
+    int mMVPMatrixLoc;
+    int mPositionAttribLoc;
 
-  // Geometry we are rendering (this is only valid between BeginRender and
-  // EndRender)
-  VertexBuf *mPreparedVertexBuf;
+    // Geometry we are rendering (this is only valid between BeginRender and
+    // EndRender)
+    VertexBuf* mPreparedVertexBuf;
 
- public:
-  Shader();
+public:
+    Shader();
 
-  virtual ~Shader();
+    virtual ~Shader();
 
-  // compile shader
-  virtual void Compile();
+    // compile shader
+    virtual void Compile();
 
-  // rendering:
-  void BindShader();
+    // rendering:
+    void BindShader();
 
-  void UnbindShader();
+    void UnbindShader();
 
-  // Prepares to render the given geometry.
-  virtual void BeginRender(VertexBuf *vbuf);
+    // Prepares to render the given geometry.
+    virtual void BeginRender(VertexBuf* vbuf);
 
-  // Renders one copy of the prepared geometry, given a model-view-projection
-  // matrix.
-  void Render(glm::mat4 *mvpMat) { Render(NULL, mvpMat); }
+    // Renders one copy of the prepared geometry, given a model-view-projection
+    // matrix.
+    void Render(glm::mat4* mvpMat) {
+        Render(NULL, mvpMat);
+    }
 
-  // Renders a subset (given by the index buffer) of the prepared geometry,
-  // using the given model-view-projection matrix.
-  virtual void Render(IndexBuf *ibuf, glm::mat4 *mvpMat);
+    // Renders a subset (given by the index buffer) of the prepared geometry,
+    // using the given model-view-projection matrix.
+    virtual void Render(IndexBuf* ibuf, glm::mat4* mvpMat);
 
-  // Finishes rendering (call this after you're done making calls to Render())
-  virtual void EndRender();
+    // Finishes rendering (call this after you're done making calls to Render())
+    virtual void EndRender();
 
-  // Convenience method to render a single copy of a geometry.
-  void RenderSimpleGeom(glm::mat4 *mvpMat, SimpleGeom *sg) {
-    BeginRender(sg->vbuf);
-    Render(sg->ibuf, mvpMat);
-    EndRender();
-  }
+    // Convenience method to render a single copy of a geometry.
+    void RenderSimpleGeom(glm::mat4* mvpMat, SimpleGeom* sg) {
+        BeginRender(sg->vbuf);
+        Render(sg->ibuf, mvpMat);
+        EndRender();
+    }
 
- protected:
-  // Push MVP matrix to the shader
-  void PushMVPMatrix(glm::mat4 *mat);
+protected:
+    // Push MVP matrix to the shader
+    void PushMVPMatrix(glm::mat4* mat);
 
-  // Push the vertex positions to the shader
-  void PushPositions(int vbo_offset, int stride);
+    // Push the vertex positions to the shader
+    void PushPositions(int vbo_offset, int stride);
 
-  // Must return the vertex shader's GLSL source
-  virtual const char *GetVertShaderSource() = 0;
+    // Must return the vertex shader's GLSL source
+    virtual const char* GetVertShaderSource() = 0;
 
-  // Must return the fragment shader's GLSL source
-  virtual const char *GetFragShaderSource() = 0;
+    // Must return the fragment shader's GLSL source
+    virtual const char* GetFragShaderSource() = 0;
 
-  // Must return the shader's name (used for debug/logging purposes)
-  virtual const char *GetShaderName() = 0;
+    // Must return the shader's name (used for debug/logging purposes)
+    virtual const char* GetShaderName() = 0;
 };
 
 /* A trivial shader that knows how to render geometry and colors, but no
@@ -99,34 +101,34 @@ class Shader {
  * can also specify a tint color, which will get multiplied by the geometry's
  * built-in color. */
 class TrivialShader : public Shader {
- protected:
-  int mColorLoc;
-  int mTintLoc;
-  float mTint[3];
+protected:
+    int mColorLoc;
+    int mTintLoc;
+    float mTint[3];
 
- public:
-  TrivialShader();
+public:
+    TrivialShader();
 
-  ~TrivialShader();
+    ~TrivialShader();
 
-  int GetColorAttribLoc();
+    int GetColorAttribLoc();
 
-  void PushColors(int vbo_offset, int stride);
+    void PushColors(int vbo_offset, int stride);
 
-  void SetTintColor(float r, float g, float b);
+    void SetTintColor(float r, float g, float b);
 
-  void ResetTintColor();
+    void ResetTintColor();
 
-  virtual void Compile();
+    virtual void Compile();
 
-  virtual void BeginRender(VertexBuf *geom);
+    virtual void BeginRender(VertexBuf* geom);
 
- protected:
-  virtual const char *GetVertShaderSource();
+protected:
+    virtual const char* GetVertShaderSource();
 
-  virtual const char *GetFragShaderSource();
+    virtual const char* GetFragShaderSource();
 
-  virtual const char *GetShaderName();
+    virtual const char* GetShaderName();
 };
 
 #endif

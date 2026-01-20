@@ -1,17 +1,20 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 31
+    namespace "com.prefabulated.bouncyball"
+    compileSdk 31
     ndkVersion "23.1.7779620"
+
     defaultConfig {
         applicationId "com.prefabulated.swappy"
-        minSdkVersion 19
-        targetSdkVersion 35
+        minSdk      21
+        targetSdk   35
         versionCode 4
         versionName "1.1.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
+                arguments '-DANDROID_STL=c++_shared'
             }
         }
     }

@@ -36,12 +36,11 @@ void StateWatcher::Looper() {
 
 StateWatcher::~StateWatcher() {
     if (!do_cancel_) {
-        ALOGV(
-            "memory_advice::StateWatcher::Cancel not called before delete? "
-            "This can cause blocking on the main thread.");
+        ALOGV("memory_advice::StateWatcher::Cancel not called before delete? "
+              "This can cause blocking on the main thread.");
         do_cancel_ = true;
     }
     thread_->join();
 }
 
-}  // namespace memory_advice
+} // namespace memory_advice

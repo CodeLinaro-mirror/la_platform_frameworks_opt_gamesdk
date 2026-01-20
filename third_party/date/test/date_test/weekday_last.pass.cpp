@@ -34,25 +34,23 @@
 //
 // std::ostream& operator<<(std::ostream& os, const weekday_last& wdl);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::weekday_last>{}, "");
+#include "date.h"
+
+static_assert(std::is_trivially_destructible<date::weekday_last>{}, "");
 static_assert(!std::is_default_constructible<date::weekday_last>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::weekday_last>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::weekday_last>{}, "");
-static_assert( std::is_trivially_move_constructible<date::weekday_last>{}, "");
-static_assert( std::is_trivially_move_assignable<date::weekday_last>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::weekday_last>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::weekday_last>{}, "");
+static_assert(std::is_trivially_move_constructible<date::weekday_last>{}, "");
+static_assert(std::is_trivially_move_assignable<date::weekday_last>{}, "");
 
 static_assert(std::is_nothrow_constructible<date::weekday_last, date::weekday>{}, "");
 static_assert(!std::is_convertible<date::weekday, date::weekday_last>{}, "");
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     constexpr weekday_last wdl = sun[last];

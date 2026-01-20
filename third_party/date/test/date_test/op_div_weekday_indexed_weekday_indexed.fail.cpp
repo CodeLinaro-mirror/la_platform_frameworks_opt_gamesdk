@@ -24,10 +24,8 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    auto x = fri[2]/fri[2];
+    auto x = fri[2] / fri[2];
 }

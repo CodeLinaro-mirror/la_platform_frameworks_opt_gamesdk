@@ -16,31 +16,30 @@
 
 package com.tuningfork.testapp;
 
-import android.text.method.ScrollingMovementMethod;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
+    // Used to load the app's native library on application startup.
+    static {
+        System.loadLibrary("tuningfork-testing");
+    }
 
-  // Used to load the app's native library on application startup.
-  static {
-    System.loadLibrary("tuningfork-testing");
-  }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
+        TextView tv = findViewById(R.id.sample_text);
+        tv.setMovementMethod(new ScrollingMovementMethod());
+        tv.setText(runTests());
+    }
 
-    TextView tv = findViewById(R.id.sample_text);
-    tv.setMovementMethod(new ScrollingMovementMethod());
-    tv.setText(runTests());
-  }
-
-  /**
-   * A native method that is implemented by app's native library, which is packaged with
-   * this application.
-   */
-  public native String runTests();
+    /**
+     * A native method that is implemented by app's native library, which is packaged with
+     * this application.
+     */
+    public native String runTests();
 }

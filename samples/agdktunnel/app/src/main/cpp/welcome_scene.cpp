@@ -64,23 +64,21 @@
 
 static std::string sNameEdit(S_NAME_EDIT);
 
-OwnedGameTextInputState::OwnedGameTextInputState(
-    const std::string &initial_string)
-    : owned_string(initial_string) {
-  inner.text_UTF8 = owned_string.data();
-  inner.text_length = owned_string.length();
-  inner.selection.start = 0;
-  inner.selection.end = owned_string.length();
-  inner.composingRegion.start = -1;
-  inner.composingRegion.end = -1;
+OwnedGameTextInputState::OwnedGameTextInputState(const std::string& initial_string)
+      : owned_string(initial_string) {
+    inner.text_UTF8 = owned_string.data();
+    inner.text_length = owned_string.length();
+    inner.selection.start = 0;
+    inner.selection.end = owned_string.length();
+    inner.composingRegion.start = -1;
+    inner.composingRegion.end = -1;
 }
 
-OwnedGameTextInputState &OwnedGameTextInputState::operator=(
-    const GameTextInputState &rhs) {
-  inner = rhs;
-  owned_string = std::string(rhs.text_UTF8, rhs.text_length);
-  inner.text_UTF8 = owned_string.data();
-  return *this;
+OwnedGameTextInputState& OwnedGameTextInputState::operator=(const GameTextInputState& rhs) {
+    inner = rhs;
+    owned_string = std::string(rhs.text_UTF8, rhs.text_length);
+    inner.text_UTF8 = owned_string.data();
+    return *this;
 }
 
 WelcomeScene::WelcomeScene() : mTextInputState(INITIAL_NAME) {}
@@ -88,246 +86,262 @@ WelcomeScene::WelcomeScene() : mTextInputState(INITIAL_NAME) {}
 WelcomeScene::~WelcomeScene() {}
 
 void WelcomeScene::RenderBackground() {
-  RenderBackgroundAnimation(mShapeRenderer);
+    RenderBackgroundAnimation(mShapeRenderer);
 }
 
 static std::string sAboutStartText;
 
-void WelcomeScene::InitAboutText(JNIEnv *env, jobject context) {
-  std::stringstream aboutStream;
-  aboutStream << BLURB_ABOUT;
-  std::string versionName;
-  agdk_samples_util::GetAppVersionInfo(env, context, nullptr, &versionName);
-  aboutStream << "\nApp Version: " << versionName;
-  aboutStream << "\nTarget SDK Version: "
-              << android_get_application_target_sdk_version();
-  aboutStream << "\nDevice OS Version: " << android_get_device_api_level();
-  sAboutStartText = aboutStream.str();
+void WelcomeScene::InitAboutText(JNIEnv* env, jobject context) {
+    std::stringstream aboutStream;
+    aboutStream << BLURB_ABOUT;
+    std::string versionName;
+    agdk_samples_util::GetAppVersionInfo(env, context, nullptr, &versionName);
+    aboutStream << "\nApp Version: " << versionName;
+    aboutStream << "\nTarget SDK Version: " << android_get_application_target_sdk_version();
+    aboutStream << "\nDevice OS Version: " << android_get_device_api_level();
+    sAboutStartText = aboutStream.str();
 }
 
 std::string WelcomeScene::AboutMessage() {
-  std::stringstream aboutStream;
-  aboutStream << sAboutStartText;
-  // Add window insets to help debugging
-  aboutStream << "\n[Debug Insets (left, right, top, bottom)]\n";
-  auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
-  ARect insets;
-  GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_SYSTEM_BARS,
-                               &insets);
-  aboutStream << "System bars: (" << insets.left << ", " << insets.right << ", "
-              << insets.top << ", " << insets.bottom << ")\n";
-  GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_DISPLAY_CUTOUT,
-                               &insets);
-  aboutStream << "Cutout: (" << insets.left << ", " << insets.right << ", "
-              << insets.top << ", " << insets.bottom << ")\n";
-  GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_WATERFALL,
-                               &insets);
-  aboutStream << "Waterfall: (" << insets.left << ", " << insets.right << ", "
-              << insets.top << ", " << insets.bottom << ")";
-  return aboutStream.str();
+    std::stringstream aboutStream;
+    aboutStream << sAboutStartText;
+    // Add window insets to help debugging
+    aboutStream << "\n[Debug Insets (left, right, top, bottom)]\n";
+    auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
+    ARect insets;
+    GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_SYSTEM_BARS, &insets);
+    aboutStream << "System bars: (" << insets.left << ", " << insets.right << ", " << insets.top
+                << ", " << insets.bottom << ")\n";
+    GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_DISPLAY_CUTOUT, &insets);
+    aboutStream << "Cutout: (" << insets.left << ", " << insets.right << ", " << insets.top << ", "
+                << insets.bottom << ")\n";
+    GameActivity_getWindowInsets(activity, GAMECOMMON_INSETS_TYPE_WATERFALL, &insets);
+    aboutStream << "Waterfall: (" << insets.left << ", " << insets.right << ", " << insets.top
+                << ", " << insets.bottom << ")";
+    return aboutStream.str();
+}
+
+void WelcomeScene::OnPointerDown(int pointerId, const struct PointerCoords* coords) {
+    if (GameActivity_isSoftwareKeyboardVisible(
+                NativeEngine::GetInstance()->GetAndroidApp()->activity)) {
+        return;
+    }
+    UiScene::OnPointerDown(pointerId, coords);
+}
+
+void WelcomeScene::OnPointerUp(int pointerId, const struct PointerCoords* coords) {
+    if (GameActivity_isSoftwareKeyboardVisible(
+                NativeEngine::GetInstance()->GetAndroidApp()->activity)) {
+        GameActivity_hideSoftInput(NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
+        return;
+    }
+    UiScene::OnPointerUp(pointerId, coords);
 }
 
 void WelcomeScene::OnButtonClicked(int id) {
-  SceneManager *mgr = SceneManager::GetInstance();
+    SceneManager* mgr = SceneManager::GetInstance();
 
-  if (id == mPlayButtonId) {
-    DataLoaderStateMachine *dataStateMachine =
-        NativeEngine::GetInstance()->GetDataStateMachine();
-    mgr->RequestNewScene(new PlayScene(dataStateMachine->getLevelLoaded()));
-  } else if (id == mStoryButtonId) {
-    mgr->RequestNewScene(
-        (new DialogScene())
-            ->SetText(BLURB_STORY)
-            ->SetSingleButton(S_OK, DialogScene::ACTION_RETURN));
-  } else if (id == mAboutButtonId) {
-    std::string aboutText = AboutMessage();
-    mgr->RequestNewScene(
-        (new DialogScene())
-            ->SetText(aboutText.c_str())
-            ->SetSingleButton(S_OK, DialogScene::ACTION_RETURN));
-  } else if (id == mNameEdit->GetId()) {
-    auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
-    // NB: the UI is resized when the IME is shown and OnCreateWidgets is called
-    // again.
-    sNameEdit = mTextInputState.inner.text_UTF8;
-    mNameEdit->SetText(sNameEdit.c_str());
-    GameActivity_setTextInputState(activity, &mTextInputState.inner);
-    GameActivity_showSoftInput(
-        NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
-    GameActivity_restartInput(
-        NativeEngine::GetInstance()->GetAndroidApp()->activity);
-  } else if (id == mTestButtonId) {
-    auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
-    GameActivity_setWindowFlags(
-        activity,
-        AWINDOW_FLAG_KEEP_SCREEN_ON | AWINDOW_FLAG_TURN_SCREEN_ON |
-            AWINDOW_FLAG_FULLSCREEN | AWINDOW_FLAG_SHOW_WHEN_LOCKED,
-        0);
-  } else if (id == mQuitButtonId) {
-    auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
-    GameActivity_finish(activity);
-  } else if (id == mMemoryButtonId) {
-    NativeEngine::GetInstance()->GetMemoryConsumer()->SetActive(true);
-  }
+    if (id == mPlayButtonId) {
+        DataLoaderStateMachine* dataStateMachine =
+                NativeEngine::GetInstance()->GetDataStateMachine();
+        mgr->RequestNewScene(new PlayScene(dataStateMachine->getLevelLoaded()));
+    } else if (id == mStoryButtonId) {
+        mgr->RequestNewScene((new DialogScene())
+                                     ->SetText(BLURB_STORY)
+                                     ->SetSingleButton(S_OK, DialogScene::ACTION_RETURN));
+    } else if (id == mAboutButtonId) {
+        std::string aboutText = AboutMessage();
+        mgr->RequestNewScene((new DialogScene())
+                                     ->SetText(aboutText.c_str())
+                                     ->SetSingleButton(S_OK, DialogScene::ACTION_RETURN));
+    } else if (id == mNameEdit->GetId()) {
+        auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
+        // NB: the UI is resized when the IME is shown and OnCreateWidgets is called
+        // again.
+        sNameEdit = mTextInputState.inner.text_UTF8;
+        mNameEdit->SetText(sNameEdit.c_str());
+        GameActivity_setTextInputState(activity, &mTextInputState.inner);
+        GameActivity_showSoftInput(NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
+        GameActivity_restartInput(NativeEngine::GetInstance()->GetAndroidApp()->activity);
+    } else if (id == mTestButtonId) {
+        auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
+        GameActivity_setWindowFlags(activity,
+                                    AWINDOW_FLAG_KEEP_SCREEN_ON | AWINDOW_FLAG_TURN_SCREEN_ON |
+                                            AWINDOW_FLAG_FULLSCREEN | AWINDOW_FLAG_SHOW_WHEN_LOCKED,
+                                    0);
+    } else if (id == mQuitButtonId) {
+        auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
+        GameActivity_finish(activity);
+    } else if (id == mMemoryButtonId) {
+        NativeEngine::GetInstance()->GetMemoryConsumer()->SetActive(true);
+    }
+}
+
+bool WelcomeScene::OnBackKeyPressed() {
+    GameActivity_hideSoftInput(NativeEngine::GetInstance()->GetAndroidApp()->activity, 0);
+    return true;
 }
 
 void WelcomeScene::OnTextInput() {
-  auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
-  GameActivity_getTextInputState(
-      activity,
-      [](void *context, const GameTextInputState *state) {
-        auto thiz = static_cast<WelcomeScene *>(context);
-        thiz->mTextInputState = *state;
-        sNameEdit = thiz->mTextInputState.owned_string;
-      },
-      this);
-  __android_log_print(ANDROID_LOG_DEBUG, "WelcomeScene", "Got game text %s",
-                      sNameEdit.c_str());
-  mNameEdit->SetText(sNameEdit.c_str());
-  ARect insets;
-  GameTextInput_getImeInsets(GameActivity_getTextInput(activity), &insets);
-  __android_log_print(ANDROID_LOG_DEBUG, "WelcomeScene",
-                      "IME insets: left=%d right=%d top=%d bottom=%d",
-                      insets.left, insets.right, insets.top, insets.bottom);
+    auto activity = NativeEngine::GetInstance()->GetAndroidApp()->activity;
+    GameActivity_getTextInputState(
+            activity,
+            [](void* context, const GameTextInputState* state) {
+                auto thiz = static_cast<WelcomeScene*>(context);
+                thiz->mTextInputState = *state;
+                sNameEdit = thiz->mTextInputState.owned_string;
+            },
+            this);
+    __android_log_print(ANDROID_LOG_DEBUG, "WelcomeScene", "Got game text %s", sNameEdit.c_str());
+    mNameEdit->SetText(sNameEdit.c_str());
+    ARect insets;
+    GameTextInput_getImeInsets(GameActivity_getTextInput(activity), &insets);
+    __android_log_print(ANDROID_LOG_DEBUG, "WelcomeScene",
+                        "IME insets: left=%d right=%d top=%d bottom=%d", insets.left, insets.right,
+                        insets.top, insets.bottom);
 }
 
 void WelcomeScene::DoFrame() {
-  // update widget states based on signed-in status
-  UpdateWidgetStates();
+    // update widget states based on signed-in status
+    UpdateWidgetStates();
 
-  // if the sign in or cloud save process is in progress, show a wait screen.
-  // Otherwise, not:
-  SetWaitScreen(false);
+    // if the sign in or cloud save process is in progress, show a wait screen.
+    // Otherwise, not:
+    SetWaitScreen(false);
 
-  // draw the UI
-  UiScene::DoFrame();
+    // draw the UI
+    UiScene::DoFrame();
 }
 
 void WelcomeScene::UpdateWidgetStates() {
-  // Build navigation
-  AddNav(mPlayButtonId, UI_DIR_UP, mNameEdit->GetId());
-  AddNav(mPlayButtonId, UI_DIR_RIGHT, mAboutButtonId);
-  AddNav(mPlayButtonId, UI_DIR_LEFT, mStoryButtonId);
+    // Build navigation
+    AddNav(mPlayButtonId, UI_DIR_UP, mNameEdit->GetId());
+    AddNav(mPlayButtonId, UI_DIR_RIGHT, mAboutButtonId);
+    AddNav(mPlayButtonId, UI_DIR_LEFT, mStoryButtonId);
 
-  AddNav(mStoryButtonId, UI_DIR_UP, mNameEdit->GetId());
-  AddNav(mStoryButtonId, UI_DIR_RIGHT, mPlayButtonId);
-  AddNav(mStoryButtonId, UI_DIR_DOWN, mMemoryButtonId);
+    AddNav(mStoryButtonId, UI_DIR_UP, mNameEdit->GetId());
+    AddNav(mStoryButtonId, UI_DIR_RIGHT, mPlayButtonId);
+    AddNav(mStoryButtonId, UI_DIR_DOWN, mMemoryButtonId);
 
-  AddNav(mMemoryButtonId, UI_DIR_UP, mStoryButtonId);
-  AddNav(mMemoryButtonId, UI_DIR_RIGHT, mQuitButtonId);
+    AddNav(mMemoryButtonId, UI_DIR_UP, mStoryButtonId);
+    AddNav(mMemoryButtonId, UI_DIR_RIGHT, mQuitButtonId);
 
-  AddNav(mAboutButtonId, UI_DIR_UP, mTestButtonId);
-  AddNav(mAboutButtonId, UI_DIR_DOWN, mQuitButtonId);
-  AddNav(mAboutButtonId, UI_DIR_LEFT, mPlayButtonId);
+    AddNav(mAboutButtonId, UI_DIR_UP, mTestButtonId);
+    AddNav(mAboutButtonId, UI_DIR_DOWN, mQuitButtonId);
+    AddNav(mAboutButtonId, UI_DIR_LEFT, mPlayButtonId);
 
-  AddNav(mQuitButtonId, UI_DIR_UP, mAboutButtonId);
-  AddNav(mQuitButtonId, UI_DIR_LEFT, mMemoryButtonId);
+    AddNav(mQuitButtonId, UI_DIR_UP, mAboutButtonId);
+    AddNav(mQuitButtonId, UI_DIR_LEFT, mMemoryButtonId);
 
-  AddNav(mTestButtonId, UI_DIR_UP, mNameEdit->GetId());
-  AddNav(mTestButtonId, UI_DIR_DOWN, mAboutButtonId);
-  AddNav(mTestButtonId, UI_DIR_LEFT, mPlayButtonId);
+    AddNav(mTestButtonId, UI_DIR_UP, mNameEdit->GetId());
+    AddNav(mTestButtonId, UI_DIR_DOWN, mAboutButtonId);
+    AddNav(mTestButtonId, UI_DIR_LEFT, mPlayButtonId);
 
-  AddNav(mNameEdit->GetId(), UI_DIR_RIGHT, mTestButtonId);
-  AddNav(mNameEdit->GetId(), UI_DIR_DOWN, mPlayButtonId);
-  AddNav(mNameEdit->GetId(), UI_DIR_LEFT, mStoryButtonId);
+    AddNav(mNameEdit->GetId(), UI_DIR_RIGHT, mTestButtonId);
+    AddNav(mNameEdit->GetId(), UI_DIR_DOWN, mPlayButtonId);
+    AddNav(mNameEdit->GetId(), UI_DIR_LEFT, mStoryButtonId);
 }
 
-void WelcomeScene::OnStartGraphics() { UiScene::OnStartGraphics(); }
+void WelcomeScene::OnStartGraphics() {
+    UiScene::OnStartGraphics();
+}
 
 void WelcomeScene::OnCreateWidgets() {
-  // create widgets
-  float maxX = SceneManager::GetInstance()->GetScreenAspect();
-  float center = 0.5f * maxX;
+    // create widgets
+    float maxX = SceneManager::GetInstance()->GetScreenAspect();
+    float center = 0.5f * maxX;
 
-  // create the static title
-  NewWidget()
-      ->SetText(S_TITLE)
-      ->SetCenter(TITLE_POS)
-      ->SetTextColor(TITLE_COLOR)
-      ->SetFontScale(TITLE_FONT_SCALE)
-      ->SetTransition(UiWidget::TRANS_FROM_BOTTOM);
+    // create the static title
+    NewWidget()
+            ->SetText(S_TITLE)
+            ->SetCenter(TITLE_POS)
+            ->SetTextColor(TITLE_COLOR)
+            ->SetFontScale(TITLE_FONT_SCALE)
+            ->SetTransition(UiWidget::TRANS_FROM_BOTTOM);
 
-  // create the "play" button
-  mPlayButtonId = NewWidget()
-                      ->SetText(S_PLAY)
-                      ->SetTextColor(BUTTON_COLOR)
-                      ->SetCenter(BUTTON_PLAY_POS)
-                      ->SetSize(BUTTON_PLAY_SIZE)
-                      ->SetFontScale(BUTTON_PLAY_FONT_SCALE)
-                      ->SetIsButton(true)
-                      ->SetTransition(UiWidget::TRANS_SCALE)
-                      ->GetId();
+    // create the "play" button
+    mPlayButtonId = NewWidget()
+                            ->SetText(S_PLAY)
+                            ->SetTextColor(BUTTON_COLOR)
+                            ->SetCenter(BUTTON_PLAY_POS)
+                            ->SetSize(BUTTON_PLAY_SIZE)
+                            ->SetFontScale(BUTTON_PLAY_FONT_SCALE)
+                            ->SetIsButton(true)
+                            ->SetTransition(UiWidget::TRANS_SCALE)
+                            ->GetId();
 
-  // story button
-  mStoryButtonId = NewWidget()
-                       ->SetTextColor(BUTTON_COLOR)
-                       ->SetText(S_STORY)
-                       ->SetCenter(BUTTON_STORY_POS)
-                       ->SetSize(BUTTON_SIDEBUTTON_SIZE)
-                       ->SetFontScale(BUTTON_FONT_SCALE)
-                       ->SetIsButton(true)
-                       ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
-                       ->GetId();
+    // story button
+    mStoryButtonId = NewWidget()
+                             ->SetTextColor(BUTTON_COLOR)
+                             ->SetText(S_STORY)
+                             ->SetCenter(BUTTON_STORY_POS)
+                             ->SetSize(BUTTON_SIDEBUTTON_SIZE)
+                             ->SetFontScale(BUTTON_FONT_SCALE)
+                             ->SetIsButton(true)
+                             ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
+                             ->GetId();
 
-  // memory button
-  mMemoryButtonId = NewWidget()
+    // memory button
+    mMemoryButtonId = NewWidget()
+                              ->SetTextColor(BUTTON_COLOR)
+                              ->SetText(S_MEMORY)
+                              ->SetCenter(BUTTON_MEMORY_POS)
+                              ->SetSize(BUTTON_SIDEBUTTON_SIZE)
+                              ->SetFontScale(BUTTON_FONT_SCALE)
+                              ->SetIsButton(true)
+                              ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
+                              ->GetId();
+
+    // about button
+    mAboutButtonId = NewWidget()
+                             ->SetTextColor(BUTTON_COLOR)
+                             ->SetText(S_ABOUT)
+                             ->SetCenter(BUTTON_ABOUT_POS)
+                             ->SetSize(BUTTON_SIDEBUTTON_SIZE)
+                             ->SetFontScale(BUTTON_FONT_SCALE)
+                             ->SetIsButton(true)
+                             ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
+                             ->GetId();
+
+    // create editable name field
+    mNameEdit = NewWidget()
+                        ->SetText(sNameEdit.c_str())
+                        ->SetCenter(NAME_EDIT_POS)
                         ->SetTextColor(BUTTON_COLOR)
-                        ->SetText(S_MEMORY)
-                        ->SetCenter(BUTTON_MEMORY_POS)
-                        ->SetSize(BUTTON_SIDEBUTTON_SIZE)
-                        ->SetFontScale(BUTTON_FONT_SCALE)
-                        ->SetIsButton(true)
-                        ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
-                        ->GetId();
+                        ->SetFontScale(NAME_EDIT_FONT_SCALE)
+                        ->SetTransition(UiWidget::TRANS_FROM_TOP)
+                        ->SetSize(NAME_EDIT_SIZE)
+                        ->SetIsButton(true);
 
-  // about button
-  mAboutButtonId = NewWidget()
-                       ->SetTextColor(BUTTON_COLOR)
-                       ->SetText(S_ABOUT)
-                       ->SetCenter(BUTTON_ABOUT_POS)
-                       ->SetSize(BUTTON_SIDEBUTTON_SIZE)
-                       ->SetFontScale(BUTTON_FONT_SCALE)
-                       ->SetIsButton(true)
-                       ->SetTransition(UiWidget::TRANS_FROM_RIGHT)
-                       ->GetId();
+    // test button
+    mTestButtonId = NewWidget()
+                            ->SetTextColor(BUTTON_COLOR)
+                            ->SetText(S_TEST)
+                            ->SetCenter(BUTTON_TEST_POS)
+                            ->SetSize(BUTTON_SIDEBUTTON_SIZE)
+                            ->SetFontScale(BUTTON_FONT_SCALE)
+                            ->SetIsButton(true)
+                            ->SetTransition(UiWidget::TRANS_FROM_TOP)
+                            ->GetId();
 
-  // create editable name field
-  mNameEdit = NewWidget()
-                  ->SetText(sNameEdit.c_str())
-                  ->SetCenter(NAME_EDIT_POS)
-                  ->SetTextColor(BUTTON_COLOR)
-                  ->SetFontScale(NAME_EDIT_FONT_SCALE)
-                  ->SetTransition(UiWidget::TRANS_FROM_TOP)
-                  ->SetSize(NAME_EDIT_SIZE)
-                  ->SetIsButton(true);
+    // quit button
+    mQuitButtonId = NewWidget()
+                            ->SetTextColor(BUTTON_COLOR)
+                            ->SetText(S_QUIT)
+                            ->SetCenter(BUTTON_QUIT_POS)
+                            ->SetSize(BUTTON_SIDEBUTTON_SIZE)
+                            ->SetFontScale(BUTTON_FONT_SCALE)
+                            ->SetIsButton(true)
+                            ->SetTransition(UiWidget::TRANS_FROM_BOTTOM)
+                            ->GetId();
 
-  // test button
-  mTestButtonId = NewWidget()
-                      ->SetTextColor(BUTTON_COLOR)
-                      ->SetText(S_TEST)
-                      ->SetCenter(BUTTON_TEST_POS)
-                      ->SetSize(BUTTON_SIDEBUTTON_SIZE)
-                      ->SetFontScale(BUTTON_FONT_SCALE)
-                      ->SetIsButton(true)
-                      ->SetTransition(UiWidget::TRANS_FROM_TOP)
-                      ->GetId();
+    // "Play" button is the default button
+    SetDefaultButton(mPlayButtonId);
 
-  // quit button
-  mQuitButtonId = NewWidget()
-                      ->SetTextColor(BUTTON_COLOR)
-                      ->SetText(S_QUIT)
-                      ->SetCenter(BUTTON_QUIT_POS)
-                      ->SetSize(BUTTON_SIDEBUTTON_SIZE)
-                      ->SetFontScale(BUTTON_FONT_SCALE)
-                      ->SetIsButton(true)
-                      ->SetTransition(UiWidget::TRANS_FROM_BOTTOM)
-                      ->GetId();
-
-  // "Play" button is the default button
-  SetDefaultButton(mPlayButtonId);
-
-  // enable/disable widgets as appropriate to signed in state
-  UpdateWidgetStates();
+    // enable/disable widgets as appropriate to signed in state
+    UpdateWidgetStates();
 }
 
-void WelcomeScene::OnKillGraphics() { UiScene::OnKillGraphics(); }
+void WelcomeScene::OnKillGraphics() {
+    UiScene::OnKillGraphics();
+}

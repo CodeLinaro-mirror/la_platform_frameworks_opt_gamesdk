@@ -47,35 +47,33 @@
 #define RIGHT_MOVEMENT_BIT 8
 
 struct CookedEvent {
-  int type;
+    int type;
 
-  // for joystick events:
-  float joyX, joyY;
+    // for joystick events:
+    float joyX, joyY;
 
-  // for pointer events
-  int motionPointerId;
-  bool motionIsOnScreen;
-  float motionX, motionY;
-  float motionMinX, motionMaxX;
-  float motionMinY, motionMaxY;
+    // for pointer events
+    int motionPointerId;
+    bool motionIsOnScreen;
+    float motionX, motionY;
+    float motionMinX, motionMaxX;
+    float motionMinY, motionMaxY;
 
-  // for key events
-  int keyCode;
+    // for key events
+    int keyCode;
 
-  // whether a text input has occurred
-  bool textInputState;
+    // whether a text input has occurred
+    bool textInputState;
 };
 
-typedef bool (*CookedEventCallback)(struct CookedEvent *event);
+typedef bool (*CookedEventCallback)(struct CookedEvent* event);
 
-bool CookGameActivityKeyEvent(GameActivityKeyEvent *keyEvent,
-                              CookedEventCallback callback);
+bool CookGameActivityKeyEvent(GameActivityKeyEvent* keyEvent, CookedEventCallback callback);
 
-bool CookGameActivityMotionEvent(GameActivityMotionEvent *motionEvent,
+bool CookGameActivityMotionEvent(GameActivityMotionEvent* motionEvent,
                                  CookedEventCallback callback);
 
-bool CookGameControllerEvent(const int32_t gameControllerIndex,
-                             CookedEventCallback callback);
+bool CookGameControllerEvent(const int32_t gameControllerIndex, CookedEventCallback callback);
 
 bool isDirectionalKey(const int32_t keyCode);
 

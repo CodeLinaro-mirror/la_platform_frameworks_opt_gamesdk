@@ -27,84 +27,77 @@
 namespace paddleboat {
 
 class IndexTableRemap {
- public:
-  IndexTableRemap() : newIndex(-1) {}
-  IndexTableRemap(int32_t i) : newIndex(i) {}
-  int32_t newIndex;
+public:
+    IndexTableRemap() : newIndex(-1) {}
+    IndexTableRemap(int32_t i) : newIndex(i) {}
+    int32_t newIndex;
 };
 
 class MappingTableSearch {
- public:
-  MappingTableSearch();
+public:
+    MappingTableSearch();
 
-  MappingTableSearch(
-      Paddleboat_Controller_Mapping_File_Controller_Entry *mapRoot,
-      int32_t entryCount);
+    MappingTableSearch(Paddleboat_Controller_Mapping_File_Controller_Entry* mapRoot,
+                       int32_t entryCount);
 
-  void initSearchParameters(const int32_t newVendorId,
-                            const int32_t newProductId, const int32_t newMinApi,
-                            const int32_t newMaxApi);
+    void initSearchParameters(const int32_t newVendorId, const int32_t newProductId,
+                              const int32_t newMinApi, const int32_t newMaxApi);
 
-  Paddleboat_Controller_Mapping_File_Controller_Entry *mappingRoot;
-  int32_t vendorId;
-  int32_t productId;
-  int32_t minApi;
-  int32_t maxApi;
-  int32_t tableIndex;
-  int32_t mapEntryCount;
-  int32_t tableEntryCount;
-  int32_t tableMaxEntryCount;
+    Paddleboat_Controller_Mapping_File_Controller_Entry* mappingRoot;
+    int32_t vendorId;
+    int32_t productId;
+    int32_t minApi;
+    int32_t maxApi;
+    int32_t tableIndex;
+    int32_t mapEntryCount;
+    int32_t tableEntryCount;
+    int32_t tableMaxEntryCount;
 };
 
 class GameControllerMappingUtils {
- public:
-  static bool findMatchingMapEntry(MappingTableSearch *searchEntry);
+public:
+    static bool findMatchingMapEntry(MappingTableSearch* searchEntry);
 
-  static Paddleboat_ErrorCode insertMapEntry(
-      const Paddleboat_Controller_Mapping_File_Controller_Entry *mappingData,
-      MappingTableSearch *searchEntry, const IndexTableRemap *axisRemapTable,
-      const IndexTableRemap *buttonRemapTable);
+    static Paddleboat_ErrorCode insertMapEntry(
+            const Paddleboat_Controller_Mapping_File_Controller_Entry* mappingData,
+            MappingTableSearch* searchEntry, const IndexTableRemap* axisRemapTable,
+            const IndexTableRemap* buttonRemapTable);
 
-  static const Paddleboat_Controller_Mapping_File_Controller_Entry *
-  validateMapTable(
-      const Paddleboat_Controller_Mapping_File_Controller_Entry *mappingRoot,
-      const int32_t tableEntryCount);
+    static const Paddleboat_Controller_Mapping_File_Controller_Entry* validateMapTable(
+            const Paddleboat_Controller_Mapping_File_Controller_Entry* mappingRoot,
+            const int32_t tableEntryCount);
 
-  static Paddleboat_ErrorCode validateMapFile(
-      const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-      const size_t mappingFileBufferSize);
+    static Paddleboat_ErrorCode validateMapFile(
+            const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+            const size_t mappingFileBufferSize);
 
-  static Paddleboat_ErrorCode mergeStringTable(
-      const Paddleboat_Controller_Mapping_File_String_Entry *newStrings,
-      const uint32_t newStringCount,
-      Paddleboat_Controller_Mapping_File_String_Entry *stringEntries,
-      uint32_t *stringEntryCount, const uint32_t maxStringEntryCount,
-      IndexTableRemap *remapTable);
+    static Paddleboat_ErrorCode mergeStringTable(
+            const Paddleboat_Controller_Mapping_File_String_Entry* newStrings,
+            const uint32_t newStringCount,
+            Paddleboat_Controller_Mapping_File_String_Entry* stringEntries,
+            uint32_t* stringEntryCount, const uint32_t maxStringEntryCount,
+            IndexTableRemap* remapTable);
 
-  static Paddleboat_ErrorCode mergeAxisTable(
-      const Paddleboat_Controller_Mapping_File_Axis_Entry *newAxis,
-      const uint32_t newAxisCount,
-      Paddleboat_Controller_Mapping_File_Axis_Entry *axisEntries,
-      uint32_t *axisEntryCount, const uint32_t maxAxisEntryCount,
-      const IndexTableRemap *stringRemapTable, IndexTableRemap *axisRemapTable);
+    static Paddleboat_ErrorCode mergeAxisTable(
+            const Paddleboat_Controller_Mapping_File_Axis_Entry* newAxis,
+            const uint32_t newAxisCount, Paddleboat_Controller_Mapping_File_Axis_Entry* axisEntries,
+            uint32_t* axisEntryCount, const uint32_t maxAxisEntryCount,
+            const IndexTableRemap* stringRemapTable, IndexTableRemap* axisRemapTable);
 
-  static Paddleboat_ErrorCode mergeButtonTable(
-      const Paddleboat_Controller_Mapping_File_Button_Entry *newButton,
-      const uint32_t newButtonCount,
-      Paddleboat_Controller_Mapping_File_Button_Entry *buttonEntries,
-      uint32_t *buttonEntryCount, const uint32_t maxButtonEntryCount,
-      const IndexTableRemap *stringRemapTable,
-      IndexTableRemap *buttonRemapTable);
+    static Paddleboat_ErrorCode mergeButtonTable(
+            const Paddleboat_Controller_Mapping_File_Button_Entry* newButton,
+            const uint32_t newButtonCount,
+            Paddleboat_Controller_Mapping_File_Button_Entry* buttonEntries,
+            uint32_t* buttonEntryCount, const uint32_t maxButtonEntryCount,
+            const IndexTableRemap* stringRemapTable, IndexTableRemap* buttonRemapTable);
 
-  static Paddleboat_ErrorCode mergeControllerRemapData(
-      const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-      const size_t mappingFileBufferSize,
-      GameControllerMappingInfo &mappingInfo);
+    static Paddleboat_ErrorCode mergeControllerRemapData(
+            const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+            const size_t mappingFileBufferSize, GameControllerMappingInfo& mappingInfo);
 
-  static Paddleboat_ErrorCode overwriteControllerRemapData(
-      const Paddleboat_Controller_Mapping_File_Header *mappingFileHeader,
-      const size_t mappingFileBufferSize,
-      GameControllerMappingInfo &mappingInfo);
+    static Paddleboat_ErrorCode overwriteControllerRemapData(
+            const Paddleboat_Controller_Mapping_File_Header* mappingFileHeader,
+            const size_t mappingFileBufferSize, GameControllerMappingInfo& mappingInfo);
 };
 
-}  // namespace paddleboat
+} // namespace paddleboat

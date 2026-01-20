@@ -34,25 +34,21 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_google_androidgamesdk_SwappyDisplayManager_nSetSupportedRefreshPeriods(
-    JNIEnv *env, jobject /* this */, jlong cookie, jlongArray refreshPeriods,
-    jintArray modeIds);
+        JNIEnv* env, jobject /* this */, jlong cookie, jlongArray refreshPeriods,
+        jintArray modeIds);
 
-JNIEXPORT void JNICALL
-Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(
-    JNIEnv *env, jobject /* this */, jlong cookie, jlong refreshPeriod,
-    jlong appOffset, jlong sfOffset);
+JNIEXPORT void JNICALL Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(
+        JNIEnv* env, jobject /* this */, jlong cookie, jlong refreshPeriod, jlong appOffset,
+        jlong sfOffset);
 }
 
-const char *SwappyDisplayManager::SDM_CLASS =
-    "com/google/androidgamesdk/SwappyDisplayManager";
+const char* SwappyDisplayManager::SDM_CLASS = "com/google/androidgamesdk/SwappyDisplayManager";
 
-const JNINativeMethod SwappyDisplayManager::SDMNativeMethods[] = {
-    {"nSetSupportedRefreshPeriods", "(J[J[I)V",
-     (void
-          *)&Java_com_google_androidgamesdk_SwappyDisplayManager_nSetSupportedRefreshPeriods},
-    {"nOnRefreshPeriodChanged", "(JJJJ)V",
-     (void
-          *)&Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged}};
+const JNINativeMethod SwappyDisplayManager::SDMNativeMethods[] =
+        {{"nSetSupportedRefreshPeriods", "(J[J[I)V",
+          (void*)&Java_com_google_androidgamesdk_SwappyDisplayManager_nSetSupportedRefreshPeriods},
+         {"nOnRefreshPeriodChanged", "(JJJJ)V",
+          (void*)&Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged}};
 
 bool SwappyDisplayManager::usesMinSdkOrLater(SdkVersion sdkVersion) {
     return sdkVersion.sdkInt >= MIN_SDK_VERSION;
@@ -69,41 +65,38 @@ bool SwappyDisplayManager::useSwappyDisplayManager(SdkVersion sdkVersion) {
     // support in NDK. SDK 30 has partial native support
     // (AChoreographer_registerRefreshRateCallback) but lacks synchronization
     // with DisplayManager to query app/sf offsets
-    return !(sdkVersion.sdkInt >= 31 ||
-             (sdkVersion.sdkInt == 30 && sdkVersion.previewSdkInt == 1));
+    return !(sdkVersion.sdkInt >= 31 || (sdkVersion.sdkInt == 30 && sdkVersion.previewSdkInt == 1));
 }
 
-SwappyDisplayManager::SwappyDisplayManager(JavaVM *vm, jobject mainActivity)
-    : mJVM(vm) {
+SwappyDisplayManager::SwappyDisplayManager(JavaVM* vm, jobject mainActivity) : mJVM(vm) {
     if (!vm || !mainActivity) {
         return;
     }
 
-    JNIEnv *env;
+    JNIEnv* env;
     mJVM->AttachCurrentThread(&env, nullptr);
 
-    jclass swappyDisplayManagerClass = gamesdk::loadClass(
-        env, mainActivity, SwappyDisplayManager::SDM_CLASS,
-        (JNINativeMethod *)SwappyDisplayManager::SDMNativeMethods,
-        SwappyDisplayManager::SDMNativeMethodsSize);
+    jclass swappyDisplayManagerClass =
+            gamesdk::loadClass(env, mainActivity, SwappyDisplayManager::SDM_CLASS,
+                               (JNINativeMethod*)SwappyDisplayManager::SDMNativeMethods,
+                               SwappyDisplayManager::SDMNativeMethodsSize);
 
     if (!swappyDisplayManagerClass) return;
 
-    jmethodID constructor = env->GetMethodID(
-        swappyDisplayManagerClass, "<init>", "(JLandroid/app/Activity;)V");
-    mSetPreferredDisplayModeId = env->GetMethodID(
-        swappyDisplayManagerClass, "setPreferredDisplayModeId", "(I)V");
-    mTerminate =
-        env->GetMethodID(swappyDisplayManagerClass, "terminate", "()V");
-    jobject swappyDisplayManager = env->NewObject(
-        swappyDisplayManagerClass, constructor, (jlong)this, mainActivity);
+    jmethodID constructor =
+            env->GetMethodID(swappyDisplayManagerClass, "<init>", "(JLandroid/app/Activity;)V");
+    mSetPreferredDisplayModeId =
+            env->GetMethodID(swappyDisplayManagerClass, "setPreferredDisplayModeId", "(I)V");
+    mTerminate = env->GetMethodID(swappyDisplayManagerClass, "terminate", "()V");
+    jobject swappyDisplayManager =
+            env->NewObject(swappyDisplayManagerClass, constructor, (jlong)this, mainActivity);
     mJthis = env->NewGlobalRef(swappyDisplayManager);
 
     mInitialized = true;
 }
 
 SwappyDisplayManager::~SwappyDisplayManager() {
-    JNIEnv *env;
+    JNIEnv* env;
     mJVM->AttachCurrentThread(&env, nullptr);
 
     env->CallVoidMethod(mJthis, mTerminate);
@@ -114,13 +107,12 @@ std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap>
 SwappyDisplayManager::getSupportedRefreshPeriods() {
     std::unique_lock<std::mutex> lock(mMutex);
 
-    mCondition.wait(
-        lock, [&]() { return mSupportedRefreshPeriods.get() != nullptr; });
+    mCondition.wait(lock, [&]() { return mSupportedRefreshPeriods.get() != nullptr; });
     return mSupportedRefreshPeriods;
 }
 
 void SwappyDisplayManager::setPreferredDisplayModeId(int index) {
-    JNIEnv *env;
+    JNIEnv* env;
     mJVM->AttachCurrentThread(&env, nullptr);
 
     env->CallVoidMethod(mJthis, mSetPreferredDisplayModeId, index);
@@ -128,28 +120,24 @@ void SwappyDisplayManager::setPreferredDisplayModeId(int index) {
 
 // Helper class to wrap JNI entry points to SwappyDisplayManager
 class SwappyDisplayManagerJNI {
-   public:
+public:
     static void onSetSupportedRefreshPeriods(
-        jlong, std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap>);
+            jlong, std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap>);
     static void onRefreshPeriodChanged(jlong, long, long, long);
 };
 
 void SwappyDisplayManagerJNI::onSetSupportedRefreshPeriods(
-    jlong cookie,
-    std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap> refreshPeriods) {
-    auto *sDM = reinterpret_cast<SwappyDisplayManager *>(cookie);
+        jlong cookie, std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap> refreshPeriods) {
+    auto* sDM = reinterpret_cast<SwappyDisplayManager*>(cookie);
 
     std::lock_guard<std::mutex> lock(sDM->mMutex);
     sDM->mSupportedRefreshPeriods = std::move(refreshPeriods);
     sDM->mCondition.notify_one();
 }
 
-void SwappyDisplayManagerJNI::onRefreshPeriodChanged(jlong /*cookie*/,
-                                                     long refreshPeriod,
-                                                     long appOffset,
-                                                     long sfOffset) {
-    SWAPPY_LOGV("onRefreshPeriodChanged: refresh rate: %.0fHz",
-                1e9f / refreshPeriod);
+void SwappyDisplayManagerJNI::onRefreshPeriodChanged(jlong /*cookie*/, long refreshPeriod,
+                                                     long appOffset, long sfOffset) {
+    SWAPPY_LOGV("onRefreshPeriodChanged: refresh rate: %.0fHz", 1e9f / refreshPeriod);
     using std::chrono::nanoseconds;
     Settings::DisplayTimings displayTimings;
     displayTimings.refreshPeriod = nanoseconds(refreshPeriod);
@@ -162,33 +150,28 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_google_androidgamesdk_SwappyDisplayManager_nSetSupportedRefreshPeriods(
-    JNIEnv *env, jobject /* this */, jlong cookie, jlongArray refreshPeriods,
-    jintArray modeIds) {
+        JNIEnv* env, jobject /* this */, jlong cookie, jlongArray refreshPeriods,
+        jintArray modeIds) {
     int length = env->GetArrayLength(refreshPeriods);
-    auto refreshPeriodsMap =
-        std::make_shared<SwappyDisplayManager::RefreshPeriodMap>();
+    auto refreshPeriodsMap = std::make_shared<SwappyDisplayManager::RefreshPeriodMap>();
 
-    jlong *refreshPeriodsArr = env->GetLongArrayElements(refreshPeriods, 0);
-    jint *modeIdsArr = env->GetIntArrayElements(modeIds, 0);
+    jlong* refreshPeriodsArr = env->GetLongArrayElements(refreshPeriods, 0);
+    jint* modeIdsArr = env->GetIntArrayElements(modeIds, 0);
     for (int i = 0; i < length; i++) {
-        (*refreshPeriodsMap)[std::chrono::nanoseconds(refreshPeriodsArr[i])] =
-            modeIdsArr[i];
+        (*refreshPeriodsMap)[std::chrono::nanoseconds(refreshPeriodsArr[i])] = modeIdsArr[i];
     }
     env->ReleaseLongArrayElements(refreshPeriods, refreshPeriodsArr, 0);
     env->ReleaseIntArrayElements(modeIds, modeIdsArr, 0);
 
-    SwappyDisplayManagerJNI::onSetSupportedRefreshPeriods(cookie,
-                                                          refreshPeriodsMap);
+    SwappyDisplayManagerJNI::onSetSupportedRefreshPeriods(cookie, refreshPeriodsMap);
 }
 
-JNIEXPORT void JNICALL
-Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(
-    JNIEnv *env, jobject /* this */, jlong cookie, jlong refreshPeriod,
-    jlong appOffset, jlong sfOffset) {
-    SwappyDisplayManagerJNI::onRefreshPeriodChanged(cookie, refreshPeriod,
-                                                    appOffset, sfOffset);
+JNIEXPORT void JNICALL Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(
+        JNIEnv* env, jobject /* this */, jlong cookie, jlong refreshPeriod, jlong appOffset,
+        jlong sfOffset) {
+    SwappyDisplayManagerJNI::onRefreshPeriodChanged(cookie, refreshPeriod, appOffset, sfOffset);
 }
 
-}  // extern "C"
+} // extern "C"
 
-}  // namespace swappy
+} // namespace swappy

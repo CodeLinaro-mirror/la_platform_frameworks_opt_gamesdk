@@ -55,32 +55,30 @@
 //
 // constexpr weeknum operator "" _w(unsigned long long wn) noexcept;
 
-#include "iso_week.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<iso_week::weeknum>{}, "");
+#include "iso_week.h"
+
+static_assert(std::is_trivially_destructible<iso_week::weeknum>{}, "");
 static_assert(!std::is_default_constructible<iso_week::weeknum>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::weeknum>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::weeknum>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::weeknum>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::weeknum>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::weeknum>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::weeknum>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::weeknum>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::weeknum>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::weeknum>{}, "");
 static_assert(std::is_standard_layout<iso_week::weeknum>{}, "");
 static_assert(std::is_literal_type<iso_week::weeknum>{}, "");
 
-static_assert( std::is_nothrow_constructible<iso_week::weeknum, unsigned>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::weeknum, unsigned>{}, "");
 static_assert(!std::is_convertible<unsigned, iso_week::weeknum>{}, "");
-static_assert( std::is_nothrow_constructible<unsigned, iso_week::weeknum>{}, "");
+static_assert(std::is_nothrow_constructible<unsigned, iso_week::weeknum>{}, "");
 static_assert(!std::is_convertible<iso_week::weeknum, unsigned>{}, "");
 static_assert(static_cast<unsigned>(iso_week::weeknum{3}) == 3, "");
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
     using namespace std::chrono;
 
@@ -104,8 +102,8 @@ main()
     assert(wn == weeknum{4});
 
     static_assert(!weeknum{0}.ok(), "");
-    static_assert( weeknum{1}.ok(), "");
-    static_assert( weeknum{53}.ok(), "");
+    static_assert(weeknum{1}.ok(), "");
+    static_assert(weeknum{53}.ok(), "");
     static_assert(!weeknum{54}.ok(), "");
 
     static_assert(15_w - 10_w == weeks{5}, "");

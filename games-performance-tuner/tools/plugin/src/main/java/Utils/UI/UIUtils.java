@@ -27,37 +27,32 @@ import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
 public class UIUtils {
-
-  public static void reloadTreeAndKeepState(JTree jTree, DefaultMutableTreeNode newRoot) {
-    final HashSet<String> pathsStrings = new HashSet<>();
-    visitAllPaths((TreeNode) jTree.getModel().getRoot(),
-        treePath ->
-        {
-          if (jTree.isExpanded(treePath)) {
-            pathsStrings.add(treePath.toString());
-          }
+    public static void reloadTreeAndKeepState(JTree jTree, DefaultMutableTreeNode newRoot) {
+        final HashSet<String> pathsStrings = new HashSet<>();
+        visitAllPaths((TreeNode) jTree.getModel().getRoot(), treePath -> {
+            if (jTree.isExpanded(treePath)) {
+                pathsStrings.add(treePath.toString());
+            }
         });
-    TreePath selectedPath = jTree.getSelectionPath();
-    ((DefaultTreeModel) jTree.getModel()).setRoot(newRoot);
-    visitAllPaths((TreeNode) jTree.getModel().getRoot(),
-        treePath ->
-        {
-          if (pathsStrings.contains(treePath.toString())) {
-            jTree.expandPath(treePath);
-          }
-          if (selectedPath != null && selectedPath.toString().equals(treePath.toString())) {
-            jTree.setSelectionPath(treePath);
-          }
+        TreePath selectedPath = jTree.getSelectionPath();
+        ((DefaultTreeModel) jTree.getModel()).setRoot(newRoot);
+        visitAllPaths((TreeNode) jTree.getModel().getRoot(), treePath -> {
+            if (pathsStrings.contains(treePath.toString())) {
+                jTree.expandPath(treePath);
+            }
+            if (selectedPath != null && selectedPath.toString().equals(treePath.toString())) {
+                jTree.setSelectionPath(treePath);
+            }
         });
-  }
+    }
 
-  public static void visitAllPaths(TreeNode node, Consumer<TreePath> consumer) {
-    consumer.accept(TreeUtil.getPathFromRoot(node));
-    if (node.getChildCount() >= 0) {
-        for (Enumeration<? extends TreeNode> e = node.children(); e.hasMoreElements();) {
-            TreeNode newNode = e.nextElement();
-            visitAllPaths(newNode, consumer);
+    public static void visitAllPaths(TreeNode node, Consumer<TreePath> consumer) {
+        consumer.accept(TreeUtil.getPathFromRoot(node));
+        if (node.getChildCount() >= 0) {
+            for (Enumeration<? extends TreeNode> e = node.children(); e.hasMoreElements();) {
+                TreeNode newNode = e.nextElement();
+                visitAllPaths(newNode, consumer);
+            }
         }
     }
-  }
 }

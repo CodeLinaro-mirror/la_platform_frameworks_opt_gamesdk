@@ -35,12 +35,16 @@ constexpr char kBasePath[] = "/data/local/tmp/tuningfork_file_test";
 class FileCacheTest {
     FileCache cache_;
 
-   public:
+public:
     FileCacheTest() : cache_(GetPath()) {
         EXPECT_EQ(cache_.Clear(), TUNINGFORK_ERROR_OK);
     }
-    ~FileCacheTest() { clear_jni_for_tests(); }
-    bool IsValid() const { return cache_.IsValid(); }
+    ~FileCacheTest() {
+        clear_jni_for_tests();
+    }
+    bool IsValid() const {
+        return cache_.IsValid();
+    }
     void Save(uint64_t key, const ProtobufSerialization& value) {
         TuningFork_CProtobufSerialization cvalue;
         ToCProtobufSerialization(value, cvalue);
@@ -56,7 +60,9 @@ class FileCacheTest {
         } else
             return {};
     }
-    void Remove(uint64_t key) { cache_.Remove(key); }
+    void Remove(uint64_t key) {
+        cache_.Remove(key);
+    }
     static std::string GetPath() {
         // Use JNI if we can, for app cache usage rather than /data/local/tmp
         init_jni_for_tests();
@@ -107,4 +113,4 @@ TEST(FileCacheTest, FileRemoveOp) {
     }
 }
 
-}  // namespace test
+} // namespace test

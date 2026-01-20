@@ -49,30 +49,27 @@
 //
 // std::ostream& operator<<(std::ostream& os, const year_lastweek& ym);
 
-#include "iso_week.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<iso_week::year_lastweek>{}, "");
+#include "iso_week.h"
+
+static_assert(std::is_trivially_destructible<iso_week::year_lastweek>{}, "");
 static_assert(!std::is_default_constructible<iso_week::year_lastweek>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::year_lastweek>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::year_lastweek>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::year_lastweek>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::year_lastweek>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::year_lastweek>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::year_lastweek>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::year_lastweek>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::year_lastweek>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::year_lastweek>{}, "");
 static_assert(std::is_standard_layout<iso_week::year_lastweek>{}, "");
 static_assert(std::is_literal_type<iso_week::year_lastweek>{}, "");
 
-static_assert(std::is_nothrow_constructible<iso_week::year_lastweek,
-                                                iso_week::year>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::year_lastweek, iso_week::year>{}, "");
 static_assert(!std::is_convertible<iso_week::year, iso_week::year_lastweek>{}, "");
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
 
     constexpr auto y_wn = year_lastweek{2015_y};

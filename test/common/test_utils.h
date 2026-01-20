@@ -28,12 +28,10 @@ const uint64_t kBytesInMegabyte = 1000000;
 // s1 can be used:
 // '[**]' is an array wildcard - it matches nested arrays.
 // '!REGEX(.*) will match the regex in brackets.
-bool CompareIgnoringWhitespace(std::string s0, std::string s1,
-                               std::string* error_msg = nullptr);
+bool CompareIgnoringWhitespace(std::string s0, std::string s1, std::string* error_msg = nullptr);
 
 // Compare the strings ignoring whitespace and EXPECT_TRUE that they're the
 // same.
-bool CheckStrings(const std::string& name, const std::string& result,
-                  const std::string& expected);
+bool CheckStrings(const std::string& name, const std::string& result, const std::string& expected);
 
-}  // namespace gamesdk_test
+} // namespace gamesdk_test

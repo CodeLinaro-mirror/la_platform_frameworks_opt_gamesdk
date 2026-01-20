@@ -32,111 +32,106 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 
 public class QualityDecorators {
+    public static final class HeaderCenterLabel implements TableCellRenderer {
+        JLabel label;
 
-  public static final class HeaderCenterLabel implements TableCellRenderer {
+        public HeaderCenterLabel() {
+            label = new JLabel();
+            label.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        }
 
-    JLabel label;
-
-    public HeaderCenterLabel() {
-      label = new JLabel();
-      label.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setText(value.toString());
+            return label;
+        }
     }
 
-    public Component getTableCellRendererComponent(
-        JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-      label.setHorizontalAlignment(SwingConstants.CENTER);
-      label.setText(value.toString());
-      return label;
-    }
-  }
+    public static final class ParameterNameRenderer implements TableCellRenderer {
+        JLabel label;
 
-  public static final class ParameterNameRenderer implements TableCellRenderer {
+        public ParameterNameRenderer() {
+            label = new JLabel();
+        }
 
-    JLabel label;
-
-    public ParameterNameRenderer() {
-      label = new JLabel();
-    }
-
-    public Component getTableCellRendererComponent(
-        JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-      label.setHorizontalAlignment(SwingConstants.CENTER);
-      label.setText(value.toString());
-      return label;
-    }
-  }
-
-  public static final class TrendRenderer implements TableCellRenderer {
-
-    JLabel label;
-
-    public TrendRenderer() {
-      ToolTipManager.sharedInstance().setInitialDelay(150);
-      label = new JLabel();
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setText(value.toString());
+            return label;
+        }
     }
 
-    public Component getTableCellRendererComponent(
-        JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-      label.setHorizontalAlignment(SwingConstants.CENTER);
-      String strValue = value.toString();
-      label.setToolTipText(null);
-      if (strValue.equals("increase")) {
-        label.setIcon(AllIcons.Actions.FindAndShowPrevMatches);
-      } else if (strValue.equals("decrease")) {
-        label.setIcon(AllIcons.Actions.FindAndShowNextMatches);
-      } else {
-        label.setIcon(Actions.IntentionBulb);
-        label.setToolTipText(ResourceLoader.getInstance().get("quality_settings_not_monotonic"));
-      }
-      return label;
-    }
-  }
+    public static final class TrendRenderer implements TableCellRenderer {
+        JLabel label;
 
-  public static class EnumOptionsDecorator extends AbstractCellEditor
-      implements TableCellEditor, TableCellRenderer {
+        public TrendRenderer() {
+            ToolTipManager.sharedInstance().setInitialDelay(150);
+            label = new JLabel();
+        }
 
-    List<String> enumOptions;
-    JComboBox<String> comboBox;
-
-    public EnumOptionsDecorator(List<String> enumsTemp) {
-      this.enumOptions = enumsTemp;
-      this.comboBox = new JComboBox<>();
-      // Used to update the UI.
-      comboBox.addItemListener(itemEvent -> fireEditingStopped());
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            String strValue = value.toString();
+            label.setToolTipText(null);
+            if (strValue.equals("increase")) {
+                label.setIcon(AllIcons.Actions.FindAndShowPrevMatches);
+            } else if (strValue.equals("decrease")) {
+                label.setIcon(AllIcons.Actions.FindAndShowNextMatches);
+            } else {
+                label.setIcon(Actions.IntentionBulb);
+                label.setToolTipText(
+                        ResourceLoader.getInstance().get("quality_settings_not_monotonic"));
+            }
+            return label;
+        }
     }
 
-    @Override
-    public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected,
-        int row, int column) {
-      String strValue = value.toString();
-      setComboBoxChoices(enumOptions);
-      comboBox.setSelectedItem(strValue);
-      return comboBox;
-    }
+    public static class EnumOptionsDecorator
+            extends AbstractCellEditor implements TableCellEditor, TableCellRenderer {
+        List<String> enumOptions;
+        JComboBox<String> comboBox;
 
-    private void setComboBoxChoices(List<String> choices) {
-      comboBox.removeAllItems();
-      for (String option : choices) {
-        comboBox.addItem(option);
-      }
-    }
+        public EnumOptionsDecorator(List<String> enumsTemp) {
+            this.enumOptions = enumsTemp;
+            this.comboBox = new JComboBox<>();
+            // Used to update the UI.
+            comboBox.addItemListener(itemEvent -> fireEditingStopped());
+        }
 
-    @Override
-    public Object getCellEditorValue() {
-      return comboBox.getSelectedIndex() == -1 ? "" : comboBox.getSelectedItem().toString();
-    }
+        @Override
+        public Component getTableCellEditorComponent(
+                JTable table, Object value, boolean isSelected, int row, int column) {
+            String strValue = value.toString();
+            setComboBoxChoices(enumOptions);
+            comboBox.setSelectedItem(strValue);
+            return comboBox;
+        }
 
-    public Component getTableCellRendererComponent(
-        JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-      String strValue = value.toString();
-      setComboBoxChoices(enumOptions);
-      if (enumOptions.stream()
-          .anyMatch(option -> option.equals(strValue))) {
-        comboBox.setSelectedItem(strValue);
-      } else {
-        comboBox.setSelectedIndex(-1);
-      }
-      return comboBox;
+        private void setComboBoxChoices(List<String> choices) {
+            comboBox.removeAllItems();
+            for (String option : choices) {
+                comboBox.addItem(option);
+            }
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return comboBox.getSelectedIndex() == -1 ? "" : comboBox.getSelectedItem().toString();
+        }
+
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            String strValue = value.toString();
+            setComboBoxChoices(enumOptions);
+            if (enumOptions.stream().anyMatch(option -> option.equals(strValue))) {
+                comboBox.setSelectedItem(strValue);
+            } else {
+                comboBox.setSelectedIndex(-1);
+            }
+            return comboBox;
+        }
     }
-  }
 }

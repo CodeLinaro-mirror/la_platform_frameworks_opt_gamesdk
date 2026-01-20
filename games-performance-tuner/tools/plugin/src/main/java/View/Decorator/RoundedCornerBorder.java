@@ -32,64 +32,62 @@ import java.awt.geom.RoundRectangle2D;
 import javax.swing.border.AbstractBorder;
 
 public final class RoundedCornerBorder extends AbstractBorder {
+    public enum BorderType {
+        NORMAL(JBColor.GRAY),
+        WARNING(JBColor.YELLOW),
+        ERROR(JBColor.RED);
+        JBColor borderColor;
 
-  public enum BorderType {
-    NORMAL(JBColor.GRAY),
-    WARNING(JBColor.YELLOW),
-    ERROR(JBColor.RED);
-    JBColor borderColor;
+        private BorderType(JBColor borderColor) {
+            this.borderColor = borderColor;
+        }
 
-    private BorderType(JBColor borderColor) {
-      this.borderColor = borderColor;
+        public JBColor getBorderColor() {
+            return borderColor;
+        }
     }
 
-    public JBColor getBorderColor() {
-      return borderColor;
+    private final Color ALPHA_ZERO = UIUtil.getTableBackground();
+    BorderType borderType = BorderType.NORMAL;
+
+    public RoundedCornerBorder() {}
+
+    public RoundedCornerBorder(BorderType borderType) {
+        this.borderType = borderType;
     }
-  }
 
-  private final Color ALPHA_ZERO = UIUtil.getTableBackground();
-  BorderType borderType = BorderType.NORMAL;
+    @Override
+    public void paintBorder(
+            Component component, Graphics graphics, int x, int y, int width, int height) {
+        Graphics2D graphics2D = (Graphics2D) graphics.create();
+        graphics2D.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Shape border = getBorderShape(x, y, width - 1, height - 1);
+        Color backgroundColor =
+                component.getParent() != null ? component.getParent().getBackground() : ALPHA_ZERO;
+        graphics2D.setPaint(backgroundColor);
+        Area corner = new Area(new Rectangle2D.Double(x, y, width, height));
+        corner.subtract(new Area(border));
+        graphics2D.fill(corner);
+        graphics2D.setPaint(borderType.getBorderColor());
+        graphics2D.draw(border);
+        graphics2D.dispose();
+    }
 
-  public RoundedCornerBorder() {
-  }
+    public Shape getBorderShape(int x, int y, int width, int height) {
+        int arcWidth = height;
+        int arcHeight = height;
+        return new RoundRectangle2D.Double(x, y, width, height, arcWidth, arcHeight);
+    }
 
-  public RoundedCornerBorder(BorderType borderType) {
-    this.borderType = borderType;
-  }
+    @Override
+    public Insets getBorderInsets(Component component) {
+        return JBUI.insets(4, 8);
+    }
 
-  @Override
-  public void paintBorder(
-      Component component, Graphics graphics, int x, int y, int width, int height) {
-    Graphics2D graphics2D = (Graphics2D) graphics.create();
-    graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-    Shape border = getBorderShape(x, y, width - 1, height - 1);
-    Color backgroundColor = component.getParent() != null ? component.getParent().getBackground() :
-        ALPHA_ZERO;
-    graphics2D.setPaint(backgroundColor);
-    Area corner = new Area(new Rectangle2D.Double(x, y, width, height));
-    corner.subtract(new Area(border));
-    graphics2D.fill(corner);
-    graphics2D.setPaint(borderType.getBorderColor());
-    graphics2D.draw(border);
-    graphics2D.dispose();
-  }
-
-  public Shape getBorderShape(int x, int y, int width, int height) {
-    int arcWidth = height;
-    int arcHeight = height;
-    return new RoundRectangle2D.Double(x, y, width, height, arcWidth, arcHeight);
-  }
-
-  @Override
-  public Insets getBorderInsets(Component component) {
-    return JBUI.insets(4, 8);
-  }
-
-  @Override
-  public Insets getBorderInsets(Component component, Insets insets) {
-    insets.set(4, 8, 4, 8);
-    return insets;
-  }
+    @Override
+    public Insets getBorderInsets(Component component, Insets insets) {
+        insets.set(4, 8, 4, 8);
+        return insets;
+    }
 }
-

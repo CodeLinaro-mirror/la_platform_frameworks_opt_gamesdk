@@ -20,27 +20,26 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 public class ResourceLoader {
+    private static ResourceLoader resourceLoader;
+    private final ResourceBundle resourceBundle;
 
-  private static ResourceLoader resourceLoader;
-  private final ResourceBundle resourceBundle;
-
-  private ResourceLoader() {
-    Locale locale = new Locale("en");
-    resourceBundle = ResourceBundle.getBundle("strings", locale);
-  }
-
-  public static synchronized ResourceLoader getInstance() {
-    if (resourceLoader == null) {
-      resourceLoader = new ResourceLoader();
+    private ResourceLoader() {
+        Locale locale = new Locale("en");
+        resourceBundle = ResourceBundle.getBundle("strings", locale);
     }
-    return resourceLoader;
-  }
 
-  public String get(String key) {
-    if (resourceBundle.containsKey(key)) {
-      return resourceBundle.getString(key);
-    } else {
-      return "";
+    public static synchronized ResourceLoader getInstance() {
+        if (resourceLoader == null) {
+            resourceLoader = new ResourceLoader();
+        }
+        return resourceLoader;
     }
-  }
+
+    public String get(String key) {
+        if (resourceBundle.containsKey(key)) {
+            return resourceBundle.getString(key);
+        } else {
+            return "";
+        }
+    }
 }

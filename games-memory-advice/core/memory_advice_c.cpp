@@ -23,14 +23,14 @@ namespace jni = gamesdk::jni;
 
 extern "C" {
 
-MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv *env, jobject context) {
+MemoryAdvice_ErrorCode MemoryAdvice_init(JNIEnv* env, jobject context) {
     MEMORY_ADVICE_VERSION_SYMBOL();
     jni::Init(env, context);
     return memory_advice::Init();
 }
 
-MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv *env, jobject context,
-                                                   const char *params) {
+MemoryAdvice_ErrorCode MemoryAdvice_initWithParams(JNIEnv* env, jobject context,
+                                                   const char* params) {
     MEMORY_ADVICE_VERSION_SYMBOL();
     jni::Init(env, context);
     return memory_advice::Init(params);
@@ -40,19 +40,17 @@ MemoryAdvice_MemoryState MemoryAdvice_getMemoryState() {
     return memory_advice::GetMemoryState();
 }
 
-MemoryAdvice_ErrorCode MemoryAdvice_getAdvice(
-    MemoryAdvice_JsonSerialization *advice) {
+MemoryAdvice_ErrorCode MemoryAdvice_getAdvice(MemoryAdvice_JsonSerialization* advice) {
     return memory_advice::GetAdvice(advice);
 }
 
-MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(
-    uint64_t intervalMillis, MemoryAdvice_WatcherCallback callback,
-    void *user_data) {
+MemoryAdvice_ErrorCode MemoryAdvice_registerWatcher(uint64_t intervalMillis,
+                                                    MemoryAdvice_WatcherCallback callback,
+                                                    void* user_data) {
     return memory_advice::RegisterWatcher(intervalMillis, callback, user_data);
 }
 
-MemoryAdvice_ErrorCode MemoryAdvice_unregisterWatcher(
-    MemoryAdvice_WatcherCallback callback) {
+MemoryAdvice_ErrorCode MemoryAdvice_unregisterWatcher(MemoryAdvice_WatcherCallback callback) {
     return memory_advice::UnregisterWatcher(callback);
 }
 
@@ -68,14 +66,16 @@ int64_t MemoryAdvice_getTotalMemory() {
     return memory_advice::GetTotalMemory();
 }
 
-void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization *ser) {
+void MemoryAdvice_JsonSerialization_free(MemoryAdvice_JsonSerialization* ser) {
     if (ser->dealloc) {
         ser->dealloc(ser);
         ser->dealloc = NULL;
     }
 }
 
-int32_t MemoryAdvice_test() { return memory_advice::BaseTests(); }
+int32_t MemoryAdvice_test() {
+    return memory_advice::BaseTests();
+}
 
 void MEMORY_ADVICE_VERSION_SYMBOL() {
     // Intentionally empty: this function is used to ensure that the proper
@@ -84,4 +84,4 @@ void MEMORY_ADVICE_VERSION_SYMBOL() {
     // undefined symbol, as the name of the function depends on the version.
 }
 
-}  // extern "C"
+} // extern "C"

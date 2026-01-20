@@ -65,43 +65,41 @@
 // constexpr month nov{11};
 // constexpr month dec{12};
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::month>{}, "");
-static_assert( std::is_default_constructible<date::month>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::month>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::month>{}, "");
-static_assert( std::is_trivially_move_constructible<date::month>{}, "");
-static_assert( std::is_trivially_move_assignable<date::month>{}, "");
+#include "date.h"
 
-static_assert( std::is_nothrow_constructible<date::month, unsigned>{}, "");
-static_assert( std::is_nothrow_constructible<unsigned, date::month>{}, "");
+static_assert(std::is_trivially_destructible<date::month>{}, "");
+static_assert(std::is_default_constructible<date::month>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::month>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::month>{}, "");
+static_assert(std::is_trivially_move_constructible<date::month>{}, "");
+static_assert(std::is_trivially_move_assignable<date::month>{}, "");
+
+static_assert(std::is_nothrow_constructible<date::month, unsigned>{}, "");
+static_assert(std::is_nothrow_constructible<unsigned, date::month>{}, "");
 static_assert(!std::is_convertible<unsigned, date::month>{}, "");
 static_assert(!std::is_convertible<date::month, unsigned>{}, "");
 static_assert(static_cast<unsigned>(date::month{1}) == 1, "");
 
 static_assert(!date::month{0}.ok(), "");
-static_assert( date::month{1}.ok(), "");
-static_assert( date::month{2}.ok(), "");
-static_assert( date::month{3}.ok(), "");
-static_assert( date::month{4}.ok(), "");
-static_assert( date::month{5}.ok(), "");
-static_assert( date::month{6}.ok(), "");
-static_assert( date::month{7}.ok(), "");
-static_assert( date::month{8}.ok(), "");
-static_assert( date::month{9}.ok(), "");
-static_assert( date::month{10}.ok(), "");
-static_assert( date::month{11}.ok(), "");
-static_assert( date::month{12}.ok(), "");
+static_assert(date::month{1}.ok(), "");
+static_assert(date::month{2}.ok(), "");
+static_assert(date::month{3}.ok(), "");
+static_assert(date::month{4}.ok(), "");
+static_assert(date::month{5}.ok(), "");
+static_assert(date::month{6}.ok(), "");
+static_assert(date::month{7}.ok(), "");
+static_assert(date::month{8}.ok(), "");
+static_assert(date::month{9}.ok(), "");
+static_assert(date::month{10}.ok(), "");
+static_assert(date::month{11}.ok(), "");
+static_assert(date::month{12}.ok(), "");
 static_assert(!date::month{13}.ok(), "");
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     static_assert(jan == month{1}, "");
@@ -118,24 +116,24 @@ main()
     static_assert(dec == month{12}, "");
 
     static_assert(!(jan != jan), "");
-    static_assert(  jan != feb, "");
-    static_assert(  feb != jan, "");
+    static_assert(jan != feb, "");
+    static_assert(feb != jan, "");
 
-    static_assert(!(jan <  jan), "");
-    static_assert(  jan <  feb, "");
-    static_assert(!(feb <  jan), "");
+    static_assert(!(jan < jan), "");
+    static_assert(jan < feb, "");
+    static_assert(!(feb < jan), "");
 
-    static_assert(  jan <= jan, "");
-    static_assert(  jan <= feb, "");
+    static_assert(jan <= jan, "");
+    static_assert(jan <= feb, "");
     static_assert(!(feb <= jan), "");
 
-    static_assert(!(jan >  jan), "");
-    static_assert(!(jan >  feb), "");
-    static_assert(  feb >  jan, "");
+    static_assert(!(jan > jan), "");
+    static_assert(!(jan > feb), "");
+    static_assert(feb > jan, "");
 
-    static_assert(  jan >= jan, "");
+    static_assert(jan >= jan, "");
     static_assert(!(jan >= feb), "");
-    static_assert(  feb >= jan, "");
+    static_assert(feb >= jan, "");
 
     assert(mar + months{7} == oct);
     assert(mar + months{27} == jun);

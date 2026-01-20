@@ -41,7 +41,7 @@ extern "C" {
  * @return false if Swappy failed to initialize.
  * @see SwappyGL_destroy
  */
-bool SwappyGL_init(JNIEnv *env, jobject jactivity);
+bool SwappyGL_init(JNIEnv* env, jobject jactivity);
 
 /**
  * @brief Check if Swappy was successfully initialized.
@@ -62,7 +62,7 @@ void SwappyGL_destroy();
  * @param window ANativeWindow that was used to create the EGLSurface.
  * @return true on success, false if Swappy was not initialized.
  */
-bool SwappyGL_setWindow(ANativeWindow *window);
+bool SwappyGL_setWindow(ANativeWindow* window);
 
 /**
  * @brief Replace calls to eglSwapBuffers with this. Swappy will wait for the
@@ -138,8 +138,7 @@ void SwappyGL_setBufferStuffingFixWait(int32_t n_frames);
  * an array of size equal to allocated_entries that will be filled with the
  * refresh periods.
  */
-int SwappyGL_getSupportedRefreshPeriodsNS(uint64_t *out_refreshrates,
-                                          int allocated_entries);
+int SwappyGL_getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries);
 
 #ifdef __cplusplus
 };

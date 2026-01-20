@@ -36,15 +36,13 @@
 //     static constexpr unsigned value = ...;
 // };
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-int
-main()
-{
+#include "date.h"
+
+int main() {
     using namespace date::detail;
     static_assert(width<0>::value == 0, "");
     static_assert(width<1>::value == 0, "");

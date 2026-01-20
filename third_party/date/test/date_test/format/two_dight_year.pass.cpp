@@ -20,102 +20,100 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-int
-main()
-{
+#include "date.h"
+
+int main() {
     using namespace date;
     using namespace std::chrono;
     std::ostringstream os;
-    os << format("%y", sys_days{jun/1/20001});
+    os << format("%y", sys_days{jun / 1 / 20001});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/20000});
+    os << format("%y", sys_days{jun / 1 / 20000});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/19999});
+    os << format("%y", sys_days{jun / 1 / 19999});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/2001});
+    os << format("%y", sys_days{jun / 1 / 2001});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/2000});
+    os << format("%y", sys_days{jun / 1 / 2000});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/1999});
+    os << format("%y", sys_days{jun / 1 / 1999});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/101});
+    os << format("%y", sys_days{jun / 1 / 101});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/100});
+    os << format("%y", sys_days{jun / 1 / 100});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/99});
+    os << format("%y", sys_days{jun / 1 / 99});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/1});
+    os << format("%y", sys_days{jun / 1 / 1});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/0});
+    os << format("%y", sys_days{jun / 1 / 0});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-1});
+    os << format("%y", sys_days{jun / 1 / -1});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-99});
+    os << format("%y", sys_days{jun / 1 / -99});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-100});
+    os << format("%y", sys_days{jun / 1 / -100});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-101});
+    os << format("%y", sys_days{jun / 1 / -101});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-1999});
+    os << format("%y", sys_days{jun / 1 / -1999});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-2000});
+    os << format("%y", sys_days{jun / 1 / -2000});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-2001});
+    os << format("%y", sys_days{jun / 1 / -2001});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-19999});
+    os << format("%y", sys_days{jun / 1 / -19999});
     assert(os.str() == "99");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-20000});
+    os << format("%y", sys_days{jun / 1 / -20000});
     assert(os.str() == "00");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/-20001});
+    os << format("%y", sys_days{jun / 1 / -20001});
     assert(os.str() == "01");
 
     os.str("");
-    os << format("%y", sys_days{jun/1/year::min()});
+    os << format("%y", sys_days{jun / 1 / year::min()});
     assert(os.str() == "67");
 }

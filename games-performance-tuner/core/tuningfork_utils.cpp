@@ -85,17 +85,15 @@ int GetVersionCode(std::string* packageNameStr, uint32_t* gl_es_version) {
         CHECK_FOR_JNI_EXCEPTION_AND_RETURN(0);
         for (auto& f : features) {
             if (f.name.empty()) {
-                if (f.reqGlEsVersion != android::content::pm::FeatureInfo::
-                                            GL_ES_VERSION_UNDEFINED) {
+                if (f.reqGlEsVersion !=
+                    android::content::pm::FeatureInfo::GL_ES_VERSION_UNDEFINED) {
                     *gl_es_version = f.reqGlEsVersion;
                 } else {
-                    *gl_es_version =
-                        1;  // Lack of property means OpenGL ES version 1
+                    *gl_es_version = 1; // Lack of property means OpenGL ES version 1
                 }
             }
         }
-        ALOGI("OpenGL version %d.%d ", ((*gl_es_version) >> 16),
-              ((*gl_es_version) & 0x0000ffff));
+        ALOGI("OpenGL version %d.%d ", ((*gl_es_version) >> 16), ((*gl_es_version) & 0x0000ffff));
     }
     return code;
 }
@@ -107,8 +105,8 @@ std::string GetSignature() {
     CHECK_FOR_JNI_EXCEPTION_AND_RETURN("");
     auto package_name = app_context.getPackageName();
     CHECK_FOR_JNI_EXCEPTION_AND_RETURN("");
-    auto package_info = pm.getPackageInfo(
-        package_name.C(), android::content::pm::PackageManager::GET_SIGNATURES);
+    auto package_info = pm.getPackageInfo(package_name.C(),
+                                          android::content::pm::PackageManager::GET_SIGNATURES);
     CHECK_FOR_JNI_EXCEPTION_AND_RETURN("");
     if (!package_info.valid()) return "";
     auto sigs = package_info.signatures();
@@ -136,11 +134,10 @@ bool GetDebuggable() {
     auto application_info = package_info.applicationInfo();
     CHECK_FOR_JNI_EXCEPTION_AND_RETURN(false);
     if (!application_info.valid()) return false;
-    return application_info.flags() &
-           android::content::pm::ApplicationInfo::FLAG_DEBUGGABLE;
+    return application_info.flags() & android::content::pm::ApplicationInfo::FLAG_DEBUGGABLE;
 }
 
-}  // namespace apk_utils
+} // namespace apk_utils
 
 namespace file_utils {
 
@@ -155,8 +152,7 @@ bool CheckAndCreateDir(const std::string& path) {
     } else if (ENOENT == errno) {
         ALOGI("Creating directory %s", path.c_str());
         res = mkdir(path.c_str(), 0770);
-        if (res != 0)
-            ALOGW("Error creating directory %s: %d", path.c_str(), res);
+        if (res != 0) ALOGW("Error creating directory %s: %d", path.c_str(), res);
         return res == 0;
     }
     return false;
@@ -166,8 +162,7 @@ bool FileExists(const std::string& fname) {
     return (stat(fname.c_str(), &buffer) == 0);
 }
 std::string GetAppCacheDir() {
-    gamesdk::jni::String path =
-        gamesdk::jni::AppContext().getCacheDir().getPath();
+    gamesdk::jni::String path = gamesdk::jni::AppContext().getCacheDir().getPath();
     return path.C();
 }
 bool DeleteFile(const std::string& path) {
@@ -190,8 +185,7 @@ bool DeleteDir(const std::string& path) {
     return true;
 }
 
-bool LoadBytesFromFile(std::string file_name,
-                       TuningFork_CProtobufSerialization* params) {
+bool LoadBytesFromFile(std::string file_name, TuningFork_CProtobufSerialization* params) {
     ALOGV("LoadBytesFromFile:%s", file_name.c_str());
     std::ifstream f(file_name, std::ios::binary);
     if (f.good()) {
@@ -206,8 +200,7 @@ bool LoadBytesFromFile(std::string file_name,
     return false;
 }
 
-bool SaveBytesToFile(std::string file_name,
-                     const TuningFork_CProtobufSerialization* params) {
+bool SaveBytesToFile(std::string file_name, const TuningFork_CProtobufSerialization* params) {
     ALOGV("SaveBytesToFile:%s", file_name.c_str());
     std::ofstream save_file(file_name, std::ios::binary);
     if (save_file.good()) {
@@ -217,7 +210,7 @@ bool SaveBytesToFile(std::string file_name,
     return false;
 }
 
-}  // namespace file_utils
+} // namespace file_utils
 
 namespace json_utils {
 
@@ -231,9 +224,9 @@ std::string GetResourceName(const RequestInfo& request_info) {
 }
 
 Json::object DeviceSpecJson(const RequestInfo& request_info) {
-    Json gles_version = Json::object{
-        {"major", static_cast<int>(request_info.gl_es_version >> 16)},
-        {"minor", static_cast<int>(request_info.gl_es_version & 0xffff)}};
+    Json gles_version =
+            Json::object{{"major", static_cast<int>(request_info.gl_es_version >> 16)},
+                         {"minor", static_cast<int>(request_info.gl_es_version & 0xffff)}};
     std::vector<double> freqs(request_info.cpu_max_freq_hz.begin(),
                               request_info.cpu_max_freq_hz.end());
     return Json::object{{"fingerprint", request_info.build_fingerprint},
@@ -248,13 +241,12 @@ Json::object DeviceSpecJson(const RequestInfo& request_info) {
                         {"device", request_info.device},
                         {"soc_model", request_info.soc_model},
                         {"soc_manufacturer", request_info.soc_manufacturer},
-                        {"swap_total_bytes",
-                         static_cast<double>(request_info.swap_total_bytes)},
+                        {"swap_total_bytes", static_cast<double>(request_info.swap_total_bytes)},
                         {"height_pixels", request_info.height_pixels},
                         {"width_pixels", request_info.width_pixels}};
 }
 
-}  // namespace json_utils
+} // namespace json_utils
 
 std::string UniqueId() {
     namespace jni = gamesdk::jni;
@@ -275,20 +267,21 @@ static Duration GetTime(clockid_t clock_id) {
         ALOGE("clock_gettime(%d) failed: %s", clock_id, strerror(errno));
         return std::chrono::milliseconds(0);
     }
-    return std::chrono::seconds(ts.tv_sec) +
-           std::chrono::nanoseconds(ts.tv_nsec);
+    return std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec);
 }
 
-Duration GetElapsedTimeSinceEpoch() { return GetTime(CLOCK_REALTIME); }
+Duration GetElapsedTimeSinceEpoch() {
+    return GetTime(CLOCK_REALTIME);
+}
 
 Duration GetProcessStartTimeSinceEpoch() {
     struct stat sb;
     stat("/proc/self", &sb);
     return std::chrono::seconds(sb.st_ctime)
 #if ((defined ANDROID_NDK_VERSION) && ANDROID_NDK_VERSION > 14)
-           + std::chrono::nanoseconds(sb.st_ctime_nsec)
+            + std::chrono::nanoseconds(sb.st_ctime_nsec)
 #endif
-        ;
+            ;
 }
 
 // Use the realtime clock and process stat ctime information to get the time
@@ -302,4 +295,4 @@ Duration GetTimeSinceProcessStart() {
         return etime - atime;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork
