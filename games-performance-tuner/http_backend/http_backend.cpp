@@ -22,16 +22,14 @@ TuningFork_ErrorCode HttpBackend::Init(const Settings& settings) {
         return TUNINGFORK_ERROR_BAD_PARAMETER;
     }
 
-    HttpRequest request(settings.EndpointUri(), settings.api_key,
-                        kRequestTimeout);
+    HttpRequest request(settings.EndpointUri(), settings.api_key, kRequestTimeout);
 
     persister_ = settings.c_settings.persistent_cache;
 
     // TODO(b/140367226): Initialize a Java JobScheduler if we can
 
     if (ultimate_uploader_.get() == nullptr) {
-        ultimate_uploader_ =
-            std::make_shared<UltimateUploader>(persister_, request);
+        ultimate_uploader_ = std::make_shared<UltimateUploader>(persister_, request);
         ultimate_uploader_->Start();
     }
 
@@ -47,8 +45,7 @@ TuningFork_ErrorCode HttpBackend::UploadTelemetry(const std::string& evt_ser) {
     // Save event to file
     TuningFork_CProtobufSerialization uploading_hists_ser;
     ToCProtobufSerialization(evt_ser, uploading_hists_ser);
-    auto ret = persister_->set(HISTOGRAMS_UPLOADING, &uploading_hists_ser,
-                               persister_->user_data);
+    auto ret = persister_->set(HISTOGRAMS_UPLOADING, &uploading_hists_ser, persister_->user_data);
 
     TuningFork_CProtobufSerialization_free(&uploading_hists_ser);
 
@@ -59,4 +56,4 @@ void HttpBackend::Stop() {
     if (ultimate_uploader_) ultimate_uploader_->Stop();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

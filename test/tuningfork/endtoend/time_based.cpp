@@ -23,11 +23,9 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 TuningForkLogEvent TestEndToEndTimeBased() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED,
-                     10100, 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED, 10100,
+                                 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
     TuningForkTest test(settings, milliseconds(100));
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < NTICKS; ++i) {
@@ -35,9 +33,8 @@ TuningForkLogEvent TestEndToEndTimeBased() {
         tf::FrameTick(TFTICK_RAW_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -47,8 +44,9 @@ TEST(EndToEndTest, TimeBased) {
     TuningForkLogEvent expected = R"TF(
 {
   "name": "applications//apks/0",
-  "session_context":)TF" + session_context +
-                                  R"TF(,
+  "session_context":)TF" +
+            session_context +
+            R"TF(,
   "telemetry": [{
     "context": {
       "annotations": "",
@@ -74,11 +72,9 @@ TEST(EndToEndTest, TimeBased) {
 }
 
 TuningForkLogEvent TestEndToEndTimeBasedWithOnePause() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED,
-                     10100, 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED, 10100,
+                                 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
     TuningForkTest test(settings, milliseconds(100));
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < NTICKS; ++i) {
@@ -92,9 +88,8 @@ TuningForkLogEvent TestEndToEndTimeBasedWithOnePause() {
         tf::FrameTick(TFTICK_RAW_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -104,8 +99,9 @@ TEST(EndToEndTest, TimeBasedWithOnePause) {
     TuningForkLogEvent expected = R"TF(
 {
   "name": "applications//apks/0",
-  "session_context":)TF" + session_context +
-                                  R"TF(,
+  "session_context":)TF" +
+            session_context +
+            R"TF(,
   "telemetry": [{
     "context": {
       "annotations": "",
@@ -131,11 +127,9 @@ TEST(EndToEndTest, TimeBasedWithOnePause) {
 }
 
 TuningForkLogEvent TestEndToEndTimeBasedWithTwoPauses() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED,
-                     10100, 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED, 10100,
+                                 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
     TuningForkTest test(settings, milliseconds(90));
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     EXPECT_FALSE(tf::IsFrameTimeLoggingPaused());
@@ -159,9 +153,8 @@ TuningForkLogEvent TestEndToEndTimeBasedWithTwoPauses() {
         tf::FrameTick(TFTICK_RAW_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -171,8 +164,9 @@ TEST(EndToEndTest, TimeBasedWithTwoPauses) {
     TuningForkLogEvent expected = R"TF(
 {
   "name": "applications//apks/0",
-  "session_context":)TF" + session_context +
-                                  R"TF(,
+  "session_context":)TF" +
+            session_context +
+            R"TF(,
   "telemetry": [{
     "context": {
       "annotations": "",
@@ -198,11 +192,9 @@ TEST(EndToEndTest, TimeBasedWithTwoPauses) {
 }
 
 TuningForkLogEvent TimeBasedCheckUploadWhenPaused() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED,
-                     10100, 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED, 10100,
+                                 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
     TuningForkTest test(settings, milliseconds(100));
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < NTICKS; ++i) {
@@ -213,8 +205,7 @@ TuningForkLogEvent TimeBasedCheckUploadWhenPaused() {
         tf::FrameTick(TFTICK_RAW_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout);
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout);
     return test.Result();
 }
 
@@ -279,9 +270,8 @@ TEST(EndToEndTest, TimeBasedCheckUploadWhenPaused) {
 }
 
 TuningForkLogEvent TimeBasedCheckUploadWhenPausedAndFlushCalled() {
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED,
-                     10100, 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TIME_BASED, 10100,
+                                 1, {}, {{TFTICK_RAW_FRAME_TIME, 50, 150, 10}});
     TuningForkTest test(settings, milliseconds(100));
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < 40; ++i) {
@@ -292,9 +282,8 @@ TuningForkLogEvent TimeBasedCheckUploadWhenPausedAndFlushCalled() {
     tf::Flush(true);
 
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
     return test.Result();
 }
 
@@ -358,4 +347,4 @@ TEST(EndToEndTest, TimeBasedCheckUploadWhenPausedAndFlushCalled) {
     CheckStrings("TimeBased", result, expected);
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

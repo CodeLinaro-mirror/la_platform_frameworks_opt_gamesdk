@@ -26,6 +26,7 @@ set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,-
 endif (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 
 set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--hash-style=both" )
+set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
 
 protobuf_generate_lite_cpp( ${KLL_DIR}/proto
   ${KLL_DIR}/proto/aggregator.proto)

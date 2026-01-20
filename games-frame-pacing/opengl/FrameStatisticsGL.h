@@ -32,36 +32,36 @@ using namespace std::chrono_literals;
 namespace swappy {
 
 class FrameStatisticsGL {
- public:
-  FrameStatisticsGL(const EGL& egl, const SwappyCommon& swappyCommon);
-  ~FrameStatisticsGL() = default;
+public:
+    FrameStatisticsGL(const EGL& egl, const SwappyCommon& swappyCommon);
+    ~FrameStatisticsGL() = default;
 
-  void enableStats(bool enabled);
-  void capture(EGLDisplay dpy, EGLSurface surface);
-  SwappyStats getStats();
-  void clearStats();
+    void enableStats(bool enabled);
+    void capture(EGLDisplay dpy, EGLSurface surface);
+    SwappyStats getStats();
+    void clearStats();
 
-  int32_t lastLatencyRecorded();
+    int32_t lastLatencyRecorded();
 
- protected:
-  static constexpr int MAX_FRAME_LAG = 10;
-  struct ThisFrame {
-    TimePoint startTime;
-    std::unique_ptr<EGL::FrameTimestamps> stats;
-  };
-  ThisFrame getThisFrame(EGLDisplay dpy, EGLSurface surface);
+protected:
+    static constexpr int MAX_FRAME_LAG = 10;
+    struct ThisFrame {
+        TimePoint startTime;
+        std::unique_ptr<EGL::FrameTimestamps> stats;
+    };
+    ThisFrame getThisFrame(EGLDisplay dpy, EGLSurface surface);
 
-  const EGL& mEgl;
-  const SwappyCommon& mSwappyCommon;
+    const EGL& mEgl;
+    const SwappyCommon& mSwappyCommon;
 
-  struct EGLFrame {
-    EGLDisplay dpy;
-    EGLSurface surface;
-    EGLuint64KHR id;
-    TimePoint startFrameTime;
-  };
-  std::vector<EGLFrame> mPendingFrames;
-  FrameStatistics mFrameStatsCommon;
+    struct EGLFrame {
+        EGLDisplay dpy;
+        EGLSurface surface;
+        EGLuint64KHR id;
+        TimePoint startFrameTime;
+    };
+    std::vector<EGLFrame> mPendingFrames;
+    FrameStatistics mFrameStatsCommon;
 };
 
-}  // namespace swappy
+} // namespace swappy

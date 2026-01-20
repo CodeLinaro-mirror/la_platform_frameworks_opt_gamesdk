@@ -25,41 +25,41 @@
 namespace swappy {
 
 class CpuInfo {
- public:
-  struct Cpu {
-    enum class Type { Little, Big };
+public:
+    struct Cpu {
+        enum class Type { Little, Big };
 
-    int id;
-    int package_id;
-    long frequency;
+        int id;
+        int package_id;
+        long frequency;
 
-    Type type;
-  };
+        Type type;
+    };
 
-  CpuInfo();
+    CpuInfo();
 
-  unsigned int getNumberOfCpus() const;
+    unsigned int getNumberOfCpus() const;
 
-  const std::vector<Cpu>& getCpus() const;
-  const std::string getHardware() const;
+    const std::vector<Cpu>& getCpus() const;
+    const std::string getHardware() const;
 
-  unsigned int getNumberOfLittleCores() const;
-  unsigned int getNumberOfBigCores() const;
+    unsigned int getNumberOfLittleCores() const;
+    unsigned int getNumberOfBigCores() const;
 
-  cpu_set_t getLittleCoresMask() const;
-  cpu_set_t getBigCoresMask() const;
+    cpu_set_t getLittleCoresMask() const;
+    cpu_set_t getBigCoresMask() const;
 
- private:
-  std::vector<Cpu> mCpus;
-  std::string mHardware;
+private:
+    std::vector<Cpu> mCpus;
+    std::string mHardware;
 
-  unsigned int mNumberOfLittleCores = 0;
-  unsigned int mNumberOfBigCores = 0;
+    unsigned int mNumberOfLittleCores = 0;
+    unsigned int mNumberOfBigCores = 0;
 
-  cpu_set_t mLittleCoresMask;
-  cpu_set_t mBigCoresMask;
+    cpu_set_t mLittleCoresMask;
+    cpu_set_t mBigCoresMask;
 };
 
 unsigned int to_mask(cpu_set_t cpu_set);
 
-}  // namespace swappy
+} // namespace swappy

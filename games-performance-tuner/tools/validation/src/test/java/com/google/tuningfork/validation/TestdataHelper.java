@@ -30,47 +30,47 @@ import org.junit.rules.TemporaryFolder;
 
 /** Base class for tests that need to work with testdata files */
 public class TestdataHelper {
+    private static final String FOLDER = "testdata/";
 
-  private static final String FOLDER = "testdata/";
+    public TemporaryFolder tempFolder;
 
-  public TemporaryFolder tempFolder;
-
-  public TestdataHelper(TemporaryFolder tempFolder) {
-    this.tempFolder = tempFolder;
-  }
-
-  public File createFile(String fileName, String content) throws IOException {
-    File file = tempFolder.newFile(fileName);
-    Files.asCharSink(file, UTF_8).write(content);
-    return file;
-  }
-
-  public File getFile(String fileName) throws IOException {
-    byte[] byteContent = readBytes(fileName);
-    String content = new String(byteContent, UTF_8);
-
-    File file = tempFolder.newFile(fileName);
-    Files.asCharSink(file, UTF_8).write(content);
-    return file;
-  }
-
-  public static InputStream openStream(String fileName) {
-    InputStream is = TestdataHelper.class.getClassLoader().getResourceAsStream(FOLDER + fileName);
-    checkArgument(is != null, "Testdata file '%s' not found.", fileName);
-    return is;
-  }
-
-  public static byte[] readBytes(String fileName) {
-    try (InputStream inputStream = openStream(fileName)) {
-      return ByteStreams.toByteArray(inputStream);
-    } catch (IOException e) {
-      // Throw an unchecked exception to allow usage in lambda expressions.
-      throw new UncheckedIOException(
-          String.format("Failed to read contents of testdata file '%s'.", fileName), e);
+    public TestdataHelper(TemporaryFolder tempFolder) {
+        this.tempFolder = tempFolder;
     }
-  }
 
-  public static ByteString readByteString(String fileName) {
-    return ByteString.copyFrom(readBytes(fileName));
-  }
+    public File createFile(String fileName, String content) throws IOException {
+        File file = tempFolder.newFile(fileName);
+        Files.asCharSink(file, UTF_8).write(content);
+        return file;
+    }
+
+    public File getFile(String fileName) throws IOException {
+        byte[] byteContent = readBytes(fileName);
+        String content = new String(byteContent, UTF_8);
+
+        File file = tempFolder.newFile(fileName);
+        Files.asCharSink(file, UTF_8).write(content);
+        return file;
+    }
+
+    public static InputStream openStream(String fileName) {
+        InputStream is =
+                TestdataHelper.class.getClassLoader().getResourceAsStream(FOLDER + fileName);
+        checkArgument(is != null, "Testdata file '%s' not found.", fileName);
+        return is;
+    }
+
+    public static byte[] readBytes(String fileName) {
+        try (InputStream inputStream = openStream(fileName)) {
+            return ByteStreams.toByteArray(inputStream);
+        } catch (IOException e) {
+            // Throw an unchecked exception to allow usage in lambda expressions.
+            throw new UncheckedIOException(
+                    String.format("Failed to read contents of testdata file '%s'.", fileName), e);
+        }
+    }
+
+    public static ByteString readByteString(String fileName) {
+        return ByteString.copyFrom(readBytes(fileName));
+    }
 }

@@ -25,7 +25,7 @@
 #if defined(__clang__) && (!defined(SWIG))
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
 #else
-#define THREAD_ANNOTATION_ATTRIBUTE__(x)  // no-op
+#define THREAD_ANNOTATION_ATTRIBUTE__(x) // no-op
 #endif
 
 #if !defined GAMESDK_THREAD_CHECKS
@@ -35,11 +35,9 @@
 #if GAMESDK_THREAD_CHECKS
 #define GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(x))
 
-#define REQUIRES(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+#define REQUIRES(...) THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
 
-#define NO_THREAD_SAFETY_ANALYSIS \
-  THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+#define NO_THREAD_SAFETY_ANALYSIS THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
 #else
 #define GUARDED_BY(x)
 #define REQUIRES(...)

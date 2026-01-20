@@ -27,8 +27,8 @@ namespace apk_utils {
 
 NativeAsset::NativeAsset(const char* name) {
     auto java_asset_manager = gamesdk::jni::AppContext().getAssets();
-    AAssetManager* mgr = AAssetManager_fromJava(
-        gamesdk::jni::Env(), (jobject)java_asset_manager.obj_);
+    AAssetManager* mgr =
+            AAssetManager_fromJava(gamesdk::jni::Env(), (jobject)java_asset_manager.obj_);
     asset = AAssetManager_open(mgr, name, AASSET_MODE_BUFFER);
     if (asset == nullptr) {
         ALOGW("Can't find %s in APK", name);
@@ -47,7 +47,11 @@ NativeAsset::~NativeAsset() {
         AAsset_close(asset);
     }
 }
-bool NativeAsset::IsValid() { return asset != nullptr; }
-NativeAsset::operator AAsset*() { return asset; }
+bool NativeAsset::IsValid() {
+    return asset != nullptr;
+}
+NativeAsset::operator AAsset*() {
+    return asset;
+}
 
-}  // namespace apk_utils
+} // namespace apk_utils

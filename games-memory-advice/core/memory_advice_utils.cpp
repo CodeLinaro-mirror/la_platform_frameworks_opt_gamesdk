@@ -43,10 +43,10 @@ namespace utils {
 bool EvaluateBoolean(std::string formula, Json::object metrics) {
     if (formula.find('>') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('>')), metrics) >
-               EvaluateNumber(formula.substr(formula.find('>') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('>') + 1), metrics);
     } else if (formula.find('<') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('<')), metrics) <
-               EvaluateNumber(formula.substr(formula.find('<') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('<') + 1), metrics);
     } else {
         return false;
     }
@@ -55,16 +55,16 @@ bool EvaluateBoolean(std::string formula, Json::object metrics) {
 double EvaluateNumber(std::string formula, Json::object metrics) {
     if (formula.find('/') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('/')), metrics) /
-               EvaluateNumber(formula.substr(formula.find('/') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('/') + 1), metrics);
     } else if (formula.find('*') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('*')), metrics) *
-               EvaluateNumber(formula.substr(formula.find('*') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('*') + 1), metrics);
     } else if (formula.find('+') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('+')), metrics) +
-               EvaluateNumber(formula.substr(formula.find('+') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('+') + 1), metrics);
     } else if (formula.find('-') != std::string::npos) {
         return EvaluateNumber(formula.substr(0, formula.find('-')), metrics) -
-               EvaluateNumber(formula.substr(formula.find('-') + 1), metrics);
+                EvaluateNumber(formula.substr(formula.find('-') + 1), metrics);
     } else if (std::isdigit(formula[0])) {
         return std::stod(formula);
     } else {
@@ -78,11 +78,11 @@ Json::object GetBuildInfo() {
     // time during initialization of the library
     Json::object build_info;
     build_info["version"] = {
-        {"sdk_int", Json(gamesdk::GetSystemPropAsInt("ro.build.version.sdk"))}};
+            {"sdk_int", Json(gamesdk::GetSystemPropAsInt("ro.build.version.sdk"))}};
 
     return build_info;
 }
 
-}  // namespace utils
+} // namespace utils
 
-}  // namespace memory_advice
+} // namespace memory_advice

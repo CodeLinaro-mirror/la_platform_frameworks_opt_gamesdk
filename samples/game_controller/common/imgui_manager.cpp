@@ -29,67 +29,68 @@ const float GUI_DEFAULT_FONT_SCALE = 5.0f;
 const float GUI_MINIMUM_FRAME_TIME = (1.0f / 60.0f);
 float currentFontScale = 1.0f;
 bool overrideFontScale = false;
-}  // namespace
+} // namespace
 
 ImGuiManager::ImGuiManager() : mDeltaClock() {
-  // Setup Dear ImGui context
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
 
-  // Setup Dear ImGui style
-  ImGui::StyleColorsDark();
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
 
-  // Setup Platform/Renderer bindings
-  ImGui_ImplOpenGL3_Init(NULL);
+    // Setup Platform/Renderer bindings
+    ImGui_ImplOpenGL3_Init(NULL);
 }
 
 ImGuiManager::~ImGuiManager() {
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui::DestroyContext();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui::DestroyContext();
 }
 
-void ImGuiManager::SetDisplaySize(const int displayWidth,
-                                  const int displayHeight,
+void ImGuiManager::SetDisplaySize(const int displayWidth, const int displayHeight,
                                   const int displayDpi) {
-  // Make sure the internal display size matches current
-  ImGuiIO &io = ImGui::GetIO();
-  io.DisplaySize = ImVec2((float)displayWidth, (float)displayHeight);
-  if (!overrideFontScale) {
-    const float displayScale = (displayWidth >= 1920 && displayDpi >= 400)
-                                   ? GUI_DEFAULT_FONT_SCALE
-                                   : GUI_LOWDPI_FONT_SCALE;
-    currentFontScale = displayScale;
-    io.FontGlobalScale = displayScale;
-  }
+    // Make sure the internal display size matches current
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)displayWidth, (float)displayHeight);
+    if (!overrideFontScale) {
+        const float displayScale = (displayWidth >= 1920 && displayDpi >= 400)
+                ? GUI_DEFAULT_FONT_SCALE
+                : GUI_LOWDPI_FONT_SCALE;
+        currentFontScale = displayScale;
+        io.FontGlobalScale = displayScale;
+    }
 }
 
 void ImGuiManager::BeginImGuiFrame() {
-  // Update the delta time since the last frame
-  float deltaTime = mDeltaClock.ReadDelta();
-  // Don't return a delta time of less than a 60Hz tick
-  if (deltaTime < GUI_MINIMUM_FRAME_TIME) {
-    deltaTime = GUI_MINIMUM_FRAME_TIME;
-  }
-  ImGuiIO &io = ImGui::GetIO();
-  io.DeltaTime = deltaTime;
+    // Update the delta time since the last frame
+    float deltaTime = mDeltaClock.ReadDelta();
+    // Don't return a delta time of less than a 60Hz tick
+    if (deltaTime < GUI_MINIMUM_FRAME_TIME) {
+        deltaTime = GUI_MINIMUM_FRAME_TIME;
+    }
+    ImGuiIO& io = ImGui::GetIO();
+    io.DeltaTime = deltaTime;
 
-  // Start the Dear ImGui frame
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui::NewFrame();
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui::NewFrame();
 }
 
 void ImGuiManager::EndImGuiFrame() {
-  ImGui::Render();
-  ImGuiIO &io = ImGui::GetIO();
-  glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ImGui::Render();
+    ImGuiIO& io = ImGui::GetIO();
+    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-float ImGuiManager::GetFontScale() { return currentFontScale; }
+float ImGuiManager::GetFontScale() {
+    return currentFontScale;
+}
 
 void ImGuiManager::SetFontScale(const float fontScale) {
-  currentFontScale = fontScale;
-  overrideFontScale = true;
-  ImGuiIO &io = ImGui::GetIO();
-  io.FontGlobalScale = fontScale;
+    currentFontScale = fontScale;
+    overrideFontScale = true;
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = fontScale;
 }

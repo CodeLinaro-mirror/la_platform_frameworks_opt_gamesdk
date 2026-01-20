@@ -23,14 +23,11 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 TuningForkLogEvent TestEndToEndWithMemory() {
-    const int NTICKS =
-        1001;  // note the first tick doesn't add anything to the histogram
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
-                     NTICKS - 1, 1, {});
+    const int NTICKS = 1001; // note the first tick doesn't add anything to the histogram
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
+                                 NTICKS - 1, 1, {});
     milliseconds tickDuration(20);
-    TuningForkTest test(settings, tickDuration,
-                        std::make_shared<TestDownloadBackend>(),
+    TuningForkTest test(settings, tickDuration, std::make_shared<TestDownloadBackend>(),
                         /*enable_meminfo*/ true);
     std::unique_lock<std::mutex> lock(*test.rmutex_);
     for (int i = 0; i < NTICKS; ++i) {
@@ -40,12 +37,10 @@ TuningForkLogEvent TestEndToEndWithMemory() {
         std::this_thread::sleep_for(milliseconds(1));
     }
     // Wait for the async metric thread to process 2s worth of memory requests
-    test.WaitForMemoryUpdates((NTICKS * tickDuration) /
-                              tf::kMemoryMetricInterval);
+    test.WaitForMemoryUpdates((NTICKS * tickDuration) / tf::kMemoryMetricInterval);
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -117,4 +112,4 @@ TEST(EndToEndTest, WithMemory) {
     CheckStrings("WithMemory", result, expected);
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

@@ -33,38 +33,39 @@ namespace swappy {
  * information that is needed.
  */
 typedef struct {
-  uint64_t startFrameTime;
-  uint64_t desiredPresentTime;
-  uint64_t actualPresentTime;
-  uint64_t presentMargin;
+    uint64_t startFrameTime;
+    uint64_t desiredPresentTime;
+    uint64_t actualPresentTime;
+    uint64_t presentMargin;
 } FrameTimings;
 
 class FrameStatistics {
- public:
-  ~FrameStatistics() = default;
+public:
+    ~FrameStatistics() = default;
 
-  void enableStats(bool enabled);
-  void updateFrameStats(FrameTimings currentFrameTimings,
-                        uint64_t refreshPeriod);
-  SwappyStats getStats();
-  void clearStats();
-  void invalidateLastFrame();
+    void enableStats(bool enabled);
+    void updateFrameStats(FrameTimings currentFrameTimings, uint64_t refreshPeriod);
+    SwappyStats getStats();
+    void clearStats();
+    void invalidateLastFrame();
 
-  int32_t lastLatencyRecorded() { return mLastLatency; }
+    int32_t lastLatencyRecorded() {
+        return mLastLatency;
+    }
 
- private:
-  static constexpr std::chrono::nanoseconds LOG_EVERY_N_NS = 1s;
-  void logFrames() REQUIRES(mMutex);
+private:
+    static constexpr std::chrono::nanoseconds LOG_EVERY_N_NS = 1s;
+    void logFrames() REQUIRES(mMutex);
 
-  int32_t getFrameDelta(int64_t deltaTimeNS, uint64_t refreshPeriod);
+    int32_t getFrameDelta(int64_t deltaTimeNS, uint64_t refreshPeriod);
 
-  std::mutex mMutex;
-  SwappyStats mStats GUARDED_BY(mMutex) = {};
-  std::atomic<int32_t> mLastLatency = {0};
-  FrameTimings mLast;
+    std::mutex mMutex;
+    SwappyStats mStats GUARDED_BY(mMutex) = {};
+    std::atomic<int32_t> mLastLatency = {0};
+    FrameTimings mLast;
 
-  // A flag to enable or disable frame stats histogram update.
-  bool mFullStatsEnabled = false;
+    // A flag to enable or disable frame stats histogram update.
+    bool mFullStatsEnabled = false;
 };
 
-}  // namespace swappy
+} // namespace swappy

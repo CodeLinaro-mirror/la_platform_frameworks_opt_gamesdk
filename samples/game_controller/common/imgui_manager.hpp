@@ -22,22 +22,21 @@
  * Manages the status and rendering of the ImGui system
  */
 class ImGuiManager {
- public:
-  ImGuiManager();
+public:
+    ImGuiManager();
 
-  ~ImGuiManager();
+    ~ImGuiManager();
 
-  void SetDisplaySize(const int displayWidth, const int displayHeight,
-                      const int displayDpi);
+    void SetDisplaySize(const int displayWidth, const int displayHeight, const int displayDpi);
 
-  void BeginImGuiFrame();
+    void BeginImGuiFrame();
 
-  void EndImGuiFrame();
+    void EndImGuiFrame();
 
-  float GetFontScale();
+    float GetFontScale();
 
-  void SetFontScale(const float fontScale);
+    void SetFontScale(const float fontScale);
 
- private:
-  DeltaClock mDeltaClock;
+private:
+    DeltaClock mDeltaClock;
 };

@@ -32,42 +32,42 @@ import javax.swing.JPanel;
 import javax.swing.border.Border;
 
 public class ValidationComboBoxRenderer extends DefaultListCellRenderer {
+    private final JPanel jPanel;
+    private final JLabel textLabel;
+    private final JLabel errorLabel;
+    private final JComboBox<?> jComboBox;
 
-  private final JPanel jPanel;
-  private final JLabel textLabel;
-  private final JLabel errorLabel;
-  private final JComboBox<?> jComboBox;
-
-  public ValidationComboBoxRenderer(JComboBox<?> comboBox) {
-    this.jComboBox = comboBox;
-    jPanel = new JPanel(new BorderLayout());
-    textLabel = new JLabel();
-    errorLabel = new JLabel();
-    textLabel.setOpaque(false);
-    errorLabel.setOpaque(false);
-    jPanel.add(textLabel, BorderLayout.WEST);
-    jPanel.add(errorLabel, BorderLayout.EAST);
-    jPanel.setBackground(null);
-    jPanel.setForeground(null);
-    jPanel.setOpaque(false);
-  }
-
-  @Override
-  public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-      boolean isSelected, boolean cellHasFocus) {
-    if (index == -1) {
-      ValidationInfo cellInfo = (ValidationInfo) jComboBox
-          .getClientProperty(CELL_VALIDATION_PROPERTY);
-      errorLabel.setIcon(cellInfo == null ? null
-          : cellInfo.warning ? AllIcons.General.BalloonWarning : AllIcons.General.BalloonError);
-      errorLabel.setBorder(cellInfo == null ? null : iconBorder());
-      textLabel.setText(value == null ? "" : value.toString());
-      return jPanel;
+    public ValidationComboBoxRenderer(JComboBox<?> comboBox) {
+        this.jComboBox = comboBox;
+        jPanel = new JPanel(new BorderLayout());
+        textLabel = new JLabel();
+        errorLabel = new JLabel();
+        textLabel.setOpaque(false);
+        errorLabel.setOpaque(false);
+        jPanel.add(textLabel, BorderLayout.WEST);
+        jPanel.add(errorLabel, BorderLayout.EAST);
+        jPanel.setBackground(null);
+        jPanel.setForeground(null);
+        jPanel.setOpaque(false);
     }
-    return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-  }
 
-  private static Border iconBorder() {
-    return JBUI.Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
-  }
+    @Override
+    public Component getListCellRendererComponent(
+            JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+        if (index == -1) {
+            ValidationInfo cellInfo =
+                    (ValidationInfo) jComboBox.getClientProperty(CELL_VALIDATION_PROPERTY);
+            errorLabel.setIcon(cellInfo == null ? null
+                            : cellInfo.warning  ? AllIcons.General.BalloonWarning
+                                                : AllIcons.General.BalloonError);
+            errorLabel.setBorder(cellInfo == null ? null : iconBorder());
+            textLabel.setText(value == null ? "" : value.toString());
+            return jPanel;
+        }
+        return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+    }
+
+    private static Border iconBorder() {
+        return JBUI.Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
+    }
 }

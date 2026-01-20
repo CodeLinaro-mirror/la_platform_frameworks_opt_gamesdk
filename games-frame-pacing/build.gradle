@@ -25,11 +25,11 @@ buildDir="../../out_swappy"
 
 android {
     namespace 'com.google.androidgamesdk.swappy'
-
+    compileSdk 31
+    ndkVersion "23.1.7779620"
 
     defaultConfig {
-        minSdkVersion 19
-        compileSdkVersion 31
+        minSdkVersion 21
         targetSdkVersion 35
         versionCode 1
         versionName "1.1"
@@ -58,6 +58,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            testCoverageEnabled true
         }
     }
 

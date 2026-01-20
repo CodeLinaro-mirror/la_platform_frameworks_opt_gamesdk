@@ -24,16 +24,16 @@
 #define COOKED_EVENT_TYPE_POINTER_MOVE 2
 
 struct CookedEvent {
-  int type;
+    int type;
 
-  // for pointer events
-  int motionPointerId;
-  bool motionIsOnScreen;
-  float motionX, motionY;
-  float motionMinX, motionMaxX;
-  float motionMinY, motionMaxY;
+    // for pointer events
+    int motionPointerId;
+    bool motionIsOnScreen;
+    float motionX, motionY;
+    float motionMinX, motionMaxX;
+    float motionMinY, motionMaxY;
 };
 
-typedef bool (*CookedEventCallback)(struct CookedEvent *event);
+typedef bool (*CookedEventCallback)(struct CookedEvent* event);
 
-bool CookEvent(AInputEvent *event, CookedEventCallback callback);
+bool CookEvent(AInputEvent* event, CookedEventCallback callback);

@@ -37,26 +37,24 @@
 
 // std::ostream& operator<<(std::ostream& os, const month_weekday& mwd);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::month_weekday>{}, "");
+#include "date.h"
+
+static_assert(std::is_trivially_destructible<date::month_weekday>{}, "");
 static_assert(!std::is_default_constructible<date::month_weekday>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::month_weekday>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::month_weekday>{}, "");
-static_assert( std::is_trivially_move_constructible<date::month_weekday>{}, "");
-static_assert( std::is_trivially_move_assignable<date::month_weekday>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::month_weekday>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::month_weekday>{}, "");
+static_assert(std::is_trivially_move_constructible<date::month_weekday>{}, "");
+static_assert(std::is_trivially_move_assignable<date::month_weekday>{}, "");
 
-static_assert(std::is_nothrow_constructible<date::month_weekday,
-                                                date::month,
-                                                date::weekday_indexed>{}, "");
+static_assert(
+        std::is_nothrow_constructible<date::month_weekday, date::month, date::weekday_indexed>{},
+        "");
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     constexpr month_weekday mwd1 = {feb, sat[4]};

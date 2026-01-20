@@ -37,8 +37,7 @@ int GetKeyIndex(uint8_t b) {
     return b >> 3;
 }
 
-uint64_t GetBase128IntegerFromByteStream(const std::vector<uint8_t>& bytes,
-                                         int& index) {
+uint64_t GetBase128IntegerFromByteStream(const std::vector<uint8_t>& bytes, int& index) {
     uint64_t m = 0;
     uint64_t r = 0;
     while (index < bytes.size() && m <= (64 - 7)) {
@@ -69,8 +68,8 @@ void WriteBase128IntToStream(uint64_t x, std::vector<uint8_t>& bytes) {
 
 // Decode into a list of key-value pairs. Note that the keys are 1-based, as in
 // the proto.
-bool RawDecodeAnnotationSerialization(
-    const SerializedAnnotation& ser, std::vector<std::pair<int, int>>& result) {
+bool RawDecodeAnnotationSerialization(const SerializedAnnotation& ser,
+                                      std::vector<std::pair<int, int>>& result) {
     result.clear();
     for (int i = 0; i < ser.size(); ++i) {
         int key = GetKeyIndex(ser[i]);
@@ -84,10 +83,10 @@ bool RawDecodeAnnotationSerialization(
     return true;
 }
 
-AnnotationId DecodeAnnotationSerialization(
-    const SerializedAnnotation& ser, const std::vector<uint32_t>& radix_mult,
-    int loading_annotation_index, int level_annotation_index,
-    bool* loading_out) {
+AnnotationId DecodeAnnotationSerialization(const SerializedAnnotation& ser,
+                                           const std::vector<uint32_t>& radix_mult,
+                                           int loading_annotation_index, int level_annotation_index,
+                                           bool* loading_out) {
     AnnotationId result = 0;
     AnnotationId result_if_loading = 0;
     bool loading = false;
@@ -149,8 +148,7 @@ ErrorCode SerializeAnnotationId(uint64_t id, SerializedAnnotation& ser,
     return NO_ERROR;
 }
 
-ErrorCode Value(uint64_t id, uint32_t index,
-                const std::vector<uint32_t>& radix_mult, int& value) {
+ErrorCode Value(uint64_t id, uint32_t index, const std::vector<uint32_t>& radix_mult, int& value) {
     uint64_t x = id;
     int ix = index;
     for (int i = 0; i < radix_mult.size(); ++i) {
@@ -197,15 +195,12 @@ bool GetEnumSizesFromDescriptors(std::vector<uint32_t>& enum_sizes) {
     for (auto& m : file->message_type) {
         if (m.name == "Annotation") {
             std::sort(m.fields.begin(), m.fields.end(),
-                      [](const EnumField& a, const EnumField& b) {
-                          return a.number < b.number;
-                      });
+                      [](const EnumField& a, const EnumField& b) { return a.number < b.number; });
             for (auto const& e : m.fields) {
                 std::string n = e.type_name;
                 // Strip off the package name
                 std::string this_package = "." + file->package;
-                if (n.find_first_of(this_package) == 0)
-                    n = n.substr(this_package.size() + 1);
+                if (n.find_first_of(this_package) == 0) n = n.substr(this_package.size() + 1);
                 for (auto const& enums_in_desc : file->enum_type) {
                     if (enums_in_desc.name == n) {
                         int max_value = 0;
@@ -230,8 +225,7 @@ bool GetEnumSizesFromDescriptors(std::vector<uint32_t>& enum_sizes) {
     return true;
 }
 
-std::string HumanReadableAnnotation(
-    const SerializedAnnotation& annotation_ser) {
+std::string HumanReadableAnnotation(const SerializedAnnotation& annotation_ser) {
     using namespace file_descriptor;
     std::stringstream result;
     std::vector<std::pair<int, int>> annotation;
@@ -251,8 +245,7 @@ std::string HumanReadableAnnotation(
                         auto value = afield.second;
                         const EnumField* field;
                         if (m.GetField(key, &field)) {
-                            auto value_str = file->GetEnumValueString(
-                                field->type_name, value);
+                            auto value_str = file->GetEnumValueString(field->type_name, value);
                             if (first)
                                 first = false;
                             else
@@ -269,6 +262,6 @@ std::string HumanReadableAnnotation(
     return result.str();
 }
 
-}  // namespace annotation_util
+} // namespace annotation_util
 
-}  // namespace tuningfork
+} // namespace tuningfork

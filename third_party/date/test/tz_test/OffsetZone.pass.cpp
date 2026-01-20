@@ -24,54 +24,45 @@
 
 #include "tz.h"
 
-class OffsetZone
-{
+class OffsetZone {
     std::chrono::minutes offset_;
 
 public:
-    explicit OffsetZone(std::chrono::minutes offset)
-        : offset_{offset}
-        {}
+    explicit OffsetZone(std::chrono::minutes offset) : offset_{offset} {}
 
     template <class Duration>
-        auto
-        to_local(date::sys_time<Duration> tp) const
-        {
-            using namespace date;
-            using namespace std::chrono;
-            using LT = local_time<std::common_type_t<Duration, minutes>>;
-            return LT{(tp + offset_).time_since_epoch()};
-        }
+    auto to_local(date::sys_time<Duration> tp) const {
+        using namespace date;
+        using namespace std::chrono;
+        using LT = local_time<std::common_type_t<Duration, minutes>>;
+        return LT{(tp + offset_).time_since_epoch()};
+    }
 
     template <class Duration>
-        auto
-        to_sys(date::local_time<Duration> tp) const
-        {
-            using namespace date;
-            using namespace std::chrono;
-            using ST = sys_time<std::common_type_t<Duration, minutes>>;
-            return ST{(tp - offset_).time_since_epoch()};
-        }
+    auto to_sys(date::local_time<Duration> tp) const {
+        using namespace date;
+        using namespace std::chrono;
+        using ST = sys_time<std::common_type_t<Duration, minutes>>;
+        return ST{(tp - offset_).time_since_epoch()};
+    }
 
     template <class Duration>
-        date::sys_info
-        get_info(date::sys_time<Duration> st) const
-        {
-            using namespace date;
-            using namespace std::chrono;
-            return {sys_seconds::min(), sys_seconds::max(), offset_,
-                    minutes{0}, offset_ >= minutes{0} ? "+" + date::format("%H%M", offset_)
-                                          : "-" + date::format("%H%M", -offset_)};
-        }
+    date::sys_info get_info(date::sys_time<Duration> st) const {
+        using namespace date;
+        using namespace std::chrono;
+        return {sys_seconds::min(), sys_seconds::max(), offset_, minutes{0},
+                offset_ >= minutes{0} ? "+" + date::format("%H%M", offset_)
+                                      : "-" + date::format("%H%M", -offset_)};
+    }
 
-    const OffsetZone* operator->() const {return this;}
+    const OffsetZone* operator->() const {
+        return this;
+    }
 };
 
 #include <cassert>
 
-int
-main()
-{
+int main() {
     using namespace date;
     using namespace std::chrono;
     auto now = system_clock::now();

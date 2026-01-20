@@ -31,13 +31,13 @@
 namespace tuningfork {
 
 class DebugBackend : public IBackend {
-   public:
+public:
     TuningFork_ErrorCode UploadTelemetry(const std::string& s) override {
         if (s.size() == 0) return TUNINGFORK_ERROR_BAD_PARAMETER;
         // Split the serialization into <128-byte chunks to avoid logcat line
         //  truncation.
         constexpr size_t maxStrLen = 128;
-        int n = (s.size() + maxStrLen - 1) / maxStrLen;  // Round up
+        int n = (s.size() + maxStrLen - 1) / maxStrLen; // Round up
         for (int i = 0, j = 0; i < n; ++i) {
             std::stringstream str;
             str << "(TJS" << (i + 1) << "/" << n << ")";
@@ -48,10 +48,10 @@ class DebugBackend : public IBackend {
         }
         return TUNINGFORK_ERROR_OK;
     }
-    TuningFork_ErrorCode GenerateTuningParameters(
-        HttpRequest& request, const ProtobufSerialization* training_mode_fps,
-        ProtobufSerialization& fidelity_params,
-        std::string& experiment_id) override {
+    TuningFork_ErrorCode GenerateTuningParameters(HttpRequest& request,
+                                                  const ProtobufSerialization* training_mode_fps,
+                                                  ProtobufSerialization& fidelity_params,
+                                                  std::string& experiment_id) override {
         return TUNINGFORK_ERROR_OK;
     }
 
@@ -62,15 +62,14 @@ class DebugBackend : public IBackend {
     void Stop() override {}
 };
 
-static std::unique_ptr<DebugBackend> s_debug_backend =
-    std::make_unique<DebugBackend>();
+static std::unique_ptr<DebugBackend> s_debug_backend = std::make_unique<DebugBackend>();
 
 UploadThread::UploadThread(IdProvider* id_provider)
-    : Runnable(nullptr),
-      backend_(s_debug_backend.get()),
-      upload_callback_(nullptr),
-      persister_(nullptr),
-      id_provider_(id_provider) {
+      : Runnable(nullptr),
+        backend_(s_debug_backend.get()),
+        upload_callback_(nullptr),
+        persister_(nullptr),
+        id_provider_(id_provider) {
     Start();
 }
 
@@ -81,7 +80,9 @@ void UploadThread::SetBackend(IBackend* backend) {
         backend_ = backend;
 }
 
-UploadThread::~UploadThread() { Stop(); }
+UploadThread::~UploadThread() {
+    Stop();
+}
 
 void UploadThread::Start() {
     ready_ = nullptr;
@@ -101,9 +102,7 @@ Duration UploadThread::DoWork() {
         else {
             TuningFork_CProtobufSerialization cser;
             ToCProtobufSerialization(evt_ser_json, cser);
-            if (persister_)
-                persister_->set(HISTOGRAMS_PAUSED, &cser,
-                                persister_->user_data);
+            if (persister_) persister_->set(HISTOGRAMS_PAUSED, &cser, persister_->user_data);
             TuningFork_CProtobufSerialization_free(&cser);
         }
         ready_ = nullptr;
@@ -111,8 +110,8 @@ Duration UploadThread::DoWork() {
     if (!lifecycle_event_.empty()) {
         std::string evt_ser_json;
         JsonSerializer serializer(*lifecycle_event_session_, id_provider_);
-        serializer.SerializeLifecycleEvent(
-            lifecycle_event_.back(), RequestInfo::CachedValue(), evt_ser_json);
+        serializer.SerializeLifecycleEvent(lifecycle_event_.back(), RequestInfo::CachedValue(),
+                                           evt_ser_json);
         if (upload_callback_) {
             upload_callback_(evt_ser_json.c_str(), evt_ser_json.size());
         }
@@ -147,20 +146,18 @@ void UploadThread::InitialChecks(Session& session, IdProvider& id_provider,
     }
     // Check for PAUSED session
     TuningFork_CProtobufSerialization paused_hists_ser;
-    if (persister->get(HISTOGRAMS_PAUSED, &paused_hists_ser,
-                       persister_->user_data) == TUNINGFORK_ERROR_OK) {
+    if (persister->get(HISTOGRAMS_PAUSED, &paused_hists_ser, persister_->user_data) ==
+        TUNINGFORK_ERROR_OK) {
         std::string paused_hists_str = ToString(paused_hists_ser);
         ALOGI("Got PAUSED histograms: %s", paused_hists_str.c_str());
-        JsonSerializer::DeserializeAndMerge(paused_hists_str, id_provider,
-                                            session);
+        JsonSerializer::DeserializeAndMerge(paused_hists_str, id_provider, session);
         TuningFork_CProtobufSerialization_free(&paused_hists_ser);
     } else {
         ALOGI("No PAUSED histograms");
     }
 }
 
-bool UploadThread::SendLifecycleEvent(const LifecycleUploadEvent& event,
-                                      const Session* session) {
+bool UploadThread::SendLifecycleEvent(const LifecycleUploadEvent& event, const Session* session) {
     if (lifecycle_event_.empty()) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -174,4 +171,4 @@ bool UploadThread::SendLifecycleEvent(const LifecycleUploadEvent& event,
     return true;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

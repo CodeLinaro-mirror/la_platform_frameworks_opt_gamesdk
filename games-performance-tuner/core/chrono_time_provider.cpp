@@ -19,7 +19,9 @@
 
 namespace tuningfork {
 
-TimePoint ChronoTimeProvider::Now() { return std::chrono::steady_clock::now(); }
+TimePoint ChronoTimeProvider::Now() {
+    return std::chrono::steady_clock::now();
+}
 
 SystemTimePoint ChronoTimeProvider::SystemNow() {
     return std::chrono::system_clock::now();
@@ -29,4 +31,4 @@ Duration ChronoTimeProvider::TimeSinceProcessStart() {
     return GetTimeSinceProcessStart();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

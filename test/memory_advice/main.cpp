@@ -17,7 +17,9 @@
 #include "gtest/gtest.h"
 
 // No jni tests when running on the command-line
-extern "C" bool init_jni_for_tests() { return false; }
+extern "C" bool init_jni_for_tests() {
+    return false;
+}
 
 extern "C" void clear_jni_for_tests() {
     // Do nothing

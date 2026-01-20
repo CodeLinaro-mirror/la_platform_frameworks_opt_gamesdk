@@ -3,17 +3,20 @@ import org.gradle.internal.os.OperatingSystem;
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
-    ndkVersion "20.0.5594570"
+    namespace "com.tuningfork.experimentsdemo"
+    compileSdk 31
+    ndkVersion "23.1.7779620"
+
     defaultConfig {
         applicationId "com.tuningfork.experimentsdemo"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 35
         versionCode 17
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
+                arguments '-DANDROID_STL=c++_shared'
             }
         }
     }

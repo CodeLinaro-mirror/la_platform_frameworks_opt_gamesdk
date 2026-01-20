@@ -16,82 +16,79 @@
 
 package com.swappy.testapp;
 
-import android.text.method.ScrollingMovementMethod;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
-
+import androidx.appcompat.app.AppCompatActivity;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
-  TextView mTextView;
-  Thread mTestThread;
-  Timer mTimer;
-  Boolean mDone;
-  String mResult;
+    TextView mTextView;
+    Thread mTestThread;
+    Timer mTimer;
+    Boolean mDone;
+    String mResult;
 
-  // Used to load the test app's native library on application startup.
-  static {
-    System.loadLibrary("swappy-test");
-  }
-
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-
-    mTextView = findViewById(R.id.sample_text);
-    mTextView.setMovementMethod(new ScrollingMovementMethod());
-    mDone = false;
-    startTestsOnSeparateThread();
-    mTimer = new Timer();
-    mTimer.schedule(new TimerTask() {
-      @Override
-      public void run() {
-        TimerMethod();
-      }
-    }, 0, 1000);
-  }
-  private void TimerMethod()
-  {
-    //This method is called directly by the timer
-    //and runs in the same thread as the timer.
-
-    //We call the method that will work with the UI
-    //through the runOnUiThread method.
-    this.runOnUiThread(()->{
-      if (mDone) {
-        mTextView.setText(mResult);
-        mTimer.cancel();
-      } else {
-        mTextView.setText(testSummarySoFar());
-      }
-    });
-  }
-
-  @Override
-  protected void onDestroy() {
-    try {
-      mTestThread.join();
-    } catch (InterruptedException e) {
-      //
+    // Used to load the test app's native library on application startup.
+    static {
+        System.loadLibrary("swappy-test");
     }
-    super.onDestroy();
-  }
-  void startTestsOnSeparateThread() {
-    mTestThread = new Thread(()->{
-      mResult = runTests();
-      mDone = true;
-    });
-    mTestThread.start();
-  }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-  /**
-   * Native methods implemented in app's native library,
-   * which is packaged with this application.
-   */
-  public native String runTests();
-  public native String testSummarySoFar();
+        mTextView = findViewById(R.id.sample_text);
+        mTextView.setMovementMethod(new ScrollingMovementMethod());
+        mDone = false;
+        startTestsOnSeparateThread();
+        mTimer = new Timer();
+        mTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                TimerMethod();
+            }
+        }, 0, 1000);
+    }
+    private void TimerMethod() {
+        // This method is called directly by the timer
+        // and runs in the same thread as the timer.
+
+        // We call the method that will work with the UI
+        // through the runOnUiThread method.
+        this.runOnUiThread(() -> {
+            if (mDone) {
+                mTextView.setText(mResult);
+                mTimer.cancel();
+            } else {
+                mTextView.setText(testSummarySoFar());
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            mTestThread.join();
+        } catch (InterruptedException e) {
+            //
+        }
+        super.onDestroy();
+    }
+    void startTestsOnSeparateThread() {
+        mTestThread = new Thread(() -> {
+            mResult = runTests();
+            mDone = true;
+        });
+        mTestThread.start();
+    }
+
+    /**
+     * Native methods implemented in app's native library,
+     * which is packaged with this application.
+     */
+    public native String runTests();
+    public native String testSummarySoFar();
 }

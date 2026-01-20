@@ -54,23 +54,22 @@ TEST(AnnotationDescriptor, HumanReadable) {
         std::vector<uint32_t> enum_sizes = {3, 4};
         EXPECT_TRUE(an::GetEnumSizesFromDescriptors(enum_sizes));
         an::SetUpAnnotationRadixes(radix_mult, enum_sizes);
-        std::vector<std::string> expected = {
-            "{}",
-            "{loading:NOT_LOADING}",
-            "{loading:LOADING}",
-            "{loading:Error}",
-            "{level:LEVEL_1}",
-            "{loading:NOT_LOADING,level:LEVEL_1}",
-            "{loading:LOADING,level:LEVEL_1}",
-            "{loading:Error,level:LEVEL_1}",
-            "{level:LEVEL_2}",
-            "{loading:NOT_LOADING,level:LEVEL_2}",
-            "{loading:LOADING,level:LEVEL_2}",
-            "{loading:Error,level:LEVEL_2}",
-            "{level:LEVEL_3}",
-            "{loading:NOT_LOADING,level:LEVEL_3}",
-            "{loading:LOADING,level:LEVEL_3}",
-            "{loading:Error,level:LEVEL_3}"};
+        std::vector<std::string> expected = {"{}",
+                                             "{loading:NOT_LOADING}",
+                                             "{loading:LOADING}",
+                                             "{loading:Error}",
+                                             "{level:LEVEL_1}",
+                                             "{loading:NOT_LOADING,level:LEVEL_1}",
+                                             "{loading:LOADING,level:LEVEL_1}",
+                                             "{loading:Error,level:LEVEL_1}",
+                                             "{level:LEVEL_2}",
+                                             "{loading:NOT_LOADING,level:LEVEL_2}",
+                                             "{loading:LOADING,level:LEVEL_2}",
+                                             "{loading:Error,level:LEVEL_2}",
+                                             "{level:LEVEL_3}",
+                                             "{loading:NOT_LOADING,level:LEVEL_3}",
+                                             "{loading:LOADING,level:LEVEL_3}",
+                                             "{loading:Error,level:LEVEL_3}"};
         for (an::AnnotationId id = 0; id < expected.size(); ++id) {
             an::SerializedAnnotation ser;
             an::SerializeAnnotationId(id, ser, radix_mult);

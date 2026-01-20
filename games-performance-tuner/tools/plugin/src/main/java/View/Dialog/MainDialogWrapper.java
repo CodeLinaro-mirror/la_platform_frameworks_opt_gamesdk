@@ -47,112 +47,109 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MainDialogWrapper extends DialogWrapper {
+    private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
+    private static PluginLayout pluginLayout;
+    private final Project project;
+    private final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup(
+            resourceLoader.get("android_performance_tuner"), NotificationDisplayType.BALLOON, true);
+    private AnnotationTabController annotationTabController;
+    private FidelityTabController fidelityTabController;
+    private QualityTabController qualityTabController;
+    private InstrumentationSettingsTabController instrumentationController;
+    private MessageDataModel annotationData;
+    private MessageDataModel fidelityData;
+    private List<EnumDataModel> enumData;
+    private List<QualityDataModel> qualityData;
+    private final Settings settingsData;
+    private ProtoCompiler compiler;
 
-  private final ResourceLoader resourceLoader = ResourceLoader.getInstance();
-  private static PluginLayout pluginLayout;
-  private final Project project;
-  private final NotificationGroup NOTIFICATION_GROUP =
-      new NotificationGroup(resourceLoader.get("android_performance_tuner"),
-          NotificationDisplayType.BALLOON, true);
-  private AnnotationTabController annotationTabController;
-  private FidelityTabController fidelityTabController;
-  private QualityTabController qualityTabController;
-  private InstrumentationSettingsTabController instrumentationController;
-  private MessageDataModel annotationData;
-  private MessageDataModel fidelityData;
-  private List<EnumDataModel> enumData;
-  private List<QualityDataModel> qualityData;
-  private final Settings settingsData;
-  private ProtoCompiler compiler;
-
-  private void addNotification(String errorMessage) {
-    Notification notification = NOTIFICATION_GROUP.createNotification(
-        errorMessage,
-        NotificationType.ERROR);
-    notification.notify(project);
-  }
-
-
-  @Nullable
-  @Override
-  protected Border createContentPaneBorder() {
-    return new JBEmptyBorder(JBUI.insetsRight(10));
-  }
-
-  @Override
-  protected void doOKAction() {
-    pluginLayout.saveSettings();
-    if (!pluginLayout.isViewValid()) {
-      Messages
-          .showErrorDialog(resourceLoader.get("fix_errors_first"),
-              resourceLoader.get("unable_to_close_title"));
-      return;
-    }
-    AssetsWriter assetsWriter = new AssetsWriter(
-        AssetsFinder.findAssets(project.getProjectFilePath().split(".idea")[0]).getAbsolutePath());
-    annotationTabController = pluginLayout.getAnnotationTabController();
-    fidelityTabController = pluginLayout.getFidelityTabController();
-    qualityTabController = pluginLayout.getQualityTabController();
-    instrumentationController = pluginLayout.getInstrumentationSettingsTabController();
-    List<EnumDataModel> annotationEnums = annotationTabController.getEnums();
-
-    if (annotationEnums == null) {
-      addNotification(resourceLoader.get("unable_to_save_annotation_and_quality_empty_error"));
-      return;
+    private void addNotification(String errorMessage) {
+        Notification notification =
+                NOTIFICATION_GROUP.createNotification(errorMessage, NotificationType.ERROR);
+        notification.notify(project);
     }
 
-    MessageDataModel fidelityModel = fidelityTabController.getFidelityData();
-    MessageDataModel annotationModel = annotationTabController.getAnnotationData();
-    boolean writeOK = true;
-
-    if (!assetsWriter.saveDevTuningForkProto(annotationEnums, annotationModel, fidelityModel)) {
-      addNotification(resourceLoader.get("unable_to_save_annotation_and_quality"));
-      writeOK = false;
+    @Nullable
+    @Override
+    protected Border createContentPaneBorder() {
+        return new JBEmptyBorder(JBUI.insetsRight(10));
     }
-    Settings dataModel = instrumentationController.getDataModel();
-    if (!assetsWriter.saveInstrumentationSettings(dataModel)) {
-      addNotification("Unable to write instrumentation settings to txt files.");
-      writeOK = false;
+
+    @Override
+    protected void doOKAction() {
+        pluginLayout.saveSettings();
+        if (!pluginLayout.isViewValid()) {
+            Messages.showErrorDialog(resourceLoader.get("fix_errors_first"),
+                    resourceLoader.get("unable_to_close_title"));
+            return;
+        }
+        AssetsWriter assetsWriter = new AssetsWriter(
+                AssetsFinder.findAssets(project.getProjectFilePath().split(".idea")[0])
+                        .getAbsolutePath());
+        annotationTabController = pluginLayout.getAnnotationTabController();
+        fidelityTabController = pluginLayout.getFidelityTabController();
+        qualityTabController = pluginLayout.getQualityTabController();
+        instrumentationController = pluginLayout.getInstrumentationSettingsTabController();
+        List<EnumDataModel> annotationEnums = annotationTabController.getEnums();
+
+        if (annotationEnums == null) {
+            addNotification(
+                    resourceLoader.get("unable_to_save_annotation_and_quality_empty_error"));
+            return;
+        }
+
+        MessageDataModel fidelityModel = fidelityTabController.getFidelityData();
+        MessageDataModel annotationModel = annotationTabController.getAnnotationData();
+        boolean writeOK = true;
+
+        if (!assetsWriter.saveDevTuningForkProto(annotationEnums, annotationModel, fidelityModel)) {
+            addNotification(resourceLoader.get("unable_to_save_annotation_and_quality"));
+            writeOK = false;
+        }
+        Settings dataModel = instrumentationController.getDataModel();
+        if (!assetsWriter.saveInstrumentationSettings(dataModel)) {
+            addNotification("Unable to write instrumentation settings to txt files.");
+            writeOK = false;
+        }
+        List<QualityDataModel> qualityDataModels = qualityTabController.getQualityDataModels();
+        assetsWriter.saveDevFidelityParams(compiler, qualityDataModels);
+
+        if (writeOK) {
+            Notification notification = NOTIFICATION_GROUP.createNotification(
+                    resourceLoader.get("save_successful"), NotificationType.INFORMATION);
+            notification.notify(project);
+            super.doOKAction();
+        }
     }
-    List<QualityDataModel> qualityDataModels = qualityTabController.getQualityDataModels();
-    assetsWriter.saveDevFidelityParams(compiler, qualityDataModels);
 
-    if (writeOK) {
-      Notification notification = NOTIFICATION_GROUP
-          .createNotification(resourceLoader.get("save_successful"), NotificationType.INFORMATION);
-      notification.notify(project);
-      super.doOKAction();
+    public MainDialogWrapper(@Nullable Project project, MessageDataModel annotationData,
+            MessageDataModel fidelityData, List<EnumDataModel> enumData,
+            List<QualityDataModel> qualityData, Settings settingsData, ProtoCompiler compiler) {
+        super(project);
+
+        this.annotationData = annotationData;
+        this.enumData = enumData;
+        this.fidelityData = fidelityData;
+        this.qualityData = qualityData;
+        this.settingsData = settingsData;
+        this.project = project;
+        this.compiler = compiler;
+        setTitle(resourceLoader.get("android_performance_tuner_plugin"));
+        Disposer.register(this.getDisposable(), () -> RequestServer.getInstance().stopListening());
+        init();
     }
-  }
 
-  public MainDialogWrapper(@Nullable Project project, MessageDataModel annotationData,
-      MessageDataModel fidelityData, List<EnumDataModel> enumData,
-      List<QualityDataModel> qualityData, Settings settingsData, ProtoCompiler compiler) {
-    super(project);
+    @NotNull
+    @Override
+    protected DialogStyle getStyle() {
+        return DialogStyle.COMPACT;
+    }
 
-    this.annotationData = annotationData;
-    this.enumData = enumData;
-    this.fidelityData = fidelityData;
-    this.qualityData = qualityData;
-    this.settingsData = settingsData;
-    this.project = project;
-    this.compiler = compiler;
-    setTitle(resourceLoader.get("android_performance_tuner_plugin"));
-    Disposer.register(this.getDisposable(), () -> RequestServer.getInstance().stopListening());
-    init();
-  }
-
-  @NotNull
-  @Override
-  protected DialogStyle getStyle() {
-    return DialogStyle.COMPACT;
-  }
-
-  @Override
-  @Nullable
-  protected JComponent createCenterPanel() {
-    pluginLayout = new PluginLayout(annotationData, fidelityData, enumData, qualityData,
-        settingsData, getDisposable());
-    return pluginLayout;
-  }
+    @Override
+    @Nullable
+    protected JComponent createCenterPanel() {
+        pluginLayout = new PluginLayout(
+                annotationData, fidelityData, enumData, qualityData, settingsData, getDisposable());
+        return pluginLayout;
+    }
 }

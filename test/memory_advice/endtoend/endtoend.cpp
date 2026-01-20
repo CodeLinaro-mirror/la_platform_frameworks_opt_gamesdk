@@ -14,24 +14,21 @@
  * limitations under the License.
  */
 
-#include <memory_advice/memory_advice.h>
-#include <memory_advice/memory_advice_debug.h>
-
 #include <core/memory_advice_impl.h>
 #include <core/memory_advice_internal.h>
 #include <core/state_watcher.h>
+#include <memory_advice/memory_advice.h>
+#include <memory_advice/memory_advice_debug.h>
 
 #include <regex>
 #include <sstream>
 #include <string>
 
-
 #define LOG_TAG "MemoryAdvice"
-#include "Log.h"
-#include "json11/json11.hpp"
-
-#include "gtest/gtest.h"
 #include "../memory_utils.h"
+#include "Log.h"
+#include "gtest/gtest.h"
+#include "json11/json11.hpp"
 #include "test_utils.h"
 
 namespace memory_advice_test {
@@ -39,16 +36,16 @@ namespace memory_advice_test {
 extern const char* parameters_string;
 
 std::string TestEndToEnd() {
-  memory_advice::MemoryAdviceImpl* s_impl;
-  s_impl = new memory_advice::MemoryAdviceImpl(parameters_string, nullptr, nullptr, nullptr);
+    memory_advice::MemoryAdviceImpl* s_impl;
+    s_impl = new memory_advice::MemoryAdviceImpl(parameters_string, nullptr, nullptr, nullptr);
 
-  return json11::Json(s_impl->GetAdvice()).dump();
+    return json11::Json(s_impl->GetAdvice()).dump();
 }
 
 TEST(EndToEndTest, Base) {
-  auto result = TestEndToEnd();
-  std::string expected = GetAdviceString("!REGEX(\\d+)", "0.0!REGEX(\\d+)", "!REGEX(\\d{1,3})");
-  gamesdk_test::CheckStrings("Base", result, expected);
+    auto result = TestEndToEnd();
+    std::string expected = GetAdviceString("!REGEX(\\d+)", "0.0!REGEX(\\d+)", "!REGEX(\\d{1,3})");
+    gamesdk_test::CheckStrings("Base", result, expected);
 }
 
-} // memory_advice_test
+} // namespace memory_advice_test

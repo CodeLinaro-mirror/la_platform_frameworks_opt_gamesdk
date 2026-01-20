@@ -49,13 +49,12 @@ extern const std::string session_context;
 extern const std::string session_context_loading;
 
 // Generate test Settings using the input parameters.
-tf::Settings TestSettings(
-    tf::Settings::AggregationStrategy::Submission method, int n_ticks,
-    int n_keys, std::vector<uint32_t> annotation_size,
-    const std::vector<tf::Settings::Histogram>& hists = {},
-    int num_frame_time_histograms = 0, int num_loading_time_histograms = 0);
+tf::Settings TestSettings(tf::Settings::AggregationStrategy::Submission method, int n_ticks,
+                          int n_keys, std::vector<uint32_t> annotation_size,
+                          const std::vector<tf::Settings::Histogram>& hists = {},
+                          int num_frame_time_histograms = 0, int num_loading_time_histograms = 0);
 
 // Return a string with all returns replaced with single spaces.
 std::string ReplaceReturns(std::string in);
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

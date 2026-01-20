@@ -23,7 +23,8 @@
 extern "C" {
 #endif
 
-char **get_args(struct android_app *app, const char *intent_extra_data_key, const char *appTag, int *count);
+char** get_args(struct android_app* app, const char* intent_extra_data_key, const char* appTag,
+                int* count);
 
 #ifdef __cplusplus
 }

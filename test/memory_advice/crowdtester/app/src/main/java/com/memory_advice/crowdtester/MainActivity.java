@@ -29,11 +29,11 @@ public class MainActivity extends AppCompatActivity {
         while (javaPrediction < 0.5) {
             try {
                 javaPrediction = new JSONObject(javaAdvisor.getAdvice())
-                                     .getJSONObject("metrics")
-                                     .getDouble("predictedAvailable");
+                                         .getJSONObject("metrics")
+                                         .getDouble("predictedAvailable");
                 nativePrediction = new JSONObject(getMemoryAdvice())
-                                       .getJSONObject("metrics")
-                                       .getDouble("predictedAvailable");
+                                           .getJSONObject("metrics")
+                                           .getDouble("predictedAvailable");
             } catch (JSONException e) {
                 e.printStackTrace();
             }

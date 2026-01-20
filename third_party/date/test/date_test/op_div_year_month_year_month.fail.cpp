@@ -24,10 +24,8 @@
 
 #include "date.h"
 
-int
-main()
-{
+int main() {
     using namespace date;
 
-    auto x = (2015_y/aug)/(2015_y/aug);
+    auto x = (2015_y / aug) / (2015_y / aug);
 }

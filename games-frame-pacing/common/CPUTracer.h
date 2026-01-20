@@ -25,24 +25,24 @@
 namespace swappy {
 
 class CPUTracer {
- public:
-  CPUTracer();
-  ~CPUTracer();
+public:
+    CPUTracer();
+    ~CPUTracer();
 
-  CPUTracer(CPUTracer&) = delete;
+    CPUTracer(CPUTracer&) = delete;
 
-  void startTrace();
-  void endTrace();
+    void startTrace();
+    void endTrace();
 
- private:
-  void threadMain();
-  void joinThread();
+private:
+    void threadMain();
+    void joinThread();
 
-  std::mutex mMutex;
-  std::condition_variable_any mCond GUARDED_BY(mMutex);
-  std::unique_ptr<Thread> mThread;
-  bool mRunning GUARDED_BY(mMutex) = true;
-  bool mTrace GUARDED_BY(mMutex) = false;
+    std::mutex mMutex;
+    std::condition_variable_any mCond GUARDED_BY(mMutex);
+    std::unique_ptr<Thread> mThread;
+    bool mRunning GUARDED_BY(mMutex) = true;
+    bool mTrace GUARDED_BY(mMutex) = false;
 };
 
-}  // namespace swappy
+} // namespace swappy

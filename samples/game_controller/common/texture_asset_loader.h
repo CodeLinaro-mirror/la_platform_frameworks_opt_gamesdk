@@ -22,14 +22,13 @@ struct AAssetManager;
 typedef uint64_t TextureAssetHandle;
 
 class TextureAssetLoader {
- public:
-  static constexpr TextureAssetHandle INVALID_TEXTURE = 0xFFFFFFFFFFFFFFFFULL;
+public:
+    static constexpr TextureAssetHandle INVALID_TEXTURE = 0xFFFFFFFFFFFFFFFFULL;
 
-  static void setAssetManager(AAssetManager *appAssetManager);
+    static void setAssetManager(AAssetManager* appAssetManager);
 
-  static TextureAssetHandle loadTextureAsset(const char *filename,
-                                             uint32_t *textureWidth,
-                                             uint32_t *textureHeight);
+    static TextureAssetHandle loadTextureAsset(const char* filename, uint32_t* textureWidth,
+                                               uint32_t* textureHeight);
 
-  static void unloadTextureAsset(const uint64_t textureReference);
+    static void unloadTextureAsset(const uint64_t textureReference);
 };

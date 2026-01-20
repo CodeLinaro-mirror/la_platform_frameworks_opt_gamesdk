@@ -28,24 +28,23 @@ namespace tuningfork {
 // Sub-class this class in order to create a separate thread that calls DoWork
 // and then waits the time returned until calling it again.
 class Runnable {
- protected:
-  ITimeProvider* time_provider_;
-  std::unique_ptr<std::thread> thread_;
-  std::mutex mutex_;
-  std::condition_variable cv_;
-  bool do_quit_ = false;
+protected:
+    ITimeProvider* time_provider_;
+    std::unique_ptr<std::thread> thread_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
+    bool do_quit_ = false;
 
- public:
-  // If a time provider is supplied, waiting is done by polling the time
-  // provider, which should be used only for tests.
-  Runnable(ITimeProvider* time_provider = nullptr)
-      : time_provider_(time_provider) {}
-  virtual ~Runnable() {}
-  virtual void Start();
-  virtual void Run();
-  virtual void Stop();
-  // Return the time to wait before the next call
-  virtual Duration DoWork() = 0;
+public:
+    // If a time provider is supplied, waiting is done by polling the time
+    // provider, which should be used only for tests.
+    Runnable(ITimeProvider* time_provider = nullptr) : time_provider_(time_provider) {}
+    virtual ~Runnable() {}
+    virtual void Start();
+    virtual void Run();
+    virtual void Stop();
+    // Return the time to wait before the next call
+    virtual Duration DoWork() = 0;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

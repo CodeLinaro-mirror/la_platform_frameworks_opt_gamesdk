@@ -18,14 +18,14 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.BatteryState;
-import android.hardware.input.InputManager;
-import android.hardware.lights.Light;
-import android.hardware.lights.LightState;
-import android.hardware.lights.LightsManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.input.InputManager;
+import android.hardware.lights.Light;
+import android.hardware.lights.LightState;
+import android.hardware.lights.LightsManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.VibrationEffect;
@@ -36,7 +36,7 @@ import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-
+import androidx.annotation.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,7 +91,7 @@ public class GameControllerManager {
         reportMotionEvents = false;
         activeIntegratedSensorMask = 0;
         inputManager = (InputManager) appContext.getSystemService(Context.INPUT_SERVICE);
-        sensorManager = (SensorManager)appContext.getSystemService(Context.SENSOR_SERVICE);
+        sensorManager = (SensorManager) appContext.getSystemService(Context.SENSOR_SERVICE);
         integratedAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         integratedGyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         int integratedDeviceFlags = 0;
@@ -104,9 +104,8 @@ public class GameControllerManager {
             integratedDeviceFlags |= DEVICEFLAG_GYROSCOPE;
         }
         // Initialize a listener for integrated sensors, defaulting to off at startup
-        integratedListener = new GameControllerListener(this, null,
-                integratedDeviceFlags, false);
-        printControllerInfo = true; //appPrintControllerInfo;
+        integratedListener = new GameControllerListener(this, null, integratedDeviceFlags, false);
+        printControllerInfo = true; // appPrintControllerInfo;
         keyboardDeviceIds = new ArrayList<Integer>(MAX_GAMECONTROLLERS);
         mouseDeviceIds = new ArrayList<Integer>(MAX_GAMECONTROLLERS);
         pendingControllerDeviceIds = new ArrayList<Integer>(MAX_GAMECONTROLLERS);
@@ -115,15 +114,14 @@ public class GameControllerManager {
         gameControllers = new ArrayList<GameControllerInfo>(MAX_GAMECONTROLLERS);
 
         if (appPrintControllerInfo) {
-            Log.d(TAG, "device Info:" +
-                    "\n  BRAND: " + Build.BRAND +
-                    "\n DEVICE: " + Build.DEVICE +
-                    "\n  MANUF: " + Build.MANUFACTURER +
-                    "\n  MODEL: " + Build.MODEL +
-                    "\nPRODUCT: " + Build.PRODUCT +
-                    "\n    API: " + Build.VERSION.SDK_INT +
-                    "\n  ACCEL: " + (integratedAccelerometer != null) +
-                    "\n   GYRO: " + (integratedGyroscope != null));
+            Log.d(TAG,
+                    "device Info:"
+                            + "\n  BRAND: " + Build.BRAND + "\n DEVICE: " + Build.DEVICE
+                            + "\n  MANUF: " + Build.MANUFACTURER + "\n  MODEL: " + Build.MODEL
+                            + "\nPRODUCT: " + Build.PRODUCT
+                            + "\n    API: " + Build.VERSION.SDK_INT
+                            + "\n  ACCEL: " + (integratedAccelerometer != null)
+                            + "\n   GYRO: " + (integratedGyroscope != null));
         }
 
         // Queue up initially connected devices to be processed when
@@ -202,8 +200,8 @@ public class GameControllerManager {
         return 0;
     }
 
-    private static boolean isDeviceOfSource(int deviceId, int matchingSourceMask,
-                                            boolean needsMotionRanges) {
+    private static boolean isDeviceOfSource(
+            int deviceId, int matchingSourceMask, boolean needsMotionRanges) {
         boolean isSource = false;
         InputDevice inputDevice = InputDevice.getDevice(deviceId);
         if (inputDevice != null) {
@@ -257,7 +255,7 @@ public class GameControllerManager {
     }
 
     void checkForDeviceRemovals(int[] deviceIds, ArrayList<Integer> pendingDeviceIds,
-                                ArrayList<Integer> activeDeviceIds) {
+            ArrayList<Integer> activeDeviceIds) {
         if (!nativeReady) {
             for (int index = 0; index < pendingDeviceIds.size(); ++index) {
                 boolean foundDevice = false;
@@ -401,8 +399,8 @@ public class GameControllerManager {
                     // Some physical keyboards include DPAD and JOYSTICK sources, but
                     // only report a single AXIS_GENERIC_1 motion range, screen them out
                     // as they aren't really game controllers
-                    if (!(motionRanges.size() == 1 && motionRanges.get(0).getAxis() ==
-                            MotionEvent.AXIS_GENERIC_1)) {
+                    if (!(motionRanges.size() == 1
+                                && motionRanges.get(0).getAxis() == MotionEvent.AXIS_GENERIC_1)) {
                         // Ignore the fingerprint reader, which can also identify
                         // as a game controller for some reason
                         String deviceName = inputDevice.getName();
@@ -454,8 +452,9 @@ public class GameControllerManager {
 
     void onKeyboardDeviceAdded(int deviceId) {
         if (printControllerInfo) {
-            Log.d(TAG, "onKeyboardDeviceAdded id: " + deviceId + " name: " +
-                    InputDevice.getDevice(deviceId).getName());
+            Log.d(TAG,
+                    "onKeyboardDeviceAdded id: " + deviceId
+                            + " name: " + InputDevice.getDevice(deviceId).getName());
             logControllerInfo(deviceId);
         }
         keyboardDeviceIds.add(deviceId);
@@ -497,8 +496,9 @@ public class GameControllerManager {
     void onMouseDeviceAdded(int deviceId) {
         if (mouseDeviceIds.size() < MAX_MICE) {
             if (printControllerInfo) {
-                Log.d(TAG, "onMouseDeviceAdded id: " + deviceId + " name: " +
-                        InputDevice.getDevice(deviceId).getName());
+                Log.d(TAG,
+                        "onMouseDeviceAdded id: " + deviceId
+                                + " name: " + InputDevice.getDevice(deviceId).getName());
                 logControllerInfo(deviceId);
             }
             mouseDeviceIds.add(deviceId);
@@ -621,7 +621,6 @@ public class GameControllerManager {
                 processControllerAddition(deviceId);
             }
         }
-
     }
 
     public int getApiLevel() {
@@ -651,8 +650,7 @@ public class GameControllerManager {
         }
 
         boolean setGyroscopeActive = ((sensorMask & INTEGRATEDFLAG_GYROSCOPE) != 0);
-        boolean isGyroscopeActive =
-                ((activeIntegratedSensorMask & INTEGRATEDFLAG_GYROSCOPE) != 0);
+        boolean isGyroscopeActive = ((activeIntegratedSensorMask & INTEGRATEDFLAG_GYROSCOPE) != 0);
         if (setGyroscopeActive && !isGyroscopeActive) {
             integratedListener.setIntegratedGyroscopeActive(true);
         } else if (!setGyroscopeActive && isGyroscopeActive) {
@@ -749,7 +747,7 @@ public class GameControllerManager {
     }
 
     void setVibrationMultiChannel(InputDevice inputDevice, int leftIntensity, int leftDuration,
-                                  int rightIntensity, int rightDuration) {
+            int rightIntensity, int rightDuration) {
         if (Build.VERSION.SDK_INT >= VIBRATOR_MANAGER_MIN_API) {
             VibratorManager vibratorManager = inputDevice.getVibratorManager();
             if (vibratorManager != null) {
@@ -763,8 +761,8 @@ public class GameControllerManager {
                     updateVibrator(vibratorManager.getVibrator(vibratorIds[0]), leftIntensity,
                             leftDuration);
                     if (vibratorCount > 1) {
-                        updateVibrator(vibratorManager.getVibrator(vibratorIds[1]),
-                                rightIntensity, rightDuration);
+                        updateVibrator(vibratorManager.getVibrator(vibratorIds[1]), rightIntensity,
+                                rightDuration);
                     }
                 }
             }
@@ -772,12 +770,12 @@ public class GameControllerManager {
     }
 
     public void setVibration(int deviceId, int leftIntensity, int leftDuration, int rightIntensity,
-                             int rightDuration) {
+            int rightDuration) {
         InputDevice inputDevice = inputManager.getInputDevice(deviceId);
         if (inputDevice != null) {
             if (Build.VERSION.SDK_INT >= VIBRATOR_MANAGER_MIN_API) {
-                setVibrationMultiChannel(inputDevice, leftIntensity, leftDuration, rightIntensity,
-                        rightDuration);
+                setVibrationMultiChannel(
+                        inputDevice, leftIntensity, leftDuration, rightIntensity, rightDuration);
             } else if (Build.VERSION.SDK_INT >= VIBRATION_EFFECT_MIN_API) {
                 Vibrator deviceVibrator = inputDevice.getVibrator();
                 updateVibrator(deviceVibrator, leftIntensity, leftDuration);
@@ -795,13 +793,12 @@ public class GameControllerManager {
 
     private void notifyNativeConnection(GameControllerInfo gcInfo) {
         onControllerConnected(gcInfo.GetGameControllerDeviceInfoArray(),
-                gcInfo.GetGameControllerAxisMinArray(),
-                gcInfo.GetGameControllerAxisMaxArray(),
-                gcInfo.GetGameControllerAxisFlatArray(),
-                gcInfo.GetGameControllerAxisFuzzArray());
+                gcInfo.GetGameControllerAxisMinArray(), gcInfo.GetGameControllerAxisMaxArray(),
+                gcInfo.GetGameControllerAxisFlatArray(), gcInfo.GetGameControllerAxisFuzzArray());
     }
 
-    private String generateSourceString(int source) {
+    @VisibleForTesting
+    String generateSourceString(int source) {
         String sourceString = "Source Classes: ";
         int sourceMasked = source & InputDevice.SOURCE_ANY;
         int sourceClass = source & InputDevice.SOURCE_CLASS_MASK;
@@ -956,46 +953,40 @@ public class GameControllerManager {
         float axisMin = motionRange.getMin();
         float axisRange = motionRange.getRange();
         float axisResolution = -1;
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.JELLY_BEAN_MR2)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2)
             axisResolution = motionRange.getResolution();
 
-        Log.d(TAG, "MotionRange:" +
-                "\n" + axisString +
-                "\n" + axisSourceString +
-                "\n   Axis Min   : " + axisMin +
-                "\n   Axis Max   : " + axisMax +
-                "\n   Axis Range : " + axisRange +
-                "\n   Axis Flat  : " + axisFlat +
-                "\n   Axis Fuzz  : " + axisFuzz +
-                "\n   Axis Res   : " + axisResolution);
+        Log.d(TAG,
+                "MotionRange:"
+                        + "\n" + axisString + "\n" + axisSourceString + "\n   Axis Min   : "
+                        + axisMin + "\n   Axis Max   : " + axisMax + "\n   Axis Range : "
+                        + axisRange + "\n   Axis Flat  : " + axisFlat + "\n   Axis Fuzz  : "
+                        + axisFuzz + "\n   Axis Res   : " + axisResolution);
     }
 
     private void logControllerInfo(int deviceId) {
         InputDevice inputDevice = InputDevice.getDevice(deviceId);
         int controllerNumber = -1;
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.KITKAT)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT)
             controllerNumber = inputDevice.getControllerNumber();
         String deviceDescriptor = inputDevice.getDescriptor();
         String deviceName = inputDevice.getName();
         int deviceProductId = -1;
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.KITKAT)
-          deviceProductId = inputDevice.getProductId();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT)
+            deviceProductId = inputDevice.getProductId();
         int deviceSources = inputDevice.getSources();
         int deviceVendorId = -1;
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.KITKAT)
-          deviceVendorId = inputDevice.getVendorId();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT)
+            deviceVendorId = inputDevice.getVendorId();
         boolean hasVibrator = inputDevice.getVibrator().hasVibrator();
         boolean isVirtual = inputDevice.isVirtual();
 
-        Log.d(TAG, "logControllerInfo" +
-                "\nfor deviceId: " + deviceId +
-                "\nname: " + deviceName +
-                "\ndescriptor: " + deviceDescriptor +
-                "\nvendorId: " + deviceVendorId +
-                "\nproductId " + deviceProductId +
-                "\nhasVibrator: " + hasVibrator +
-                "\nisVirtual: " + isVirtual +
-                "\n" + generateSourceString(deviceSources));
+        Log.d(TAG,
+                "logControllerInfo"
+                        + "\nfor deviceId: " + deviceId + "\nname: " + deviceName + "\ndescriptor: "
+                        + deviceDescriptor + "\nvendorId: " + deviceVendorId + "\nproductId "
+                        + deviceProductId + "\nhasVibrator: " + hasVibrator + "\nisVirtual: "
+                        + isVirtual + "\n" + generateSourceString(deviceSources));
 
         List<InputDevice.MotionRange> motionRanges = inputDevice.getMotionRanges();
         Log.d(TAG, "Motion Range count: " + motionRanges.size());
@@ -1006,9 +997,8 @@ public class GameControllerManager {
     }
 
     // JNI interface functions for native GameControllerManager
-    public native void onControllerConnected(int[] deviceInfoArray,
-                                             float[] axisMinArray, float[] axisMaxArray,
-                                             float[] axisFlatArray, float[] axisFloorArray);
+    public native void onControllerConnected(int[] deviceInfoArray, float[] axisMinArray,
+            float[] axisMaxArray, float[] axisFlatArray, float[] axisFloorArray);
 
     public native void onControllerDisconnected(int deviceId);
 
@@ -1016,8 +1006,8 @@ public class GameControllerManager {
 
     public native void onKeyboardDisconnected(int deviceid);
 
-    public native void onMotionData(int deviceId, int motionType, long timestamp,
-                                    float dataX, float dataY, float dataZ);
+    public native void onMotionData(
+            int deviceId, int motionType, long timestamp, float dataX, float dataY, float dataZ);
 
     public native void onMouseConnected(int deviceId);
 

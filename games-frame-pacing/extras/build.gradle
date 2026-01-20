@@ -4,10 +4,11 @@ apply plugin: 'com.android.application'
 buildDir="./out"
 
 android {
-    compileSdkVersion 31
+    namespace 'com.google.androidgamesdk.swappy.extras'
+    compileSdk 31
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 35
+        minSdk 21
+        targetSdk 35
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

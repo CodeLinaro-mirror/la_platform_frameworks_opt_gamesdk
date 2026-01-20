@@ -27,37 +27,38 @@ namespace tuningfork {
 class Session;
 
 class RepeatingTask {
- public:
-  RepeatingTask(Duration min_work_interval_in)
-      : min_work_interval(min_work_interval_in) {}
+public:
+    RepeatingTask(Duration min_work_interval_in) : min_work_interval(min_work_interval_in) {}
 
-  // Called by AsyncTelemetry to perform work.
-  virtual void DoWork(Session* session) = 0;
+    // Called by AsyncTelemetry to perform work.
+    virtual void DoWork(Session* session) = 0;
 
- private:
-  // When to wake to call this next.
-  TimePoint next_time = TimePoint::min();
-  // The minimum time between calling DoWork.
-  Duration min_work_interval = Duration::zero();
+private:
+    // When to wake to call this next.
+    TimePoint next_time = TimePoint::min();
+    // The minimum time between calling DoWork.
+    Duration min_work_interval = Duration::zero();
 
-  friend class AsyncTelemetry;
-  friend class RepeatingTaskPtrComparator;
+    friend class AsyncTelemetry;
+    friend class RepeatingTaskPtrComparator;
 };
 
 // Scheduler of metric recordings.
 class AsyncTelemetry : public Runnable {
-  // This is maintained as a heap, ordered by next_time.
-  std::deque<std::shared_ptr<RepeatingTask>> metrics_;
-  Session* session_ = 0;
+    // This is maintained as a heap, ordered by next_time.
+    std::deque<std::shared_ptr<RepeatingTask>> metrics_;
+    Session* session_ = 0;
 
- public:
-  AsyncTelemetry(ITimeProvider* time_provider);
-  void AddTask(const std::shared_ptr<RepeatingTask>& m);
-  virtual Duration DoWork() override;
-  void SetSession(Session* session) { session_ = session; }
+public:
+    AsyncTelemetry(ITimeProvider* time_provider);
+    void AddTask(const std::shared_ptr<RepeatingTask>& m);
+    virtual Duration DoWork() override;
+    void SetSession(Session* session) {
+        session_ = session;
+    }
 
-  // How often to check if there has been any work added.
-  static const Duration kNoWorkPollPeriod;
+    // How often to check if there has been any work added.
+    static const Duration kNoWorkPollPeriod;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

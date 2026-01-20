@@ -26,21 +26,21 @@
 namespace tuningfork {
 
 class ThermalReportingTask : public RepeatingTask {
- private:
-  ITimeProvider* time_provider_;
-  IBatteryProvider* battery_provider_;
-  std::mutex mutex_;
-  MetricId id_;
+private:
+    ITimeProvider* time_provider_;
+    IBatteryProvider* battery_provider_;
+    std::mutex mutex_;
+    MetricId id_;
 
- public:
-  ThermalReportingTask(ITimeProvider* time_provider,
-                       IBatteryProvider* battery_provider, MetricId id)
-      : RepeatingTask(std::chrono::seconds(60)),
-        time_provider_(time_provider),
-        battery_provider_(battery_provider),
-        id_(id) {}
-  virtual void DoWork(Session* session) override;
-  void UpdateMetricId(MetricId id);
+public:
+    ThermalReportingTask(ITimeProvider* time_provider, IBatteryProvider* battery_provider,
+                         MetricId id)
+          : RepeatingTask(std::chrono::seconds(60)),
+            time_provider_(time_provider),
+            battery_provider_(battery_provider),
+            id_(id) {}
+    virtual void DoWork(Session* session) override;
+    void UpdateMetricId(MetricId id);
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

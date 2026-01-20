@@ -65,41 +65,40 @@ namespace swappy {
  *
  ***************************************************************************************************/
 class SwappyVkGoogleDisplayTiming : public SwappyVkBase {
- public:
-  SwappyVkGoogleDisplayTiming(JNIEnv* env, jobject jactivity,
-                              VkPhysicalDevice physicalDevice, VkDevice device,
-                              const SwappyVkFunctionProvider* provider);
+public:
+    SwappyVkGoogleDisplayTiming(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
+                                VkDevice device, const SwappyVkFunctionProvider* provider);
 
-  bool doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
-                                 uint64_t* pRefreshDuration) override final;
+    bool doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
+                                   uint64_t* pRefreshDuration) override final;
 
-  VkResult doQueuePresent(VkQueue queue, uint32_t queueFamilyIndex,
-                          const VkPresentInfoKHR* pPresentInfo) override final;
+    VkResult doQueuePresent(VkQueue queue, uint32_t queueFamilyIndex,
+                            const VkPresentInfoKHR* pPresentInfo) override final;
 
-  void enableStats(bool enabled) override final;
-  void recordFrameStart(VkQueue queue, uint32_t image) override final;
-  void getStats(SwappyStats* swappyStats) override final;
-  void clearStats() override final;
+    void enableStats(bool enabled) override final;
+    void recordFrameStart(VkQueue queue, uint32_t image) override final;
+    void getStats(SwappyStats* swappyStats) override final;
+    void clearStats() override final;
 
- private:
-  static constexpr int MAX_FRAME_LAG = 10;
-  // Vulkan loader does not give any frame timings unless they are 5 frames
-  // old. We use this internally to not waste calls.
-  static constexpr int MIN_FRAME_LAG = 5;
-  uint32_t mPresentID = 0;
+private:
+    static constexpr int MAX_FRAME_LAG = 10;
+    // Vulkan loader does not give any frame timings unless they are 5 frames
+    // old. We use this internally to not waste calls.
+    static constexpr int MIN_FRAME_LAG = 5;
+    uint32_t mPresentID = 0;
 
-  VkSwapchainKHR mSwapchain;
+    VkSwapchainKHR mSwapchain;
 
-  struct VKFrame {
-    uint32_t id;
-    uint64_t startFrameTime;
-    int pastTimingIndex;
-  };
+    struct VKFrame {
+        uint32_t id;
+        uint64_t startFrameTime;
+        int pastTimingIndex;
+    };
 
-  std::vector<VKFrame> mPendingFrames;
-  // Storage for querying past presentation frames, allocated upfront.
-  VkPastPresentationTimingGOOGLE mPastTimes[MAX_FRAME_LAG];
-  FrameStatistics mFrameStatisticsCommon;
+    std::vector<VKFrame> mPendingFrames;
+    // Storage for querying past presentation frames, allocated upfront.
+    VkPastPresentationTimingGOOGLE mPastTimes[MAX_FRAME_LAG];
+    FrameStatistics mFrameStatisticsCommon;
 };
 
-}  // namespace swappy
+} // namespace swappy

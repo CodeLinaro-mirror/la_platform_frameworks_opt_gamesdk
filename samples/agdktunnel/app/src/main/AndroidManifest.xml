@@ -19,8 +19,7 @@
      be able to communicate with the Tuning Fork Monitor app when
      running a debug build. -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.google.sample.agdktunnel">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" >
 
   <application
       android:allowBackup="false"

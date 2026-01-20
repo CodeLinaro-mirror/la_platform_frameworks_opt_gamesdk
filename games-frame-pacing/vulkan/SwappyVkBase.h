@@ -78,13 +78,13 @@ constexpr uint32_t kNudgeWithinVsyncBoundaries = 2000000;
 
 using PFN_AChoreographer_getInstance = AChoreographer* (*)();
 
-using PFN_AChoreographer_postFrameCallback =
-    void (*)(AChoreographer* choreographer,
-             AChoreographer_frameCallback callback, void* data);
+using PFN_AChoreographer_postFrameCallback = void (*)(AChoreographer* choreographer,
+                                                      AChoreographer_frameCallback callback,
+                                                      void* data);
 
-using PFN_AChoreographer_postFrameCallbackDelayed = void (*)(
-    AChoreographer* choreographer, AChoreographer_frameCallback callback,
-    void* data, long delayMillis);
+using PFN_AChoreographer_postFrameCallbackDelayed = void (*)(AChoreographer* choreographer,
+                                                             AChoreographer_frameCallback callback,
+                                                             void* data, long delayMillis);
 
 extern PFN_vkCreateCommandPool vkCreateCommandPool;
 extern PFN_vkDestroyCommandPool vkDestroyCommandPool;
@@ -106,113 +106,113 @@ extern PFN_vkQueueSubmit vkQueueSubmit;
 void LoadVulkanFunctions(const SwappyVkFunctionProvider* pFunctionProvider);
 
 class SwappyVkBase {
- public:
-  SwappyVkBase(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
-               VkDevice device,
-               const SwappyVkFunctionProvider* pFunctionProvider);
+public:
+    SwappyVkBase(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice, VkDevice device,
+                 const SwappyVkFunctionProvider* pFunctionProvider);
 
-  virtual ~SwappyVkBase();
+    virtual ~SwappyVkBase();
 
-  virtual bool doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
-                                         uint64_t* pRefreshDuration) = 0;
+    virtual bool doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
+                                           uint64_t* pRefreshDuration) = 0;
 
-  virtual VkResult doQueuePresent(VkQueue queue, uint32_t queueFamilyIndex,
-                                  const VkPresentInfoKHR* pPresentInfo) = 0;
+    virtual VkResult doQueuePresent(VkQueue queue, uint32_t queueFamilyIndex,
+                                    const VkPresentInfoKHR* pPresentInfo) = 0;
 
-  void doSetWindow(ANativeWindow* window);
-  void doSetSwapInterval(VkSwapchainKHR swapchain, uint64_t swapNs);
+    void doSetWindow(ANativeWindow* window);
+    void doSetSwapInterval(VkSwapchainKHR swapchain, uint64_t swapNs);
 
-  VkResult injectFence(VkQueue queue, const VkPresentInfoKHR* pPresentInfo,
-                       VkSemaphore* pSemaphore);
+    VkResult injectFence(VkQueue queue, const VkPresentInfoKHR* pPresentInfo,
+                         VkSemaphore* pSemaphore);
 
-  bool isEnabled() { return mEnabled; }
+    bool isEnabled() {
+        return mEnabled;
+    }
 
-  void setAutoSwapInterval(bool enabled);
-  void setAutoPipelineMode(bool enabled);
+    void setAutoSwapInterval(bool enabled);
+    void setAutoPipelineMode(bool enabled);
 
-  void setMaxAutoSwapDuration(std::chrono::nanoseconds swapMaxNS);
+    void setMaxAutoSwapDuration(std::chrono::nanoseconds swapMaxNS);
 
-  void setFenceTimeout(std::chrono::nanoseconds duration);
-  std::chrono::nanoseconds getFenceTimeout() const;
-  std::chrono::nanoseconds getSwapInterval();
+    void setFenceTimeout(std::chrono::nanoseconds duration);
+    std::chrono::nanoseconds getFenceTimeout() const;
+    std::chrono::nanoseconds getSwapInterval();
 
-  void addTracer(const SwappyTracer* tracer);
-  void removeTracer(const SwappyTracer* tracer);
+    void addTracer(const SwappyTracer* tracer);
+    void removeTracer(const SwappyTracer* tracer);
 
-  VkDevice getDevice() const { return mDevice; }
+    VkDevice getDevice() const {
+        return mDevice;
+    }
 
-  int getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates,
-                                   int allocated_entries);
+    int getSupportedRefreshPeriodsNS(uint64_t* out_refreshrates, int allocated_entries);
 
-  virtual void enableStats(bool enabled) = 0;
-  virtual void getStats(SwappyStats* swappyStats) = 0;
-  virtual void recordFrameStart(VkQueue queue, uint32_t image) = 0;
-  virtual void clearStats() = 0;
+    virtual void enableStats(bool enabled) = 0;
+    virtual void getStats(SwappyStats* swappyStats) = 0;
+    virtual void recordFrameStart(VkQueue queue, uint32_t image) = 0;
+    virtual void clearStats() = 0;
 
-  void resetFramePacing();
-  void enableFramePacing(bool enable);
-  void enableBlockingWait(bool enable);
+    void resetFramePacing();
+    void enableFramePacing(bool enable);
+    void enableBlockingWait(bool enable);
 
- protected:
-  struct VkSync {
-    VkFence fence;
-    VkSemaphore semaphore;
-    VkCommandBuffer command;
-    VkEvent event;
-  };
+protected:
+    struct VkSync {
+        VkFence fence;
+        VkSemaphore semaphore;
+        VkCommandBuffer command;
+        VkEvent event;
+    };
 
-  struct ThreadContext {
-    ThreadContext(VkQueue queue) : queue(queue) {}
+    struct ThreadContext {
+        ThreadContext(VkQueue queue) : queue(queue) {}
 
-    Thread thread;
-    bool running GUARDED_BY(lock) = true;
-    bool hasPendingWork GUARDED_BY(lock);
-    std::mutex lock;
-    std::condition_variable_any condition;
-    VkQueue queue GUARDED_BY(lock);
-  };
+        Thread thread;
+        bool running GUARDED_BY(lock) = true;
+        bool hasPendingWork GUARDED_BY(lock);
+        std::mutex lock;
+        std::condition_variable_any condition;
+        VkQueue queue GUARDED_BY(lock);
+    };
 
-  SwappyCommon mCommonBase;
-  VkPhysicalDevice mPhysicalDevice;
-  VkDevice mDevice;
-  const SwappyVkFunctionProvider* mpFunctionProvider;
-  bool mInitialized;
-  bool mEnabled;
+    SwappyCommon mCommonBase;
+    VkPhysicalDevice mPhysicalDevice;
+    VkDevice mDevice;
+    const SwappyVkFunctionProvider* mpFunctionProvider;
+    bool mInitialized;
+    bool mEnabled;
 
-  uint32_t mNextPresentID = 0;
-  uint32_t mNextPresentIDToCheck = 2;
+    uint32_t mNextPresentID = 0;
+    uint32_t mNextPresentIDToCheck = 2;
 
-  PFN_vkGetDeviceProcAddr mpfnGetDeviceProcAddr = nullptr;
-  PFN_vkQueuePresentKHR mpfnQueuePresentKHR = nullptr;
+    PFN_vkGetDeviceProcAddr mpfnGetDeviceProcAddr = nullptr;
+    PFN_vkQueuePresentKHR mpfnQueuePresentKHR = nullptr;
 #if (not defined ANDROID_NDK_VERSION) || ANDROID_NDK_VERSION >= 15
-  PFN_vkGetRefreshCycleDurationGOOGLE mpfnGetRefreshCycleDurationGOOGLE =
-      nullptr;
-  PFN_vkGetPastPresentationTimingGOOGLE mpfnGetPastPresentationTimingGOOGLE =
-      nullptr;
+    PFN_vkGetRefreshCycleDurationGOOGLE mpfnGetRefreshCycleDurationGOOGLE = nullptr;
+    PFN_vkGetPastPresentationTimingGOOGLE mpfnGetPastPresentationTimingGOOGLE = nullptr;
 #endif
-  // Holds VKSync objects ready to be used
-  std::map<VkQueue, std::list<VkSync>> mFreeSyncPool;
+    // Holds VKSync objects ready to be used
+    std::map<VkQueue, std::list<VkSync>> mFreeSyncPool;
 
-  // Holds VKSync objects queued and but signaled yet
-  std::map<VkQueue, std::list<VkSync>> mWaitingSyncs;
+    // Holds VKSync objects queued and but signaled yet
+    std::map<VkQueue, std::list<VkSync>> mWaitingSyncs;
 
-  // Holds VKSync objects that were signaled
-  std::map<VkQueue, std::list<VkSync>> mSignaledSyncs;
+    // Holds VKSync objects that were signaled
+    std::map<VkQueue, std::list<VkSync>> mSignaledSyncs;
 
-  std::map<VkQueue, VkCommandPool> mCommandPool;
-  std::map<VkQueue, std::unique_ptr<ThreadContext>> mThreads;
+    std::map<VkQueue, VkCommandPool> mCommandPool;
+    std::map<VkQueue, std::unique_ptr<ThreadContext>> mThreads;
 
-  static constexpr int MAX_PENDING_FENCES = 2;
+    static constexpr int MAX_PENDING_FENCES = 2;
 
-  std::atomic<std::chrono::nanoseconds> mLastFenceTime = {};
+    std::atomic<std::chrono::nanoseconds> mLastFenceTime = {};
 
-  void initGoogExtension();
-  VkResult initializeVkSyncObjects(VkQueue queue, uint32_t queueFamilyIndex);
-  void destroyVkSyncObjects();
-  void reclaimSignaledFences(VkQueue queue);
-  bool lastFrameIsCompleted(VkQueue queue);
-  std::chrono::nanoseconds getLastFenceTime(VkQueue queue);
-  void waitForFenceThreadMain(ThreadContext& thread);
+    void initGoogExtension();
+    VkResult initializeVkSyncObjects(VkQueue queue, uint32_t queueFamilyIndex);
+    void destroyVkSyncObjects();
+    void reclaimSignaledFences(VkQueue queue);
+    bool lastFrameIsCompleted(VkQueue queue);
+    std::chrono::nanoseconds getLastFenceTime(VkQueue queue);
+    void waitForFenceThreadMain(ThreadContext& thread);
 };
 
-}  // namespace swappy
+} // namespace swappy

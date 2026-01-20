@@ -29,62 +29,61 @@ import javax.swing.table.DefaultTableModel;
 import org.jdesktop.swingx.HorizontalLayout;
 
 public class EnumTable extends JPanel {
+    private final JBTable enumTable;
+    private final JPanel enumDecoratePanel;
+    private final EnumController controller;
+    private final static int TABLE_WIDTH = 300;
+    private final static int TABLE_HEIGHT = 200;
 
-  private final JBTable enumTable;
-  private final JPanel enumDecoratePanel;
-  private final EnumController controller;
-  private final static int TABLE_WIDTH = 300;
-  private final static int TABLE_HEIGHT = 200;
+    public EnumTable(EnumController controller) {
+        this.setLayout(new HorizontalLayout());
+        DefaultTableModel tableModel = new DefaultTableModel() {
+            @Override
+            public void removeRow(int row) {
+                dataVector.remove(row);
+                fireTableDataChanged();
+            }
 
-  public EnumTable(EnumController controller) {
-    this.setLayout(new HorizontalLayout());
-    DefaultTableModel tableModel = new DefaultTableModel() {
-      @Override
-      public void removeRow(int row) {
-        dataVector.remove(row);
-        fireTableDataChanged();
-      }
-
-      @Override
-      public boolean isCellEditable(int row, int column) {
-        return false;
-      }
-    };
-    tableModel.setColumnIdentifiers(
-        new Object[]{ResourceLoader.getInstance().get("table_column_options")});
-    controller.addEnumsToModel(tableModel);
-    this.enumTable = new JBTable(tableModel);
-    this.controller = controller;
-    enumDecoratePanel = ToolbarDecorator.createDecorator(enumTable)
-        .setAddAction(it -> addEnum())
-        .setRemoveAction(it -> removeEnum())
-        .setEditAction(it -> editEnum())
-        .createPanel();
-    setTableSettings(enumTable);
-    enumDecoratePanel.setPreferredSize(new Dimension(TABLE_WIDTH, TABLE_HEIGHT));
-    enumDecoratePanel.setMinimumSize(new Dimension(TABLE_WIDTH, TABLE_HEIGHT));
-    this.add(enumDecoratePanel);
-  }
-
-  private void addEnum() {
-    EnumDialogWrapper enumDialogWrapper = new EnumDialogWrapper(controller);
-    if (enumDialogWrapper.showAndGet()) {
-      controller.addEnumToTable(enumTable);
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        tableModel.setColumnIdentifiers(
+                new Object[] {ResourceLoader.getInstance().get("table_column_options")});
+        controller.addEnumsToModel(tableModel);
+        this.enumTable = new JBTable(tableModel);
+        this.controller = controller;
+        enumDecoratePanel = ToolbarDecorator.createDecorator(enumTable)
+                                    .setAddAction(it -> addEnum())
+                                    .setRemoveAction(it -> removeEnum())
+                                    .setEditAction(it -> editEnum())
+                                    .createPanel();
+        setTableSettings(enumTable);
+        enumDecoratePanel.setPreferredSize(new Dimension(TABLE_WIDTH, TABLE_HEIGHT));
+        enumDecoratePanel.setMinimumSize(new Dimension(TABLE_WIDTH, TABLE_HEIGHT));
+        this.add(enumDecoratePanel);
     }
-  }
 
-  private void removeEnum() {
-    int row = enumTable.getSelectedRow();
-    controller.removeEnum(row);
-    controller.removeEnumFromTable(enumTable, row);
-  }
-
-  private void editEnum() {
-    int selectedRow = enumTable.getSelectedRow();
-    EnumDialogWrapper enumDialogWrapper = new EnumDialogWrapper(
-        controller, selectedRow, controller.getEnums().get(selectedRow));
-    if (enumDialogWrapper.showAndGet()) {
-      controller.editEnumInTable(enumTable, selectedRow);
+    private void addEnum() {
+        EnumDialogWrapper enumDialogWrapper = new EnumDialogWrapper(controller);
+        if (enumDialogWrapper.showAndGet()) {
+            controller.addEnumToTable(enumTable);
+        }
     }
-  }
+
+    private void removeEnum() {
+        int row = enumTable.getSelectedRow();
+        controller.removeEnum(row);
+        controller.removeEnumFromTable(enumTable, row);
+    }
+
+    private void editEnum() {
+        int selectedRow = enumTable.getSelectedRow();
+        EnumDialogWrapper enumDialogWrapper = new EnumDialogWrapper(
+                controller, selectedRow, controller.getEnums().get(selectedRow));
+        if (enumDialogWrapper.showAndGet()) {
+            controller.editEnumInTable(enumTable, selectedRow);
+        }
+    }
 }

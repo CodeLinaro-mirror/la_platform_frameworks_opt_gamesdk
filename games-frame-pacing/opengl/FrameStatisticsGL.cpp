@@ -27,22 +27,18 @@
 
 namespace swappy {
 
-FrameStatisticsGL::FrameStatisticsGL(const EGL& egl,
-                                     const SwappyCommon& swappyCommon)
-    : mEgl(egl), mSwappyCommon(swappyCommon) {
+FrameStatisticsGL::FrameStatisticsGL(const EGL& egl, const SwappyCommon& swappyCommon)
+      : mEgl(egl), mSwappyCommon(swappyCommon) {
     mPendingFrames.reserve(MAX_FRAME_LAG + 1);
 }
 
-FrameStatisticsGL::ThisFrame FrameStatisticsGL::getThisFrame(
-    EGLDisplay dpy, EGLSurface surface) {
+FrameStatisticsGL::ThisFrame FrameStatisticsGL::getThisFrame(EGLDisplay dpy, EGLSurface surface) {
     const TimePoint frameStartTime = std::chrono::steady_clock::now();
 
     // first get the next frame id
-    std::pair<bool, EGLuint64KHR> nextFrameId =
-        mEgl.getNextFrameId(dpy, surface);
+    std::pair<bool, EGLuint64KHR> nextFrameId = mEgl.getNextFrameId(dpy, surface);
     if (nextFrameId.first) {
-        mPendingFrames.push_back(
-            {dpy, surface, nextFrameId.second, frameStartTime});
+        mPendingFrames.push_back({dpy, surface, nextFrameId.second, frameStartTime});
     }
 
     if (mPendingFrames.empty()) {
@@ -52,13 +48,12 @@ FrameStatisticsGL::ThisFrame FrameStatisticsGL::getThisFrame(
     EGLFrame frame = mPendingFrames.front();
     // make sure we don't lag behind the stats too much
     if (nextFrameId.first && nextFrameId.second - frame.id > MAX_FRAME_LAG) {
-        while (mPendingFrames.size() > 1)
-            mPendingFrames.erase(mPendingFrames.begin());
+        while (mPendingFrames.size() > 1) mPendingFrames.erase(mPendingFrames.begin());
         mFrameStatsCommon.invalidateLastFrame();
         frame = mPendingFrames.front();
     }
     std::unique_ptr<EGL::FrameTimestamps> frameStats =
-        mEgl.getFrameTimestamps(frame.dpy, frame.surface, frame.id);
+            mEgl.getFrameTimestamps(frame.dpy, frame.surface, frame.id);
 
     if (!frameStats) {
         return {frame.startFrameTime};
@@ -75,15 +70,13 @@ void FrameStatisticsGL::capture(EGLDisplay dpy, EGLSurface surface) {
 
     if (!frame.stats) return;
 
-    FrameTimings current = {
-        static_cast<uint64_t>(frame.startTime.time_since_epoch().count()),
-        static_cast<uint64_t>(frame.stats->requested),
-        static_cast<uint64_t>(frame.stats->presented),
-        static_cast<uint64_t>(frame.stats->compositionLatched -
-                              frame.stats->renderingCompleted)};
+    FrameTimings current = {static_cast<uint64_t>(frame.startTime.time_since_epoch().count()),
+                            static_cast<uint64_t>(frame.stats->requested),
+                            static_cast<uint64_t>(frame.stats->presented),
+                            static_cast<uint64_t>(frame.stats->compositionLatched -
+                                                  frame.stats->renderingCompleted)};
 
-    mFrameStatsCommon.updateFrameStats(
-        current, mSwappyCommon.getRefreshPeriod().count());
+    mFrameStatsCommon.updateFrameStats(current, mSwappyCommon.getRefreshPeriod().count());
 }
 
 void FrameStatisticsGL::enableStats(bool enabled) {
@@ -94,9 +87,11 @@ SwappyStats FrameStatisticsGL::getStats() {
     return mFrameStatsCommon.getStats();
 }
 
-void FrameStatisticsGL::clearStats() { mFrameStatsCommon.clearStats(); }
+void FrameStatisticsGL::clearStats() {
+    mFrameStatsCommon.clearStats();
+}
 
 int32_t FrameStatisticsGL::lastLatencyRecorded() {
     return mFrameStatsCommon.lastLatencyRecorded();
 }
-}  // namespace swappy
+} // namespace swappy

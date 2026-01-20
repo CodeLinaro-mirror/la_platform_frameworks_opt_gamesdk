@@ -5,10 +5,12 @@ plugins {
 buildDir = "../../out_game_activity"
 
 android {
-    compileSdkVersion 31
+    namespace "com.google.androidgamesdk.gameactivity"
+    compileSdk 31
+    ndkVersion "23.1.7779620"
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 35
         versionCode 1
         versionName "1.0"
@@ -30,6 +32,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            testCoverageEnabled true
         }
     }
     compileOptions {

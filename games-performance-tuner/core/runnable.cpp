@@ -62,4 +62,4 @@ void Runnable::Stop() {
     thread_->join();
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -18,11 +18,11 @@ package com.google.tuningfork.validation;
 
 /** Exception thrown by {@link ExternalProtoCompiler} when something went wrong. */
 public class CompilationException extends Exception {
-  public CompilationException(String message, Throwable cause) {
-    super(message, cause);
-  }
+    public CompilationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-  public CompilationException(String message) {
-    super(message);
-  }
+    public CompilationException(String message) {
+        super(message);
+    }
 }

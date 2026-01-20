@@ -32,8 +32,8 @@
 #define ERROR_BAD_MAX_INSTRUMENTATION_KEYS -13
 #define ERROR_BAD_ANNOTATION_ENUM_SIZE -14
 #define ERROR_NO_DEV_FIDELITYPARAMS -15
-#define ERROR(CODE, MSG)           \
-  {                                \
-    std::cerr << MSG << std::endl; \
-    return CODE;                   \
-  }
+#define ERROR(CODE, MSG)               \
+    {                                  \
+        std::cerr << MSG << std::endl; \
+        return CODE;                   \
+    }

@@ -64,75 +64,66 @@
 // constexpr weekday fri{5};
 // constexpr weekday sat{6};
 
-#include "iso_week.h"
-#include "date.h"
-
 #include <cassert>
+#include <iostream>
 #include <sstream>
 #include <type_traits>
 
-#include <iostream>
+#include "date.h"
+#include "iso_week.h"
 
-static_assert( std::is_trivially_destructible<iso_week::weekday>{}, "");
+static_assert(std::is_trivially_destructible<iso_week::weekday>{}, "");
 static_assert(!std::is_default_constructible<iso_week::weekday>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::weekday>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::weekday>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::weekday>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::weekday>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::weekday>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::weekday>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::weekday>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::weekday>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::weekday>{}, "");
 static_assert(std::is_standard_layout<iso_week::weekday>{}, "");
 static_assert(std::is_literal_type<iso_week::weekday>{}, "");
 
-static_assert( std::is_nothrow_constructible<iso_week::weekday, unsigned>{}, "");
-static_assert( std::is_nothrow_constructible<iso_week::weekday, iso_week::sys_days>{}, "");
-static_assert( std::is_nothrow_constructible<iso_week::weekday, date::weekday>{}, "");
-static_assert( std::is_nothrow_constructible<date::weekday, iso_week::weekday>{}, "");
-static_assert( std::is_nothrow_constructible<unsigned, iso_week::weekday>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::weekday, unsigned>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::weekday, iso_week::sys_days>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::weekday, date::weekday>{}, "");
+static_assert(std::is_nothrow_constructible<date::weekday, iso_week::weekday>{}, "");
+static_assert(std::is_nothrow_constructible<unsigned, iso_week::weekday>{}, "");
 static_assert(!std::is_convertible<unsigned, iso_week::weekday>{}, "");
-static_assert( std::is_convertible<iso_week::sys_days, iso_week::weekday>{}, "");
-static_assert( std::is_convertible<iso_week::weekday, date::weekday>{}, "");
-static_assert( std::is_convertible<date::weekday, iso_week::weekday>{}, "");
+static_assert(std::is_convertible<iso_week::sys_days, iso_week::weekday>{}, "");
+static_assert(std::is_convertible<iso_week::weekday, date::weekday>{}, "");
+static_assert(std::is_convertible<date::weekday, iso_week::weekday>{}, "");
 static_assert(!std::is_convertible<iso_week::weekday, unsigned>{}, "");
 static_assert(static_cast<unsigned>(iso_week::weekday{1u}) == 1, "");
 
 static_assert(!iso_week::weekday{0u}.ok(), "");
-static_assert( iso_week::weekday{1u}.ok(), "");
-static_assert( iso_week::weekday{2u}.ok(), "");
-static_assert( iso_week::weekday{3u}.ok(), "");
-static_assert( iso_week::weekday{4u}.ok(), "");
-static_assert( iso_week::weekday{5u}.ok(), "");
-static_assert( iso_week::weekday{6u}.ok(), "");
-static_assert( iso_week::weekday{7u}.ok(), "");
+static_assert(iso_week::weekday{1u}.ok(), "");
+static_assert(iso_week::weekday{2u}.ok(), "");
+static_assert(iso_week::weekday{3u}.ok(), "");
+static_assert(iso_week::weekday{4u}.ok(), "");
+static_assert(iso_week::weekday{5u}.ok(), "");
+static_assert(iso_week::weekday{6u}.ok(), "");
+static_assert(iso_week::weekday{7u}.ok(), "");
 
-void
-test_weekday_arithmetic()
-{
+void test_weekday_arithmetic() {
     using namespace iso_week;
-    constexpr unsigned a[7][7] =
-    {// -    Mon Tue Wed Thu Fri Sat Sun
-     /*Mon*/ {0,  6,  5,  4,  3,  2,  1},
-     /*Tue*/ {1,  0,  6,  5,  4,  3,  2},
-     /*Wed*/ {2,  1,  0,  6,  5,  4,  3},
-     /*Thu*/ {3,  2,  1,  0,  6,  5,  4},
-     /*Fri*/ {4,  3,  2,  1,  0,  6,  5},
-     /*Sat*/ {5,  4,  3,  2,  1,  0,  6},
-     /*Sun*/ {6,  5,  4,  3,  2,  1,  0}
-    };
-    for (unsigned x = 1; x <= 7; ++x)
-    {
-        for (unsigned y = 1; y <= 7; ++y)
-        {
-            assert(weekday{x} - weekday{y} == days{a[x-1][y-1]});
-            assert(weekday{x} - days{a[x-1][y-1]} == weekday{y});
-            assert(weekday{x} == weekday{y} + days{a[x-1][y-1]});
-            assert(weekday{x} == days{a[x-1][y-1]} + weekday{y});
+    constexpr unsigned a[7][7] = {// -    Mon Tue Wed Thu Fri Sat Sun
+                                  /*Mon*/ {0, 6, 5, 4, 3, 2, 1},
+                                  /*Tue*/ {1, 0, 6, 5, 4, 3, 2},
+                                  /*Wed*/ {2, 1, 0, 6, 5, 4, 3},
+                                  /*Thu*/ {3, 2, 1, 0, 6, 5, 4},
+                                  /*Fri*/ {4, 3, 2, 1, 0, 6, 5},
+                                  /*Sat*/ {5, 4, 3, 2, 1, 0, 6},
+                                  /*Sun*/ {6, 5, 4, 3, 2, 1, 0}};
+    for (unsigned x = 1; x <= 7; ++x) {
+        for (unsigned y = 1; y <= 7; ++y) {
+            assert(weekday{x} - weekday{y} == days{a[x - 1][y - 1]});
+            assert(weekday{x} - days{a[x - 1][y - 1]} == weekday{y});
+            assert(weekday{x} == weekday{y} + days{a[x - 1][y - 1]});
+            assert(weekday{x} == days{a[x - 1][y - 1]} + weekday{y});
         }
     }
-    for (unsigned x = 1; x <= 7; ++x)
-    {
-        for (int y = -21; y < 21; ++y)
-        {
+    for (unsigned x = 1; x <= 7; ++x) {
+        for (int y = -21; y < 21; ++y) {
             weekday wx{x};
             days dy{y};
             wx += dy;
@@ -143,18 +134,15 @@ test_weekday_arithmetic()
             assert(wx - weekday{x} == days{y % 7 + (y % 7 < 0 ? 7 : 0)});
         }
     }
-    for (unsigned x = 1; x <= 7; ++x)
-    {
-        for (int y = -21; y < 21; ++y)
-        {
+    for (unsigned x = 1; x <= 7; ++x) {
+        for (int y = -21; y < 21; ++y) {
             weekday wx{x};
             days dy{y};
             wx -= dy;
             assert(wx == weekday{x} + days{-y});
         }
     }
-    for (unsigned x = 1; x <= 7; ++x)
-    {
+    for (unsigned x = 1; x <= 7; ++x) {
         weekday wx{x};
         assert(++wx - weekday{x} == days{1});
         assert(wx++ - weekday{x} == days{1});
@@ -165,9 +153,7 @@ test_weekday_arithmetic()
     }
 }
 
-void
-test_with_date_weekday()
-{
+void test_with_date_weekday() {
     auto constexpr d1 = iso_week::sun;
     static_assert(unsigned{d1} == 7, "");
     auto constexpr d2 = date::weekday{d1};
@@ -176,9 +162,7 @@ test_with_date_weekday()
     static_assert(unsigned{d3} == 7, "");
 }
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
 
     static_assert(sun == weekday{7u}, "");
@@ -190,8 +174,8 @@ main()
     static_assert(sat == weekday{6u}, "");
 
     static_assert(!(sun != sun), "");
-    static_assert(  sun != mon, "");
-    static_assert(  mon != sun, "");
+    static_assert(sun != mon, "");
+    static_assert(mon != sun, "");
 
     test_weekday_arithmetic();
     test_with_date_weekday();

@@ -38,8 +38,7 @@ TEST(Annotation, Setup) {
 void CheckEncodeDecode(AnnotationId id, const std::vector<uint32_t>& radix_mult,
                        const std::string& err) {
     SerializedAnnotation ser;
-    EXPECT_EQ(SerializeAnnotationId(id, ser, radix_mult), 0)
-        << err << ": error serializing";
+    EXPECT_EQ(SerializeAnnotationId(id, ser, radix_mult), 0) << err << ": error serializing";
     auto back = DecodeAnnotationSerialization(ser, radix_mult);
     EXPECT_EQ(id, back) << err;
 }
@@ -49,22 +48,18 @@ TEST(Annotation, EncodeDecodeGood) {
     CheckEncodeDecode(2, radix_mult, "Second");
     CheckEncodeDecode(3, radix_mult, "Third");
 }
-void CheckDecodeEncode(SerializedAnnotation ser,
-                       const std::vector<uint32_t>& radix_mult,
+void CheckDecodeEncode(SerializedAnnotation ser, const std::vector<uint32_t>& radix_mult,
                        const std::string& err) {
     auto id = DecodeAnnotationSerialization(ser, radix_mult);
     SerializedAnnotation ser_out;
-    EXPECT_EQ(SerializeAnnotationId(id, ser_out, radix_mult), 0)
-        << err << ": error serializing";
+    EXPECT_EQ(SerializeAnnotationId(id, ser_out, radix_mult), 0) << err << ": error serializing";
     EXPECT_EQ(ser, ser_out) << err;
 }
-void CheckGood(SerializedAnnotation ser, AnnotationId id,
-               const std::vector<uint32_t>& radix_mult) {
+void CheckGood(SerializedAnnotation ser, AnnotationId id, const std::vector<uint32_t>& radix_mult) {
     auto back = DecodeAnnotationSerialization(ser, radix_mult);
     EXPECT_EQ(back, id) << "Good";
 }
-void CheckBad(SerializedAnnotation ser,
-              const std::vector<uint32_t>& radix_mult) {
+void CheckBad(SerializedAnnotation ser, const std::vector<uint32_t>& radix_mult) {
     auto back = DecodeAnnotationSerialization(ser, radix_mult);
     EXPECT_EQ(back, kAnnotationError) << "Bad";
 }
@@ -82,8 +77,7 @@ TEST(Annotation, Decode) {
     CheckGood({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, 59, radix_mult);
 }
 
-void FullCheck(SerializedAnnotation ser, AnnotationId id,
-               const std::vector<uint32_t>& radix_mult,
+void FullCheck(SerializedAnnotation ser, AnnotationId id, const std::vector<uint32_t>& radix_mult,
                const std::string& err) {
     CheckGood(ser, id, radix_mult);
     CheckEncodeDecode(id, radix_mult, err + "_ED");
@@ -103,71 +97,57 @@ TEST(Annotation, WithLoadingAnnotationIndex) {
 
     // No loading_annotation_index
     // result = 2 + 3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult),
-              59)
-        << "Loading";
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult), 59)
+            << "Loading";
 
     // With loading_annotation_index = 0
 
     // No level_annotation_index. Other values are zeroed.
     // result = 2 + 0*3*3 + 0*4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 0),
-              2)
-        << "Loading 0-";
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 0), 2)
+            << "Loading 0-";
     // With level_annotation_index = 1
     // result = 2 + 3*3 + 0*4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 0, 1),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 0, 1),
               11)
-        << "Loading 00";
+            << "Loading 00";
     // With level_annotation_index = 2
     // result = 2 + 0*3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 0, 2),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 0, 2),
               50)
-        << "Loading 01";
+            << "Loading 01";
 
     // With loading_annotation_index = 1
 
     // No level_annotation_index. Other values are zeroed.
     // result = 0*2 + 3*3 + 0*4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 1),
-              9)
-        << "Loading 1-";
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 1), 9)
+            << "Loading 1-";
     // With level_annotation_index = 0
     // result = 2 + 3*3 + 0*4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 1, 0),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 1, 0),
               11)
-        << "Loading 10";
+            << "Loading 10";
     // With level_annotation_index = 2
     // result = 0*2 + 3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 1, 2),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 1, 2),
               57)
-        << "Loading 12";
+            << "Loading 12";
 
     // With loading_annotation_index = 2
 
     // No level_annotation_index. Other values are zeroed.
     // result = 0*2 + 0*3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 2),
-              48)
-        << "Loading 2-";
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 2), 48)
+            << "Loading 2-";
     // With level_annotation_index = 0
     // result = 2 + 0*3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 2, 0),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 2, 0),
               50)
-        << "Loading 20";
+            << "Loading 20";
     // With level_annotation_index = 1
     // result = 0*2 + 3*3 + 4*12
-    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4},
-                                            radix_mult, 2, 1),
+    EXPECT_EQ(DecodeAnnotationSerialization({1 << 3, 2, 2 << 3, 3, 3 << 3, 4}, radix_mult, 2, 1),
               57)
-        << "Loading 21";
+            << "Loading 21";
 }

@@ -26,14 +26,11 @@ import android.hardware.lights.LightsRequest;
 import android.os.Build;
 import android.util.Log;
 import android.view.InputDevice;
-
 import androidx.annotation.GuardedBy;
-
 import java.lang.NullPointerException;
 import java.util.List;
 
 public class GameControllerListener {
-
     private static final String TAG = "GameControllerListener";
     // Must match Paddleboat_Motion_Data_Callback_Sensor_Index definition
     // in paddleboat.h
@@ -48,16 +45,14 @@ public class GameControllerListener {
     private GameControllerGyroscopeListener gyroscopeListener;
     private InputDevice inputDevice;
     private final Object mLightLock = new Object();
-    @GuardedBy("mLightLock")
-    private LightsManager lightsManager;
+    @GuardedBy("mLightLock") private LightsManager lightsManager;
     private LightsManager.LightsSession lightsSession;
     private Sensor accelerometer;
     private Sensor gyroscope;
     private final Object mSensorLock = new Object();
-    @GuardedBy("mSensorLock")
-    private SensorManager sensorManager;
+    @GuardedBy("mSensorLock") private SensorManager sensorManager;
     public GameControllerListener(GameControllerManager gcManager, InputDevice newDevice,
-                                  int newFlags, boolean motionEvents) {
+            int newFlags, boolean motionEvents) {
         gameControllerManager = gcManager;
         inputDevice = newDevice;
         inputDeviceFlags = newFlags;
@@ -167,11 +162,10 @@ public class GameControllerListener {
                         if (gameControllerManager.getPrintControllerInfo()) {
                             printSensorInformation(gyroscope, "integratedGyroscope");
                         }
-                        gyroscopeListener =
-                                new GameControllerGyroscopeListener(gyroscope);
+                        gyroscopeListener = new GameControllerGyroscopeListener(gyroscope);
                         Log.d(TAG, "registering listener for integrated gyroscope");
-                        sensorManager.registerListener(gyroscopeListener, gyroscope,
-                                SensorManager.SENSOR_DELAY_GAME);
+                        sensorManager.registerListener(
+                                gyroscopeListener, gyroscope, SensorManager.SENSOR_DELAY_GAME);
                     }
                 } else if (!active && gyroscopeListener != null) {
                     if (gyroscopeListener != null) {
@@ -204,16 +198,16 @@ public class GameControllerListener {
                 }
                 if (lightsManager != null) {
                     for (Light currentLight : lightsManager.getLights()) {
-                        if (lightType == GameControllerManager.LIGHT_TYPE_PLAYER &&
-                                currentLight.getType() == Light.LIGHT_TYPE_PLAYER_ID) {
+                        if (lightType == GameControllerManager.LIGHT_TYPE_PLAYER
+                                && currentLight.getType() == Light.LIGHT_TYPE_PLAYER_ID) {
                             LightState.Builder stateBuilder = new LightState.Builder();
                             stateBuilder.setPlayerId(lightValue);
                             LightsRequest.Builder requestBuilder = new LightsRequest.Builder();
                             requestBuilder.addLight(currentLight, stateBuilder.build());
                             lightsSession.requestLights(requestBuilder.build());
                             break;
-                        } else if (lightType == GameControllerManager.LIGHT_TYPE_RGB &&
-                                currentLight.hasRgbControl()) {
+                        } else if (lightType == GameControllerManager.LIGHT_TYPE_RGB
+                                && currentLight.hasRgbControl()) {
                             LightState.Builder stateBuilder = new LightState.Builder();
                             stateBuilder.setColor(lightValue);
                             LightsRequest.Builder requestBuilder = new LightsRequest.Builder();
@@ -225,13 +219,14 @@ public class GameControllerListener {
                 }
             }
         }
-
     }
 
     private void configureLights() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if ((inputDeviceFlags & (GameControllerManager.DEVICEFLAG_LIGHT_PLAYER |
-                    GameControllerManager.DEVICEFLAG_LIGHT_RGB)) != 0) {
+            if ((inputDeviceFlags
+                        & (GameControllerManager.DEVICEFLAG_LIGHT_PLAYER
+                                | GameControllerManager.DEVICEFLAG_LIGHT_RGB))
+                    != 0) {
                 synchronized (mLightLock) {
                     Log.d(TAG, "configureLights");
                     lightsManager = inputDevice.getLightsManager();
@@ -253,8 +248,10 @@ public class GameControllerListener {
                     // we have to set from the device's own sensor manager
                     sensorManager = inputDevice.getSensorManager();
                 }
-                if ((inputDeviceFlags & (GameControllerManager.DEVICEFLAG_ACCELEROMETER |
-                        GameControllerManager.DEVICEFLAG_GYROSCOPE)) != 0) {
+                if ((inputDeviceFlags
+                            & (GameControllerManager.DEVICEFLAG_ACCELEROMETER
+                                    | GameControllerManager.DEVICEFLAG_GYROSCOPE))
+                        != 0) {
                     accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
                     if (accelerometer != null) {
                         if (gameControllerManager.getPrintControllerInfo()) {
@@ -273,8 +270,8 @@ public class GameControllerListener {
                         }
                         gyroscopeListener = new GameControllerGyroscopeListener(gyroscope);
                         Log.d(TAG, "registering listener for gyroscope");
-                        sensorManager.registerListener(gyroscopeListener, gyroscope,
-                                SensorManager.SENSOR_DELAY_GAME);
+                        sensorManager.registerListener(
+                                gyroscopeListener, gyroscope, SensorManager.SENSOR_DELAY_GAME);
                     }
                 }
             }
@@ -289,8 +286,8 @@ public class GameControllerListener {
             Log.d(TAG, "getFifoReservedEventCount: " + sensor.getFifoReservedEventCount());
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Log.d(TAG, "getHighestDirectReportRateLevel: " +
-                    sensor.getHighestDirectReportRateLevel());
+            Log.d(TAG,
+                    "getHighestDirectReportRateLevel: " + sensor.getHighestDirectReportRateLevel());
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Log.d(TAG, "getId: " + sensor.getId());
@@ -342,8 +339,7 @@ public class GameControllerListener {
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     }
 
     class GameControllerGyroscopeListener implements android.hardware.SensorEventListener {
@@ -367,8 +363,6 @@ public class GameControllerListener {
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     }
 }

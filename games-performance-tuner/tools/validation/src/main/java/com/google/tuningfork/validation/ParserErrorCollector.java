@@ -23,97 +23,95 @@ import com.google.common.flogger.FluentLogger;
 
 /** Collects validation errors */
 final class ParserErrorCollector implements ErrorCollector {
-  private static final FluentLogger logger = FluentLogger.forEnclosingClass();
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final ListMultimap<ErrorType, String> errors = LinkedListMultimap.create();
-  private final ListMultimap<ErrorType, String> warnings = LinkedListMultimap.create();
+    private final ListMultimap<ErrorType, String> errors = LinkedListMultimap.create();
+    private final ListMultimap<ErrorType, String> warnings = LinkedListMultimap.create();
 
-  @Override
-  public Multimap<ErrorType, String> getErrors() {
-    return errors;
-  }
-
-  @Override
-  public void addError(ErrorType errorType, String message) {
-    errors.put(errorType, message);
-  }
-
-  @Override
-  public void addError(ErrorType errorType, String message, Exception e) {
-    errors.put(errorType, message);
-  }
-
-  @Override
-  public Integer getErrorCount() {
-    return errors.size();
-  }
-
-  @Override
-  public Integer getErrorCount(ErrorType errorType) {
-    return errors.get(errorType).size();
-  }
-
-  @Override
-  public void printStatus() {
-    StringBuilder builder = new StringBuilder();
-    for (ErrorType errorType : ErrorType.values()) {
-      int errorCount = errors.get(errorType).size();
-      if (errorCount != 0) {
-        builder
-            .append(errorType)
-            .append(" : ")
-            .append(errorCount)
-            .append(" ERRORS\n\t")
-            .append(errors.get(errorType))
-            .append("\n");
-      }
+    @Override
+    public Multimap<ErrorType, String> getErrors() {
+        return errors;
     }
-    logger.atWarning().log(builder.toString());
-  }
 
-  @Override
-  public Boolean hasErrors(ErrorType.ErrorGroup group) {
-    for (ErrorType errorType : ErrorType.values()) {
-      if (errorType.getGroup() == group && errors.containsKey(errorType)) {
-        return true;
-      }
+    @Override
+    public void addError(ErrorType errorType, String message) {
+        errors.put(errorType, message);
     }
-    return false;
-  }
 
-  @Override
-  public Boolean hasAnnotationErrors() {
-    return hasErrors(ErrorType.ErrorGroup.ANNOTATION);
-  }
+    @Override
+    public void addError(ErrorType errorType, String message, Exception e) {
+        errors.put(errorType, message);
+    }
 
-  @Override
-  public Boolean hasFidelityParamsErrors() {
-    return hasErrors(ErrorType.ErrorGroup.FIDELITY);
-  }
+    @Override
+    public Integer getErrorCount() {
+        return errors.size();
+    }
 
-  @Override
-  public Boolean hasSettingsErrors() {
-    return hasErrors(ErrorType.ErrorGroup.SETTINGS);
-  }
+    @Override
+    public Integer getErrorCount(ErrorType errorType) {
+        return errors.get(errorType).size();
+    }
 
-  @Override
-  public Integer getWarningCount() {
-    return warnings.size();
-  }
+    @Override
+    public void printStatus() {
+        StringBuilder builder = new StringBuilder();
+        for (ErrorType errorType : ErrorType.values()) {
+            int errorCount = errors.get(errorType).size();
+            if (errorCount != 0) {
+                builder.append(errorType)
+                        .append(" : ")
+                        .append(errorCount)
+                        .append(" ERRORS\n\t")
+                        .append(errors.get(errorType))
+                        .append("\n");
+            }
+        }
+        logger.atWarning().log(builder.toString());
+    }
 
-  @Override
-  public Integer getWarningCount(ErrorType errorType) {
-    return warnings.get(errorType).size();
-  }
+    @Override
+    public Boolean hasErrors(ErrorType.ErrorGroup group) {
+        for (ErrorType errorType : ErrorType.values()) {
+            if (errorType.getGroup() == group && errors.containsKey(errorType)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-  @Override
-  public void addWarning(ErrorType errorType, String message) {
-    warnings.put(errorType, message);
-  }
+    @Override
+    public Boolean hasAnnotationErrors() {
+        return hasErrors(ErrorType.ErrorGroup.ANNOTATION);
+    }
 
-  @Override
-  public Multimap<ErrorType, String> getWarnings() {
-    return warnings;
-  }
+    @Override
+    public Boolean hasFidelityParamsErrors() {
+        return hasErrors(ErrorType.ErrorGroup.FIDELITY);
+    }
 
+    @Override
+    public Boolean hasSettingsErrors() {
+        return hasErrors(ErrorType.ErrorGroup.SETTINGS);
+    }
+
+    @Override
+    public Integer getWarningCount() {
+        return warnings.size();
+    }
+
+    @Override
+    public Integer getWarningCount(ErrorType errorType) {
+        return warnings.get(errorType).size();
+    }
+
+    @Override
+    public void addWarning(ErrorType errorType, String message) {
+        warnings.put(errorType, message);
+    }
+
+    @Override
+    public Multimap<ErrorType, String> getWarnings() {
+        return warnings;
+    }
 }

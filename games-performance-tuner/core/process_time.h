@@ -20,35 +20,40 @@
 
 namespace tuningfork {
 
-typedef std::chrono::nanoseconds ProcessTime;  // Duration since process start.
+typedef std::chrono::nanoseconds ProcessTime; // Duration since process start.
 
 // This can represent an interval with start and end times or a pure duration
 // if end.count()==0.
 class ProcessTimeInterval {
-  ProcessTime start_;
-  ProcessTime end_;
+    ProcessTime start_;
+    ProcessTime end_;
 
- public:
-  ProcessTimeInterval() : start_(0), end_(0) {}
-  // Initialize as a duration.
-  ProcessTimeInterval(Duration duration) : start_(duration), end_(0) {}
-  // Initialize as an interval.
-  ProcessTimeInterval(ProcessTime start, ProcessTime end)
-      : start_(start), end_(end) {
-    // Disallow travelling backwards in time.
-    if (start_ > end_) {
-      end_ = start_;
+public:
+    ProcessTimeInterval() : start_(0), end_(0) {}
+    // Initialize as a duration.
+    ProcessTimeInterval(Duration duration) : start_(duration), end_(0) {}
+    // Initialize as an interval.
+    ProcessTimeInterval(ProcessTime start, ProcessTime end) : start_(start), end_(end) {
+        // Disallow travelling backwards in time.
+        if (start_ > end_) {
+            end_ = start_;
+        }
     }
-  }
-  bool IsDuration() const { return end_.count() == 0; }
-  Duration Duration() const {
-    if (IsDuration())
-      return start_;
-    else
-      return end_ - start_;
-  }
-  ProcessTime Start() const { return start_; }
-  ProcessTime End() const { return end_; }
+    bool IsDuration() const {
+        return end_.count() == 0;
+    }
+    Duration Duration() const {
+        if (IsDuration())
+            return start_;
+        else
+            return end_ - start_;
+    }
+    ProcessTime Start() const {
+        return start_;
+    }
+    ProcessTime End() const {
+        return end_;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

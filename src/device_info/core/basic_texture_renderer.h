@@ -31,45 +31,45 @@ using StringVector = ProtoDataHolder::StringVector;
  * Used to verify that rendering of textures is working propperly.
  */
 class BasicTextureRenderer {
- public:
-  BasicTextureRenderer(StringVector &errors);
-  virtual ~BasicTextureRenderer();
+public:
+    BasicTextureRenderer(StringVector& errors);
+    virtual ~BasicTextureRenderer();
 
-  size_t getGlErrorsCount() const;
+    size_t getGlErrorsCount() const;
 
-  /**
-   * Load the given texture, returning true on success.
-   */
-  GLuint loadTexture(GLenum internalformat, GLsizei width, GLsizei height,
-                     GLsizei imageSize, const void *data);
+    /**
+     * Load the given texture, returning true on success.
+     */
+    GLuint loadTexture(GLenum internalformat, GLsizei width, GLsizei height, GLsizei imageSize,
+                       const void* data);
 
-  /**
-   * Initialize the shaders and the program object
-   */
-  GLuint loadProgramObject();
+    /**
+     * Initialize the shaders and the program object
+     */
+    GLuint loadProgramObject();
 
-  /**
-   * Draw a rectangle with the loaded texture.
-   */
-  bool draw(GLint width, GLint height);
+    /**
+     * Draw a rectangle with the loaded texture.
+     */
+    bool draw(GLint width, GLint height);
 
- private:
-  /*
-   * Return the loaded and compiled shader, or 0 if an error occurred.
-   */
-  GLuint loadShader(GLenum type, const char *shaderSrc);
+private:
+    /*
+     * Return the loaded and compiled shader, or 0 if an error occurred.
+     */
+    GLuint loadShader(GLenum type, const char* shaderSrc);
 
-  bool checkGlErrors(const char *title);
+    bool checkGlErrors(const char* title);
 
-  GLint positionLocation_;
-  GLint texCoordLocation_;
-  GLint samplerLocation_;
-  GLuint textureId_;
-  GLuint programObject_;
+    GLint positionLocation_;
+    GLint texCoordLocation_;
+    GLint samplerLocation_;
+    GLuint textureId_;
+    GLuint programObject_;
 
-  // Store errors:
-  StringVector &errors_;
-  size_t errorsCount_;
+    // Store errors:
+    StringVector& errors_;
+    size_t errorsCount_;
 };
 
-}  // namespace androidgamesdk_deviceinfo
+} // namespace androidgamesdk_deviceinfo

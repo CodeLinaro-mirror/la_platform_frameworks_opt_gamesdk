@@ -46,13 +46,10 @@ extern bool g_verbose_logging_enabled;
 // upload or download.
 // first_run should be set to true if this is the first time the app has been
 // run after installation.
-TuningFork_ErrorCode Init(const Settings& settings,
-                          const RequestInfo* request_info = nullptr,
-                          IBackend* backend = nullptr,
-                          ITimeProvider* time_provider = nullptr,
+TuningFork_ErrorCode Init(const Settings& settings, const RequestInfo* request_info = nullptr,
+                          IBackend* backend = nullptr, ITimeProvider* time_provider = nullptr,
                           IMemInfoProvider* meminfo_provider = nullptr,
-                          IBatteryProvider* battery_provider = nullptr,
-                          bool first_run = false);
+                          IBatteryProvider* battery_provider = nullptr, bool first_run = false);
 
 // Blocking call to get fidelity parameters from the server.
 // Returns true if parameters could be downloaded within the timeout, false
@@ -61,13 +58,11 @@ TuningFork_ErrorCode Init(const Settings& settings,
 //  as being associated with those parameters.
 // If you subsequently call GetFidelityParameters, any data that is already
 // collected will be submitted to the backend.
-TuningFork_ErrorCode GetFidelityParameters(
-    const ProtobufSerialization& default_params, ProtobufSerialization& params,
-    uint32_t timeout_ms);
+TuningFork_ErrorCode GetFidelityParameters(const ProtobufSerialization& default_params,
+                                           ProtobufSerialization& params, uint32_t timeout_ms);
 
 // Protobuf serialization of the current annotation
-TuningFork_ErrorCode SetCurrentAnnotation(
-    const ProtobufSerialization& annotation);
+TuningFork_ErrorCode SetCurrentAnnotation(const ProtobufSerialization& annotation);
 
 // Record a frame tick that will be associated with the instrumentation key and
 // the current
@@ -113,14 +108,13 @@ TuningFork_ErrorCode PauseFrameTimeLogging();
 TuningFork_ErrorCode ResumeFrameTimeLogging();
 
 // Record a loading time event
-TuningFork_ErrorCode RecordLoadingTime(Duration duration,
-                                       const LoadingTimeMetadata& d,
+TuningFork_ErrorCode RecordLoadingTime(Duration duration, const LoadingTimeMetadata& d,
                                        const ProtobufSerialization& annotation);
 
 // Start recording a loading time event
-TuningFork_ErrorCode StartRecordingLoadingTime(
-    const LoadingTimeMetadata& d, const ProtobufSerialization& annotation,
-    LoadingHandle& handle);
+TuningFork_ErrorCode StartRecordingLoadingTime(const LoadingTimeMetadata& d,
+                                               const ProtobufSerialization& annotation,
+                                               LoadingHandle& handle);
 
 // Record a loading time event
 TuningFork_ErrorCode StopRecordingLoadingTime(LoadingHandle handle);
@@ -142,7 +136,7 @@ bool CheckIfFirstRun();
 
 std::string DefaultTuningForkSaveDirectory();
 
-TuningFork_ErrorCode SetAggregationStrategyInterval(
-    TuningFork_Submission method, uint32_t interval_ms_or_count);
+TuningFork_ErrorCode SetAggregationStrategyInterval(TuningFork_Submission method,
+                                                    uint32_t interval_ms_or_count);
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -38,34 +38,38 @@ using namespace zetasketch::android;
 using namespace dist_proc::aggregation;
 
 struct FrameTimeMetric {
-  FrameTimeMetric(uint32_t ikey_index = 0, SerializedAnnotation annotation = {})
-      : instrumentation_key_index_(ikey_index), annotation_(annotation) {}
-  uint32_t instrumentation_key_index_;
-  SerializedAnnotation annotation_;
+    FrameTimeMetric(uint32_t ikey_index = 0, SerializedAnnotation annotation = {})
+          : instrumentation_key_index_(ikey_index), annotation_(annotation) {}
+    uint32_t instrumentation_key_index_;
+    SerializedAnnotation annotation_;
 };
 
 struct FrameTimeMetricData : public MetricData {
-  FrameTimeMetricData(MetricId metric_id, const Settings::Histogram& settings)
-      : MetricData(MetricType()),
-        metric_id_(metric_id),
-        histogram_(settings, false /*isLoading*/),
-        last_time_(TimePoint::min()),
-        duration_(Duration::zero()) {
-    KllQuantileOptions options;
-    options.set_inv_eps(KLL_INV_EPS);
-    options.set_inv_delta(KLL_INV_DELTA);
-    aggregator_ = KllQuantile::Create(options);
-  }
-  MetricId metric_id_;
-  Histogram<double> histogram_;
-  TimePoint last_time_;
-  Duration duration_;
-  std::unique_ptr<KllQuantile> aggregator_;
-  void Tick(TimePoint t, bool record = true);
-  void Record(Duration dt);
-  virtual void Clear() override;
-  virtual size_t Count() const override { return histogram_.Count(); }
-  static Metric::Type MetricType() { return Metric::Type::FRAME_TIME; }
+    FrameTimeMetricData(MetricId metric_id, const Settings::Histogram& settings)
+          : MetricData(MetricType()),
+            metric_id_(metric_id),
+            histogram_(settings, false /*isLoading*/),
+            last_time_(TimePoint::min()),
+            duration_(Duration::zero()) {
+        KllQuantileOptions options;
+        options.set_inv_eps(KLL_INV_EPS);
+        options.set_inv_delta(KLL_INV_DELTA);
+        aggregator_ = KllQuantile::Create(options);
+    }
+    MetricId metric_id_;
+    Histogram<double> histogram_;
+    TimePoint last_time_;
+    Duration duration_;
+    std::unique_ptr<KllQuantile> aggregator_;
+    void Tick(TimePoint t, bool record = true);
+    void Record(Duration dt);
+    virtual void Clear() override;
+    virtual size_t Count() const override {
+        return histogram_.Count();
+    }
+    static Metric::Type MetricType() {
+        return Metric::Type::FRAME_TIME;
+    }
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

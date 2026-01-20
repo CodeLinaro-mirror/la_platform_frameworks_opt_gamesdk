@@ -3,16 +3,21 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
+    namespace "com.gametextinput.testbed"
+    compileSdk 31
+    ndkVersion "27.2.12479018"
 
     defaultConfig {
         applicationId "com.gametextinput.testbed"
-        minSdkVersion 19
-        targetSdkVersion 33
+        minSdk 21
+        targetSdk 35
         versionCode 1
         versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
     }
 
     buildTypes {
@@ -41,11 +46,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.3.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
 
-    // Uncomment the line below (implementation fileTree...)
-    // and comment out the "implementation project(":*")" lines
-    // to use a locally built .aar
-    // See ../settings.gradle as well.
-    //implementation fileTree(dir: '../../../../', include: ['game-text-input-release.aar'])
-
+//    implementation 'androidx.games:games-text-input:4.0.0'
     implementation project(":game-text-input")
 }

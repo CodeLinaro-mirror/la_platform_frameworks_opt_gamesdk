@@ -22,8 +22,8 @@
 #define LOG_TAG "TestApp"
 #include "Log.h"
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_swappy_testapp_MainActivity_runTests(JNIEnv* env, jobject ctx) {
+extern "C" JNIEXPORT jstring JNICALL Java_com_swappy_testapp_MainActivity_runTests(JNIEnv* env,
+                                                                                   jobject ctx) {
     int argc = 1;
     char appName[] = "testapp";
     char* argv[] = {appName};
@@ -38,8 +38,7 @@ Java_com_swappy_testapp_MainActivity_runTests(JNIEnv* env, jobject ctx) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_swappy_testapp_MainActivity_testSummarySoFar(JNIEnv* env,
-                                                      jobject ctx) {
+Java_com_swappy_testapp_MainActivity_testSummarySoFar(JNIEnv* env, jobject ctx) {
     constexpr int BUF_LEN = 2048;
     static char buf[BUF_LEN] = "";
     test_summary(buf, BUF_LEN);

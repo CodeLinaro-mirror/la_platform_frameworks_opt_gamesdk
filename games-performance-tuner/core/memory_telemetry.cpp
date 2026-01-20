@@ -38,7 +38,7 @@
 namespace tuningfork {
 
 static const uint64_t HIST_START = 0;
-static const uint64_t DEFAULT_HIST_END = 10000000000L;  // 10GB
+static const uint64_t DEFAULT_HIST_END = 10000000000L; // 10GB
 static const uint32_t NUM_BUCKETS = 200;
 
 constexpr size_t BYTES_IN_KB = 1024;
@@ -47,16 +47,20 @@ using memInfoMap = std::unordered_map<std::string, size_t>;
 
 using namespace std::chrono;
 
-Duration MemoryTelemetry::UploadPeriod() { return kMemoryMetricInterval; }
+Duration MemoryTelemetry::UploadPeriod() {
+    return kMemoryMetricInterval;
+}
 
-void MemoryReportingTask::DoWork(Session *session) {
+void MemoryReportingTask::DoWork(Session* session) {
     if (mem_info_provider_ != nullptr && mem_info_provider_->GetEnabled()) {
         auto d = session->GetData<MemoryMetricData>(metric_id_);
         d->Record(mem_info_provider_, time_provider_->TimeSinceProcessStart());
     }
 }
 
-void MemoryReportingTask::UpdateMetricId(MetricId id) { metric_id_ = id; }
+void MemoryReportingTask::UpdateMetricId(MetricId id) {
+    metric_id_ = id;
+}
 
 uint64_t DefaultMemInfoProvider::GetNativeHeapAllocatedSize() {
     if (gamesdk::jni::IsValid()) {
@@ -77,8 +81,8 @@ uint64_t DefaultMemInfoProvider::GetPss() {
 uint64_t DefaultMemInfoProvider::GetAvailMem() {
     if (gamesdk::jni::IsValid()) {
         using namespace gamesdk::jni;
-        java::Object obj = AppContext().getSystemService(
-            android::content::Context::ACTIVITY_SERVICE);
+        java::Object obj =
+                AppContext().getSystemService(android::content::Context::ACTIVITY_SERVICE);
         if (!obj.IsNull()) {
             android::app::ActivityManager activity_manager(std::move(obj));
             gamesdk::jni::android::app::MemoryInfo memory_info;
@@ -91,7 +95,7 @@ uint64_t DefaultMemInfoProvider::GetAvailMem() {
 
 // Add entries to the given memInfoMap structure, or update the entries if the
 // new value is higher.
-static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
+static void getMemInfoFromFile(memInfoMap& data, const std::string& path) {
     std::ifstream file_stream(path);
     if (!file_stream) {
         ALOGE("Could not open %s", path.c_str());
@@ -102,7 +106,7 @@ static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
         std::vector<std::string> split(std::istream_iterator<std::string>{ss},
                                        std::istream_iterator<std::string>());
         if (split.size() == 3 && split[2] == "kB") {
-            std::string &key = split[0];
+            std::string& key = split[0];
             // Remove colon at end of first word
             key.pop_back();
             size_t value = atoi(split[1].c_str()) * BYTES_IN_KB;
@@ -113,8 +117,8 @@ static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
     }
 }
 
-static std::pair<uint64_t, bool> getMemInfoValueFromData(
-    const memInfoMap &data, const std::string &key) {
+static std::pair<uint64_t, bool> getMemInfoValueFromData(const memInfoMap& data,
+                                                         const std::string& key) {
     if (data.count(key)) {
         return std::make_pair(data.at(key), true);
     } else {
@@ -174,7 +178,9 @@ void DefaultMemInfoProvider::SetEnabled(bool enabled) {
     enabled_ = enabled;
 }
 
-bool DefaultMemInfoProvider::GetEnabled() const { return enabled_; }
+bool DefaultMemInfoProvider::GetEnabled() const {
+    return enabled_;
+}
 
 void DefaultMemInfoProvider::SetDeviceMemoryBytes(uint64_t bytesize) {
     device_memory_bytes = bytesize;
@@ -295,4 +301,4 @@ uint64_t DefaultMemInfoProvider::GetMemInfoVmSizeBytes() const {
     return memInfo.vmSize.first;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

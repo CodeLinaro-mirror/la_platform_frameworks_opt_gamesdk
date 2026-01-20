@@ -20,13 +20,12 @@ namespace tuningfork {
 
 class Session;
 
-void BatteryReportingTask::DoWork(Session *session) {
-    if (battery_provider_ != nullptr &&
-        battery_provider_->IsBatteryReportingEnabled()) {
+void BatteryReportingTask::DoWork(Session* session) {
+    if (battery_provider_ != nullptr && battery_provider_->IsBatteryReportingEnabled()) {
         std::lock_guard<std::mutex> lock(mutex_);
-        session->GetData<BatteryMetricData>(id_)->Record(
-            activity_lifecycle_state_->IsAppOnForeground(),
-            time_provider_->TimeSinceProcessStart(), battery_provider_);
+        session->GetData<BatteryMetricData>(id_)
+                ->Record(activity_lifecycle_state_->IsAppOnForeground(),
+                         time_provider_->TimeSinceProcessStart(), battery_provider_);
     }
 }
 
@@ -35,4 +34,4 @@ void BatteryReportingTask::UpdateMetricId(MetricId id) {
     id_ = id;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

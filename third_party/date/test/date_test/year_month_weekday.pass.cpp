@@ -77,49 +77,43 @@
 
 // std::ostream& operator<<(std::ostream& os, const year_month_weekday& ymwdi);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<date::year_month_weekday>{}, "");
-static_assert( std::is_default_constructible<date::year_month_weekday>{}, "");
-static_assert( std::is_trivially_copy_constructible<date::year_month_weekday>{}, "");
-static_assert( std::is_trivially_copy_assignable<date::year_month_weekday>{}, "");
-static_assert( std::is_trivially_move_constructible<date::year_month_weekday>{}, "");
-static_assert( std::is_trivially_move_assignable<date::year_month_weekday>{}, "");
+#include "date.h"
 
-static_assert(std::is_nothrow_constructible<date::year_month_weekday,
-                                                date::year, date::month,
-                                                date::weekday_indexed>{}, "");
-static_assert(std::is_nothrow_constructible<date::year_month_weekday,
-                                                date::sys_days>{}, "");
+static_assert(std::is_trivially_destructible<date::year_month_weekday>{}, "");
+static_assert(std::is_default_constructible<date::year_month_weekday>{}, "");
+static_assert(std::is_trivially_copy_constructible<date::year_month_weekday>{}, "");
+static_assert(std::is_trivially_copy_assignable<date::year_month_weekday>{}, "");
+static_assert(std::is_trivially_move_constructible<date::year_month_weekday>{}, "");
+static_assert(std::is_trivially_move_assignable<date::year_month_weekday>{}, "");
+
+static_assert(std::is_nothrow_constructible<date::year_month_weekday, date::year, date::month,
+                                            date::weekday_indexed>{},
+              "");
+static_assert(std::is_nothrow_constructible<date::year_month_weekday, date::sys_days>{}, "");
 static_assert(std::is_convertible<date::sys_days, date::year_month_weekday>{}, "");
-static_assert(std::is_nothrow_constructible<date::sys_days,
-                                                date::year_month_weekday>{}, "");
+static_assert(std::is_nothrow_constructible<date::sys_days, date::year_month_weekday>{}, "");
 static_assert(std::is_convertible<date::year_month_weekday, date::sys_days>{}, "");
 
-void
-test_arithmetic()
-{
+void test_arithmetic() {
     using namespace date;
 
-    for (int y1 = 2010; y1 <= 2015; ++y1)
-    {
-        for (int m1 = 1; m1 <= 12; ++m1)
-        {
-            auto ymd1 = mon[2]/m1/y1;;
+    for (int y1 = 2010; y1 <= 2015; ++y1) {
+        for (int m1 = 1; m1 <= 12; ++m1) {
+            auto ymd1 = mon[2] / m1 / y1;
+            ;
             auto ymd2 = ymd1 + months(24);
-            assert(ymd2 == mon[2]/m1/(y1+2));
+            assert(ymd2 == mon[2] / m1 / (y1 + 2));
             ymd2 = ymd1 - months(24);
-            assert(ymd2 == mon[2]/m1/(y1-2));
-            for (int m2 = -24; m2 <= 24; ++m2)
-            {
+            assert(ymd2 == mon[2] / m1 / (y1 - 2));
+            for (int m2 = -24; m2 <= 24; ++m2) {
                 months m{m2};
                 auto ymd3 = ymd1 + m;
                 months dm = year_month{ymd3.year(), ymd3.month()} -
-                            year_month{ymd2.year(), ymd2.month()};
+                        year_month{ymd2.year(), ymd2.month()};
                 assert(dm == m + years{2});
                 assert(ymd3 - m == ymd1);
                 assert(ymd3 + -m == ymd1);
@@ -127,8 +121,7 @@ test_arithmetic()
                 assert((year_month_weekday{ymd1} += m) == ymd3);
                 assert((year_month_weekday{ymd3} -= m) == ymd1);
             }
-            for (int y2 = -2; y2 <= 5; ++y2)
-            {
+            for (int y2 = -2; y2 <= 5; ++y2) {
                 years y{y2};
                 auto ymd3 = ymd1 + y;
                 years dy = floor<years>(year_month{ymd3.year(), ymd3.month()} -
@@ -144,9 +137,7 @@ test_arithmetic()
     }
 }
 
-int
-main()
-{
+int main() {
     using namespace date;
 
     constexpr year_month_weekday ymdl1 = {2015_y, aug, weekday_indexed{fri, 2}};
@@ -161,10 +152,10 @@ main()
 #if __cplusplus >= 201402
     constexpr sys_days dp = ymdl1;
     constexpr year_month_day ymd = dp;
-    static_assert(ymd == 2015_y/aug/14, "");
+    static_assert(ymd == 2015_y / aug / 14, "");
 #endif
 
-    constexpr year_month_weekday ymdl2 = sat[1]/aug/2015;
+    constexpr year_month_weekday ymdl2 = sat[1] / aug / 2015;
 
     static_assert(ymdl1 == ymdl1, "");
     static_assert(ymdl1 != ymdl2, "");
@@ -174,5 +165,4 @@ main()
     std::ostringstream os;
     os << ymdl1;
     assert(os.str() == "2015/Aug/Fri[2]");
-
 }

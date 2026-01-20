@@ -71,14 +71,6 @@ class LocalToolchain(
         if (foundNdkPath == null) {
             foundNdkPath = System.getenv("ANDROID_NDK_HOME")
         }
-        if (foundNdkPath == null &&
-            project_.rootProject.file("local.properties").isFile()
-        ) {
-            val properties = loadPropertiesFromFile(
-                project_.rootProject.file("local.properties")
-            )
-            foundNdkPath = properties.getProperty("ndk.dir")
-        }
         if (foundNdkPath == null) {
             foundNdkPath = joinPath(sdkPath, "ndk-bundle")
             if (!project_.file(foundNdkPath).exists())

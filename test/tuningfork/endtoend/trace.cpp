@@ -52,4 +52,4 @@ TEST(EndToEndTest, systrace) {
     trace_->endAsyncSection("test", 101);
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

@@ -34,7 +34,7 @@ public class InstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         android.content.Context appContext =
-            InstrumentationRegistry.getInstrumentation().getTargetContext();
+                InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertEquals("com.google.androidgamesdk.swappy.test", appContext.getPackageName());
     }
 }

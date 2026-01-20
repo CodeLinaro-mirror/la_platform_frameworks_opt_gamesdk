@@ -23,39 +23,39 @@ import android.view.inputmethod.EditorInfo;
  * Singleton GameTextInput class with helper methods.
  */
 public final class GameTextInput {
-  public final static void copyEditorInfo(EditorInfo from, EditorInfo to) {
-    if (from == null || to == null)
-      return;
-    if (from.hintText != null) {
-      to.hintText = from.hintText;
+    public final static void copyEditorInfo(EditorInfo from, EditorInfo to) {
+        if (from == null || to == null)
+            return;
+        if (from.hintText != null) {
+            to.hintText = from.hintText;
+        }
+
+        to.inputType = from.inputType;
+        to.imeOptions = from.imeOptions;
+        to.label = from.label;
+        to.initialCapsMode = from.initialCapsMode;
+        to.privateImeOptions = from.privateImeOptions;
+        if (from.packageName != null) {
+            to.packageName = from.packageName;
+        }
+
+        to.fieldId = from.fieldId;
+        if (from.fieldName != null) {
+            to.fieldName = from.fieldName;
+        }
+
+        to.initialSelStart = from.initialSelStart;
+        to.initialSelEnd = from.initialSelEnd;
     }
 
-    to.inputType = from.inputType;
-    to.imeOptions = from.imeOptions;
-    to.label = from.label;
-    to.initialCapsMode = from.initialCapsMode;
-    to.privateImeOptions = from.privateImeOptions;
-    if (from.packageName != null) {
-      to.packageName = from.packageName;
+    public static final class Pair {
+        int first, second;
+
+        Pair(int f, int s) {
+            first = f;
+            second = s;
+        }
     }
 
-    to.fieldId = from.fieldId;
-    if (from.fieldName != null) {
-      to.fieldName = from.fieldName;
-    }
-
-    to.initialSelStart = from.initialSelStart;
-    to.initialSelEnd = from.initialSelEnd;
-  }
-
-  public static final class Pair {
-    int first, second;
-
-    Pair(int f, int s) {
-      first = f;
-      second = s;
-    }
-  }
-
-  private GameTextInput() {}
+    private GameTextInput() {}
 }

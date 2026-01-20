@@ -15,27 +15,24 @@
  */
 #pragma once
 
+#include "controllerui_data.h"
 #include "imgui.h"
 
 struct ControllerUIPanelParams {
-  float panelBaseX;
-  float panelBaseY;
-  float panelImageScale;
+    float panelBaseX;
+    float panelBaseY;
+    float panelImageScale;
 };
 
 class ControllerUIUtil {
- public:
-  static void Button(const ControllerUIPanelParams &panelParams,
-                     const ControllerUIButtons buttonId,
-                     const ControllerButtonInfo &buttonInfo);
+public:
+    static void Button(const ControllerUIPanelParams& panelParams,
+                       const ControllerUIButtons buttonId, const ControllerButtonInfo& buttonInfo);
 
-  static void Thumbstick(const ControllerUIPanelParams &panelParams,
-                         const ImVec2 &basePos, const ImVec2 &stickVals,
-                         const ControllerUIStickStates stickState);
+    static void Thumbstick(const ControllerUIPanelParams& panelParams, const ImVec2& basePos,
+                           const ImVec2& stickVals, const ControllerUIStickStates stickState);
 
-  // function outputs to draw_list parameter, must not be null
-  static void TriggerBar(const ControllerUIPanelParams &panelParams,
-                         ImDrawList *draw_list,
-                         const ControllerUIButtons buttonId,
-                         const float triggerValue);
+    // function outputs to draw_list parameter, must not be null
+    static void TriggerBar(const ControllerUIPanelParams& panelParams, ImDrawList* draw_list,
+                           const ControllerUIButtons buttonId, const float triggerValue);
 };

@@ -32,92 +32,91 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class CppFileUtils {
+    private final PsiFile psiFile;
+    private final List<OCFunctionDefinition> methods;
 
-  private final PsiFile psiFile;
-  private final List<OCFunctionDefinition> methods;
-
-  public CppFileUtils(PsiFile psiFile) {
-    if (!(psiFile instanceof OCFile)) {
-      throw new RuntimeException("Only Cpp files are allowed");
-    }
-    this.psiFile = psiFile;
-    this.methods = new ArrayList<>();
-
-    scanFile();
-  }
-
-  private Optional<PsiElement> hasMethod(OCFunctionDefinition methodSearched) {
-    List<OCFunctionDefinition> methodsMatched = methods.stream().filter(
-        method -> Objects.equals(methodSearched.getName(), method.getName())
-    ).collect(Collectors.toList());
-    if (methodsMatched.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(methodsMatched.get(0));
-  }
-
-  private void scanFile() {
-    methods.clear();
-    psiFile.accept(new PsiRecursiveElementVisitor() {
-      @Override
-      public void visitElement(PsiElement element) {
-        super.visitElement(element);
-        if (element instanceof OCFunctionDefinition) {
-          methods.add((OCFunctionDefinition) element);
+    public CppFileUtils(PsiFile psiFile) {
+        if (!(psiFile instanceof OCFile)) {
+            throw new RuntimeException("Only Cpp files are allowed");
         }
-      }
-    });
-  }
+        this.psiFile = psiFile;
+        this.methods = new ArrayList<>();
 
-  public Optional<PsiElement> findMethodAsChildren(PsiElement parentElement) {
-    PsiElement functionDefinition = null;
-    for (PsiElement childPsi : parentElement.getChildren()) {
-      if (childPsi instanceof OCFunctionDefinition) {
-        functionDefinition = childPsi;
-        break;
-      }
+        scanFile();
     }
-    return Optional.ofNullable(functionDefinition);
-  }
 
-  public List<OCReferenceElement> getAllReferenceElementsInsideMethods(
-      List<String> methodNames) {
-    ArrayList<OCReferenceElement> referenceElements = new ArrayList<>();
-
-    psiFile.accept(new PsiRecursiveElementVisitor() {
-      String currentMethodName = "";
-
-      @Override
-      public void visitElement(PsiElement element) {
-        super.visitElement(element);
-        if ((element instanceof OCReferenceElement) &&
-            methodNames.contains(currentMethodName)) {
-          referenceElements.add((OCReferenceElement) element);
-        } else if (element instanceof OCFunctionDefinition) {
-          currentMethodName = ((OCFunctionDefinition) element).getName();
+    private Optional<PsiElement> hasMethod(OCFunctionDefinition methodSearched) {
+        List<OCFunctionDefinition> methodsMatched =
+                methods.stream()
+                        .filter(method
+                                -> Objects.equals(methodSearched.getName(), method.getName()))
+                        .collect(Collectors.toList());
+        if (methodsMatched.isEmpty()) {
+            return Optional.empty();
         }
-      }
-    });
-    return referenceElements;
-  }
+        return Optional.of(methodsMatched.get(0));
+    }
 
-  public void fixImports(List<OCReferenceElement> referenceElements) {
-    Project project = psiFile.getProject();
-    referenceElements
-        .forEach(referenceElement ->
-            (new OCImportSymbolFix(referenceElement)).fixFirstItem(project, psiFile));
-  }
+    private void scanFile() {
+        methods.clear();
+        psiFile.accept(new PsiRecursiveElementVisitor() {
+            @Override
+            public void visitElement(PsiElement element) {
+                super.visitElement(element);
+                if (element instanceof OCFunctionDefinition) {
+                    methods.add((OCFunctionDefinition) element);
+                }
+            }
+        });
+    }
 
-  // Finds method definition of a C linkage.
-  public Optional<PsiElement> findElement(PsiElement psiElement) {
-    if (psiElement instanceof OCCppLinkageSpecification) {
-      Optional<PsiElement> methodDefinition = findMethodAsChildren(psiElement);
-      if (methodDefinition.isPresent()) {
-        return hasMethod((OCFunctionDefinition) methodDefinition.get());
-      } else {
+    public Optional<PsiElement> findMethodAsChildren(PsiElement parentElement) {
+        PsiElement functionDefinition = null;
+        for (PsiElement childPsi : parentElement.getChildren()) {
+            if (childPsi instanceof OCFunctionDefinition) {
+                functionDefinition = childPsi;
+                break;
+            }
+        }
+        return Optional.ofNullable(functionDefinition);
+    }
+
+    public List<OCReferenceElement> getAllReferenceElementsInsideMethods(List<String> methodNames) {
+        ArrayList<OCReferenceElement> referenceElements = new ArrayList<>();
+
+        psiFile.accept(new PsiRecursiveElementVisitor() {
+            String currentMethodName = "";
+
+            @Override
+            public void visitElement(PsiElement element) {
+                super.visitElement(element);
+                if ((element instanceof OCReferenceElement)
+                        && methodNames.contains(currentMethodName)) {
+                    referenceElements.add((OCReferenceElement) element);
+                } else if (element instanceof OCFunctionDefinition) {
+                    currentMethodName = ((OCFunctionDefinition) element).getName();
+                }
+            }
+        });
+        return referenceElements;
+    }
+
+    public void fixImports(List<OCReferenceElement> referenceElements) {
+        Project project = psiFile.getProject();
+        referenceElements.forEach(referenceElement
+                -> (new OCImportSymbolFix(referenceElement)).fixFirstItem(project, psiFile));
+    }
+
+    // Finds method definition of a C linkage.
+    public Optional<PsiElement> findElement(PsiElement psiElement) {
+        if (psiElement instanceof OCCppLinkageSpecification) {
+            Optional<PsiElement> methodDefinition = findMethodAsChildren(psiElement);
+            if (methodDefinition.isPresent()) {
+                return hasMethod((OCFunctionDefinition) methodDefinition.get());
+            } else {
+                return Optional.empty();
+            }
+        }
         return Optional.empty();
-      }
     }
-    return Optional.empty();
-  }
 }

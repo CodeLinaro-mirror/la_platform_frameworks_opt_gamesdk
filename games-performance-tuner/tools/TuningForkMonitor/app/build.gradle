@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace 'com.google.tfmonitor'
-    compileSdk 34
+    compileSdk 35
+    ndkVersion "23.1.7779620"
+
     defaultConfig {
         applicationId "com.google.tfmonitor"
         minSdk 21

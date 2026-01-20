@@ -31,28 +31,27 @@ class UltimateUploader;
 
 // Google Endpoint backend
 class HttpBackend : public IBackend {
- public:
-  TuningFork_ErrorCode Init(const Settings& settings);
-  ~HttpBackend() override;
+public:
+    TuningFork_ErrorCode Init(const Settings& settings);
+    ~HttpBackend() override;
 
-  // Perform a blocking call to get fidelity parameters from the server.
-  TuningFork_ErrorCode GenerateTuningParameters(
-      HttpRequest& request, const ProtobufSerialization* training_mode_fps,
-      ProtobufSerialization& fidelity_params,
-      std::string& experiment_id) override;
+    // Perform a blocking call to get fidelity parameters from the server.
+    TuningFork_ErrorCode GenerateTuningParameters(HttpRequest& request,
+                                                  const ProtobufSerialization* training_mode_fps,
+                                                  ProtobufSerialization& fidelity_params,
+                                                  std::string& experiment_id) override;
 
-  // Perform a blocking call to upload telemetry info to a server.
-  virtual TuningFork_ErrorCode UploadTelemetry(
-      const std::string& tuningfork_log_event) override;
+    // Perform a blocking call to upload telemetry info to a server.
+    virtual TuningFork_ErrorCode UploadTelemetry(const std::string& tuningfork_log_event) override;
 
-  // Perform a blocking call to upload debug info to a server.
-  virtual TuningFork_ErrorCode UploadDebugInfo(HttpRequest& request) override;
+    // Perform a blocking call to upload debug info to a server.
+    virtual TuningFork_ErrorCode UploadDebugInfo(HttpRequest& request) override;
 
-  virtual void Stop() override;
+    virtual void Stop() override;
 
- private:
-  std::shared_ptr<UltimateUploader> ultimate_uploader_;
-  const TuningFork_Cache* persister_ = nullptr;
+private:
+    std::shared_ptr<UltimateUploader> ultimate_uploader_;
+    const TuningFork_Cache* persister_ = nullptr;
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

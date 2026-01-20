@@ -30,29 +30,28 @@ using namespace gamesdk_test;
 using namespace json11;
 using namespace std::chrono;
 
-RequestInfo test_device_info{
-    "expt" /*experiment_id*/,
-    {} /*current_fidelity_parameters*/,
-    "sess" /*session_id*/,
-    "prev_sess" /*previous_session_id*/,
-    2387 /*total_memory_bytes*/,
-    349587 /*gl_es_version*/,
-    "fing" /*build_fingerprint*/,
-    "6.3" /*build_version_sdk*/,
-    {1, 2, 3} /*cpu_max_freq_hz*/,
-    "packname" /*apk_package_name*/,
-    0 /*apk_version_code*/,
-    ANDROID_GAMESDK_PACKED_VERSION(0, 10, 0) /*tuningfork_version*/,
-    "MODEL" /*model*/,
-    "BRAND" /*brand*/,
-    "PRODUCT" /*product*/,
-    "DEVICE" /*device*/,
-    "SOC_MODEL" /*soc_model*/,
-    "SOC_MANUFACTURER" /*soc_manufacturer*/,
-    234 /*swap_total_bytes*/,
-    ANDROID_GAMESDK_PACKED_VERSION(2, 7, 0) /*swappy_version*/,
-    1024 /*height_pixels*/,
-    768 /*width_pixels*/};
+RequestInfo test_device_info{"expt" /*experiment_id*/,
+                             {} /*current_fidelity_parameters*/,
+                             "sess" /*session_id*/,
+                             "prev_sess" /*previous_session_id*/,
+                             2387 /*total_memory_bytes*/,
+                             349587 /*gl_es_version*/,
+                             "fing" /*build_fingerprint*/,
+                             "6.3" /*build_version_sdk*/,
+                             {1, 2, 3} /*cpu_max_freq_hz*/,
+                             "packname" /*apk_package_name*/,
+                             0 /*apk_version_code*/,
+                             ANDROID_GAMESDK_PACKED_VERSION(0, 10, 0) /*tuningfork_version*/,
+                             "MODEL" /*model*/,
+                             "BRAND" /*brand*/,
+                             "PRODUCT" /*product*/,
+                             "DEVICE" /*device*/,
+                             "SOC_MODEL" /*soc_model*/,
+                             "SOC_MANUFACTURER" /*soc_manufacturer*/,
+                             234 /*swap_total_bytes*/,
+                             ANDROID_GAMESDK_PACKED_VERSION(2, 7, 0) /*swappy_version*/,
+                             1024 /*height_pixels*/,
+                             768 /*width_pixels*/};
 
 std::string test_device_info_ser = R"TF({
   "brand": "BRAND",
@@ -75,13 +74,15 @@ std::string test_device_info_ser = R"TF({
 
 void CheckDeviceInfo(const RequestInfo& info) {
     EXPECT_EQ(json_utils::GetResourceName(info), "applications/packname/apks/0")
-        << "GetResourceName";
-    EXPECT_TRUE(CompareIgnoringWhitespace(
-        Json(json_utils::DeviceSpecJson(info)).dump(), test_device_info_ser))
-        << "DeviceSpecJson";
+            << "GetResourceName";
+    EXPECT_TRUE(CompareIgnoringWhitespace(Json(json_utils::DeviceSpecJson(info)).dump(),
+                                          test_device_info_ser))
+            << "DeviceSpecJson";
 }
 
-TEST(SerializationTest, DeviceInfo) { CheckDeviceInfo(test_device_info); }
+TEST(SerializationTest, DeviceInfo) {
+    CheckDeviceInfo(test_device_info);
+}
 
 std::string report_start = R"TF({
   "name": "applications/packname/apks/0",
@@ -162,35 +163,34 @@ std::string single_tick_with_loading = R"TF({
 })TF";
 
 class IdMap : public IdProvider {
-    TuningFork_ErrorCode SerializedAnnotationToAnnotationId(
-        const ProtobufSerialization& ser, AnnotationId& id) override {
+    TuningFork_ErrorCode SerializedAnnotationToAnnotationId(const ProtobufSerialization& ser,
+                                                            AnnotationId& id) override {
         id = 0;
         return TUNINGFORK_ERROR_OK;
     }
 
     // Return a new id that is made up of <annotation_id> and <k>.
     // Gives an error if the id is out-of-bounds.
-    TuningFork_ErrorCode MakeCompoundId(InstrumentationKey k,
-                                        AnnotationId annotation_id,
+    TuningFork_ErrorCode MakeCompoundId(InstrumentationKey k, AnnotationId annotation_id,
                                         MetricId& id) override {
         id = MetricId::FrameTime(annotation_id, k);
         return TUNINGFORK_ERROR_OK;
     }
 
-    TuningFork_ErrorCode AnnotationIdToSerializedAnnotation(
-        AnnotationId id, SerializedAnnotation& ann) override {
+    TuningFork_ErrorCode AnnotationIdToSerializedAnnotation(AnnotationId id,
+                                                            SerializedAnnotation& ann) override {
         ann = {1, 2, 3};
         return TUNINGFORK_ERROR_OK;
     }
-    TuningFork_ErrorCode MetricIdToLoadingTimeMetadata(
-        MetricId id, LoadingTimeMetadataWithGroup& mg) override {
+    TuningFork_ErrorCode MetricIdToLoadingTimeMetadata(MetricId id,
+                                                       LoadingTimeMetadataWithGroup& mg) override {
         LoadingTimeMetadata& m = mg.metadata;
         m = {};
         m.state = LoadingTimeMetadata::FIRST_RUN;
         m.source = LoadingTimeMetadata::NETWORK;
-        m.network_latency_ns = 50000000;  // 50ms
+        m.network_latency_ns = 50000000; // 50ms
         m.network_connectivity = LoadingTimeMetadata::NetworkConnectivity::WIFI;
-        m.network_transfer_speed_bps = 1000000000;  // 1Gb/s
+        m.network_transfer_speed_bps = 1000000000; // 1Gb/s
         mg.group_id = "ABC";
         return TUNINGFORK_ERROR_OK;
     }
@@ -201,8 +201,7 @@ TEST(SerializationTest, SerializationWithLoading) {
     MetricId loading_time_metric = MetricId::LoadingTime(0, 0);
     MetricId frame_time_metric = MetricId::FrameTime(0, 0);
     session.CreateLoadingTimeSeries(loading_time_metric);
-    session.CreateFrameTimeHistogram(frame_time_metric,
-                                     Settings::DefaultHistogram(1));
+    session.CreateFrameTimeHistogram(frame_time_metric, Settings::DefaultHistogram(1));
 
     std::string evt_ser;
     session.SetInstrumentationKeys({1234});
@@ -210,9 +209,8 @@ TEST(SerializationTest, SerializationWithLoading) {
     JsonSerializer serializer(session, &metric_map);
     serializer.SerializeEvent(test_device_info, evt_ser);
     auto empty_report = report_start + report_end;
-    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, empty_report))
-        << evt_ser << "\n!=\n"
-        << empty_report;
+    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, empty_report)) << evt_ser << "\n!=\n"
+                                                                  << empty_report;
 
     // Fill in some data
     auto p1 = session.GetData<LoadingTimeMetricData>(loading_time_metric);
@@ -226,14 +224,11 @@ TEST(SerializationTest, SerializationWithLoading) {
     // Try to record with some LoadingTimeMetadata - this will fail because we
     // didn't allocate any extra loading time space.
     MetricId new_loading_time_metric = MetricId::LoadingTime(0, 1);
-    EXPECT_EQ(session.GetData<LoadingTimeMetricData>(new_loading_time_metric),
-              nullptr);
+    EXPECT_EQ(session.GetData<LoadingTimeMetricData>(new_loading_time_metric), nullptr);
 
     serializer.SerializeEvent(test_device_info, evt_ser);
     auto report = report_start + single_tick_with_loading + report_end;
-    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, report))
-        << evt_ser << "\n!=\n"
-        << report;
+    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, report)) << evt_ser << "\n!=\n" << report;
 }
 
 std::string single_tick = R"TF({
@@ -263,7 +258,9 @@ void CheckSessions(Session& pc0, Session& pc1) {
     EXPECT_EQ(p0->histogram_, p1->histogram_);
 }
 
-Settings::Histogram DefaultHistogram() { return {-1, 10, 40, 30}; }
+Settings::Histogram DefaultHistogram() {
+    return {-1, 10, 40, 30};
+}
 
 TEST(SerializationTest, GEDeserialization) {
     Session session{};
@@ -275,23 +272,19 @@ TEST(SerializationTest, GEDeserialization) {
     JsonSerializer serializer(session, &metric_map);
     serializer.SerializeEvent(test_device_info, evt_ser);
     auto empty_report = report_start + report_end;
-    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, empty_report))
-        << evt_ser << "\n!=\n"
-        << empty_report;
+    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, empty_report)) << evt_ser << "\n!=\n"
+                                                                  << empty_report;
     // Fill in some data
     auto p = session.GetData<FrameTimeMetricData>(metric_id);
     p->Record(milliseconds(30));
     serializer.SerializeEvent(test_device_info, evt_ser);
     auto report = report_start + single_tick + report_end;
-    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, report))
-        << evt_ser << "\n!=\n"
-        << report;
+    EXPECT_TRUE(CompareIgnoringWhitespace(evt_ser, report)) << evt_ser << "\n!=\n" << report;
     Session session1{};
     session1.CreateFrameTimeHistogram(metric_id, DefaultHistogram());
-    EXPECT_EQ(
-        JsonSerializer::DeserializeAndMerge(evt_ser, metric_map, session1),
-        TUNINGFORK_ERROR_OK)
-        << "Deserialize single";
+    EXPECT_EQ(JsonSerializer::DeserializeAndMerge(evt_ser, metric_map, session1),
+              TUNINGFORK_ERROR_OK)
+            << "Deserialize single";
     CheckSessions(session1, session);
 }
 
@@ -314,9 +307,8 @@ TEST(SerializationTest, DurationSerialization) {
     for (int i = 0; i < std::min(ds.size(), results.size()); ++i) {
         std::stringstream str;
         str << JsonSerializer::FixedAndTruncated(ds[i]);
-        EXPECT_EQ(str.str(), results[i])
-            << "expected " << results[i] << " got " << str.str();
+        EXPECT_EQ(str.str(), results[i]) << "expected " << results[i] << " got " << str.str();
     }
 }
 
-}  // namespace serialization_test
+} // namespace serialization_test

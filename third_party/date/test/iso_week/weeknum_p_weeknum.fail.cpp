@@ -24,9 +24,7 @@
 
 #include "iso_week.h"
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
     auto x = 3_w + 4_w;
 }

@@ -36,10 +36,9 @@ using time_point = std::chrono::steady_clock::time_point;
 namespace {
 
 class Timer {
-   public:
-    Timer(std::chrono::nanoseconds refreshPeriod,
-          std::chrono::nanoseconds appToSfDelay)
-        : mRefreshPeriod(refreshPeriod), mAppToSfDelay(appToSfDelay) {}
+public:
+    Timer(std::chrono::nanoseconds refreshPeriod, std::chrono::nanoseconds appToSfDelay)
+          : mRefreshPeriod(refreshPeriod), mAppToSfDelay(appToSfDelay) {}
 
     // Returns false if we have detected that we have received the same
     // timestamp multiple times so that the caller can wait for fresh timestamps
@@ -59,8 +58,7 @@ class Timer {
 
         point += mAppToSfDelay;
 
-        bool moreThanOneRefreshPeriodElapsed =
-            mBaseTime + mRefreshPeriod * 1.5 < point;
+        bool moreThanOneRefreshPeriodElapsed = mBaseTime + mRefreshPeriod * 1.5 < point;
         if (moreThanOneRefreshPeriodElapsed) {
             do {
                 mBaseTime += mRefreshPeriod;
@@ -97,7 +95,7 @@ class Timer {
         std::this_thread::sleep_until(targetTime);
     }
 
-   private:
+private:
     std::chrono::nanoseconds mRefreshPeriod;
     const std::chrono::nanoseconds mAppToSfDelay;
     time_point mBaseTime = std::chrono::steady_clock::now();
@@ -107,16 +105,13 @@ class Timer {
     int32_t mRepeatCount = 0;
 };
 
-}  // anonymous namespace
+} // anonymous namespace
 
 namespace swappy {
 
 ChoreographerFilter::ChoreographerFilter(std::chrono::nanoseconds refreshPeriod,
-                                         std::chrono::nanoseconds appToSfDelay,
-                                         Worker doWork)
-    : mRefreshPeriod(refreshPeriod),
-      mAppToSfDelay(appToSfDelay),
-      mDoWork(doWork) {
+                                         std::chrono::nanoseconds appToSfDelay, Worker doWork)
+      : mRefreshPeriod(refreshPeriod), mAppToSfDelay(appToSfDelay), mDoWork(doWork) {
     Settings::getInstance()->addListener([this]() { onSettingsChanged(); });
 
     std::lock_guard<std::mutex> lock(mThreadPoolMutex);
@@ -129,8 +124,7 @@ ChoreographerFilter::~ChoreographerFilter() {
     terminateThreadsLocked();
 }
 
-void ChoreographerFilter::onChoreographer(
-    std::optional<std::chrono::nanoseconds> sfToVsyncDelay) {
+void ChoreographerFilter::onChoreographer(std::optional<std::chrono::nanoseconds> sfToVsyncDelay) {
     std::lock_guard<std::mutex> lock(mMutex);
     mLastTimestamp = std::chrono::steady_clock::now();
     mSfToVsyncDelay = sfToVsyncDelay;
@@ -146,8 +140,7 @@ void ChoreographerFilter::launchThreadsLocked() {
 
     const int32_t numThreads = getNumCpus() > 2 ? 2 : 1;
     for (int32_t thread = 0; thread < numThreads; ++thread) {
-        mThreadPool.push_back(
-            Thread([this, thread]() { threadMain(mUseAffinity, thread); }));
+        mThreadPool.push_back(Thread([this, thread]() { threadMain(mUseAffinity, thread); }));
     }
 }
 
@@ -166,11 +159,9 @@ void ChoreographerFilter::terminateThreadsLocked() {
 
 void ChoreographerFilter::onSettingsChanged() {
     const bool useAffinity = Settings::getInstance()->getUseAffinity();
-    const Settings::DisplayTimings& displayTimings =
-        Settings::getInstance()->getDisplayTimings();
+    const Settings::DisplayTimings& displayTimings = Settings::getInstance()->getDisplayTimings();
     std::lock_guard<std::mutex> lock(mThreadPoolMutex);
-    if (useAffinity == mUseAffinity &&
-        mRefreshPeriod == displayTimings.refreshPeriod) {
+    if (useAffinity == mUseAffinity && mRefreshPeriod == displayTimings.refreshPeriod) {
         return;
     }
 
@@ -178,12 +169,11 @@ void ChoreographerFilter::onSettingsChanged() {
     mUseAffinity = useAffinity;
     mRefreshPeriod = displayTimings.refreshPeriod;
     mAppToSfDelay = displayTimings.sfOffset - displayTimings.appOffset;
-    SWAPPY_LOGV(
-        "onSettingsChanged(): refreshPeriod=%lld, appOffset=%lld, "
-        "sfOffset=%lld",
-        (long long)displayTimings.refreshPeriod.count(),
-        (long long)displayTimings.appOffset.count(),
-        (long long)displayTimings.sfOffset.count());
+    SWAPPY_LOGV("onSettingsChanged(): refreshPeriod=%lld, appOffset=%lld, "
+                "sfOffset=%lld",
+                (long long)displayTimings.refreshPeriod.count(),
+                (long long)displayTimings.appOffset.count(),
+                (long long)displayTimings.sfOffset.count());
     launchThreadsLocked();
 }
 
@@ -214,9 +204,7 @@ void ChoreographerFilter::threadMain(bool useAffinity, int32_t thread) {
         // background.
         if (!timer.addTimestamp(timestamp)) {
             lock.lock();
-            mCondition.wait(lock, [=]() {
-                return !mIsRunning || (mLastTimestamp != timestamp);
-            });
+            mCondition.wait(lock, [=]() { return !mIsRunning || (mLastTimestamp != timestamp); });
             timestamp = mLastTimestamp;
             lock.unlock();
             timer.addTimestamp(timestamp);
@@ -239,4 +227,4 @@ void ChoreographerFilter::threadMain(bool useAffinity, int32_t thread) {
     }
 }
 
-}  // namespace swappy
+} // namespace swappy

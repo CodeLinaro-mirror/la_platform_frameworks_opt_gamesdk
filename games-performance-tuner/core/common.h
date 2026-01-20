@@ -43,4 +43,4 @@ typedef std::chrono::steady_clock::duration Duration;
 typedef std::chrono::system_clock::time_point SystemTimePoint;
 typedef std::chrono::system_clock::duration SystemDuration;
 
-}  // namespace tuningfork
+} // namespace tuningfork

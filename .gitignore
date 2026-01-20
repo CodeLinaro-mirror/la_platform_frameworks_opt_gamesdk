@@ -22,3 +22,6 @@
 # Third party libraries:
 src/oboe
 include/oboe
+
+#Visual Code history
+.history

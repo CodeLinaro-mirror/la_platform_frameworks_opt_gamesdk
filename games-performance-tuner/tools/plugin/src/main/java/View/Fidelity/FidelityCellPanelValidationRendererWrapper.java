@@ -36,85 +36,85 @@ import org.jetbrains.annotations.NotNull;
 
 /*
   This class is responsible for validation of Fidelity second column once it's an enum.
-  It's JPanel enclosing a JComboBox and another JPanel(This panel encloses a textbox and label for error)
-  The class works by finding the smaller JPanel and setting error label and adding tooltip to the
-  parent panel and putting client property to the Smaller jpanel with validation data
+  It's JPanel enclosing a JComboBox and another JPanel(This panel encloses a textbox and label for
+  error) The class works by finding the smaller JPanel and setting error label and adding tooltip to
+  the parent panel and putting client property to the Smaller jpanel with validation data
 
   Only meant to be used with fidelity panel.
  */
-public class FidelityCellPanelValidationRendererWrapper extends CellRendererPanel implements
-    TableCellRenderer {
+public class FidelityCellPanelValidationRendererWrapper
+        extends CellRendererPanel implements TableCellRenderer {
+    public static final String CELL_VALIDATION_PROPERTY = "CellRenderer.validationInfo";
 
-  public static final String CELL_VALIDATION_PROPERTY = "CellRenderer.validationInfo";
+    private final TableCellRenderer delegate;
 
-  private final TableCellRenderer delegate;
+    private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
+    private TableCellValidator cellValidator;
 
-  private final Supplier<? extends Dimension> editorSizeSupplier = JBUI::emptySize;
-  private TableCellValidator cellValidator;
-
-  public FidelityCellPanelValidationRendererWrapper(TableCellRenderer delegate) {
-    this.delegate = delegate;
-    setLayout(new BorderLayout(0, 0));
-  }
-
-  public FidelityCellPanelValidationRendererWrapper withCellValidator(
-      @NotNull TableCellValidator cellValidator) {
-    this.cellValidator = cellValidator;
-    return this;
-  }
-
-  @Override
-  public Dimension getPreferredSize() {
-    Dimension size = super.getPreferredSize();
-    size.height = Math.max(size.height, editorSizeSupplier.get().height);
-    return size;
-  }
-
-
-  private JPanel getTextFieldPanel(JComponent jPanel) {
-    for (Component component : jPanel.getComponents()) {
-      if (component instanceof JPanel) {
-        return (JPanel) component;
-      }
+    public FidelityCellPanelValidationRendererWrapper(TableCellRenderer delegate) {
+        this.delegate = delegate;
+        setLayout(new BorderLayout(0, 0));
     }
-    return null;
-  }
 
-  @Override
-  public final Component getTableCellRendererComponent(JTable table, Object value,
-      boolean isSelected, boolean hasFocus, int row, int column) {
-    JComponent delegateRenderer = (JComponent) delegate
-        .getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-    if (!(delegateRenderer instanceof JPanel)) {
-      throw new IllegalStateException("Unknown Component. Expected JPanel");
+    public FidelityCellPanelValidationRendererWrapper withCellValidator(
+            @NotNull TableCellValidator cellValidator) {
+        this.cellValidator = cellValidator;
+        return this;
     }
-    JPanel validatablePanel = getTextFieldPanel(delegateRenderer);
-    if (cellValidator != null) {
-      ValidationInfo result = cellValidator.validate(value, row, column);
-      if (validatablePanel instanceof FidelityValidatablePanelWithTextField) {
-        FidelityValidatablePanelWithTextField validatableTextField
-            = (FidelityValidatablePanelWithTextField) validatablePanel;
-        validatableTextField.getErrorLabel().setIcon(result == null ? null
-            : result.warning ? AllIcons.General.BalloonWarning : AllIcons.General.BalloonError);
-        validatableTextField.getErrorLabel().setBorder(result == null ? null : iconBorder());
-        validatableTextField.putClientProperty(CELL_VALIDATION_PROPERTY, result);
-        if (result != null) {
-          delegateRenderer.setToolTipText(result.message);
-        } else {
-          delegateRenderer.setToolTipText("");
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension size = super.getPreferredSize();
+        size.height = Math.max(size.height, editorSizeSupplier.get().height);
+        return size;
+    }
+
+    private JPanel getTextFieldPanel(JComponent jPanel) {
+        for (Component component : jPanel.getComponents()) {
+            if (component instanceof JPanel) {
+                return (JPanel) component;
+            }
         }
-      }
+        return null;
     }
-    return delegateRenderer;
-  }
 
-  private static Border iconBorder() {
-    return JBUI.Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
-  }
+    @Override
+    public final Component getTableCellRendererComponent(
+            JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        JComponent delegateRenderer = (JComponent) delegate.getTableCellRendererComponent(
+                table, value, isSelected, hasFocus, row, column);
+        if (!(delegateRenderer instanceof JPanel)) {
+            throw new IllegalStateException("Unknown Component. Expected JPanel");
+        }
+        JPanel validatablePanel = getTextFieldPanel(delegateRenderer);
+        if (cellValidator != null) {
+            ValidationInfo result = cellValidator.validate(value, row, column);
+            if (validatablePanel instanceof FidelityValidatablePanelWithTextField) {
+                FidelityValidatablePanelWithTextField validatableTextField =
+                        (FidelityValidatablePanelWithTextField) validatablePanel;
+                validatableTextField.getErrorLabel().setIcon(result == null ? null
+                                : result.warning ? AllIcons.General.BalloonWarning
+                                                 : AllIcons.General.BalloonError);
+                validatableTextField.getErrorLabel().setBorder(
+                        result == null ? null : iconBorder());
+                validatableTextField.putClientProperty(CELL_VALIDATION_PROPERTY, result);
+                if (result != null) {
+                    delegateRenderer.setToolTipText(result.message);
+                } else {
+                    delegateRenderer.setToolTipText("");
+                }
+            }
+        }
+        return delegateRenderer;
+    }
 
-  @Override
-  protected void paintComponent(Graphics g) {
-    g.setColor(getBackground());
-    g.fillRect(0, 0, getWidth(), getHeight());
-  }
+    private static Border iconBorder() {
+        return JBUI.Borders.emptyRight(UIUtil.isUnderWin10LookAndFeel() ? 4 : 3);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        g.setColor(getBackground());
+        g.fillRect(0, 0, getWidth(), getHeight());
+    }
 }

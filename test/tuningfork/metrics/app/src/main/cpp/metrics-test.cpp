@@ -60,9 +60,9 @@ struct MemInfo {
 // FIXME(daitx): FindClass("android/os/Debug") seems to crash the app on API
 // level < 26 so we have to pass the class in instead, which might interfere in
 // the result
-uint64_t getNativeHeapAllocatedSize(JNIEnv *env, jclass android_os_debug) {
-    jmethodID method = env->GetStaticMethodID(
-        android_os_debug, "getNativeHeapAllocatedSize", "()J");
+uint64_t getNativeHeapAllocatedSize(JNIEnv* env, jclass android_os_debug) {
+    jmethodID method =
+            env->GetStaticMethodID(android_os_debug, "getNativeHeapAllocatedSize", "()J");
     if (method != NULL) {
         return (uint64_t)env->CallStaticLongMethod(android_os_debug, method);
     } else {
@@ -72,7 +72,7 @@ uint64_t getNativeHeapAllocatedSize(JNIEnv *env, jclass android_os_debug) {
 
 // Add entries to the given memInfoMap structure, or update the entries if the
 // new value is higher.
-static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
+static void getMemInfoFromFile(memInfoMap& data, const std::string& path) {
     std::ifstream file_stream(path);
     if (!file_stream) {
         ALOGE("Could not open %s", path.c_str());
@@ -83,7 +83,7 @@ static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
         std::vector<std::string> split(std::istream_iterator<std::string>{ss},
                                        std::istream_iterator<std::string>());
         if (split.size() == 3 && split[2] == "kB") {
-            std::string &key = split[0];
+            std::string& key = split[0];
             // Remove colon at end of first word
             key.pop_back();
             size_t value = atoi(split[1].c_str()) * BYTES_IN_KB;
@@ -94,8 +94,8 @@ static void getMemInfoFromFile(memInfoMap &data, const std::string &path) {
     }
 }
 
-static std::pair<uint64_t, bool> getMemInfoValueFromData(
-    const memInfoMap &data, const std::string &key) {
+static std::pair<uint64_t, bool> getMemInfoValueFromData(const memInfoMap& data,
+                                                         const std::string& key) {
     if (data.count(key)) {
         return std::make_pair(data.at(key), true);
     } else {
@@ -103,7 +103,7 @@ static std::pair<uint64_t, bool> getMemInfoValueFromData(
     }
 }
 
-void updateMemInfo(MemInfo &memInfo) {
+void updateMemInfo(MemInfo& memInfo) {
     std::stringstream ss_path;
     memInfoMap data;
 
@@ -126,7 +126,7 @@ void updateMemInfo(MemInfo &memInfo) {
     memInfo.vmSize = getMemInfoValueFromData(data, "VmSize");
 }
 
-void updateOomScore(MemInfo &memInfo) {
+void updateOomScore(MemInfo& memInfo) {
     std::stringstream ss_path;
     ss_path << "/proc/" << memInfo.pid << "/oom_score";
     std::ifstream oom_file(ss_path.str());
@@ -140,8 +140,7 @@ void updateOomScore(MemInfo &memInfo) {
     }
 }
 
-void printMetric(std::stringstream &ss, std::string name,
-                 std::pair<uint64_t, bool> val) {
+void printMetric(std::stringstream& ss, std::string name, std::pair<uint64_t, bool> val) {
     ss << name << ": ";
     if (val.second) {
         ss << val.first / BYTES_IN_MB << " MB";
@@ -151,7 +150,7 @@ void printMetric(std::stringstream &ss, std::string name,
     ss << std::endl;
 }
 
-void printToStringstream(MemInfo &memInfo, std::stringstream &ss) {
+void printToStringstream(MemInfo& memInfo, std::stringstream& ss) {
     ss << "PID: " << memInfo.pid << std::endl;
     printMetric(ss, "active", memInfo.active);
     printMetric(ss, "activeAnon", memInfo.activeAnon);
@@ -169,8 +168,8 @@ void printToStringstream(MemInfo &memInfo, std::stringstream &ss) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_test_tuningfork_metricstest_MainActivity_measureMetricsPerformance(
-    JNIEnv *env, jobject thiz, jclass android_os_debug) {
+Java_test_tuningfork_metricstest_MainActivity_measureMetricsPerformance(JNIEnv* env, jobject thiz,
+                                                                        jclass android_os_debug) {
     std::stringstream ss;
     MemInfo memInfo;
     memset(&memInfo, 0, sizeof(MemInfo));
@@ -185,19 +184,17 @@ Java_test_tuningfork_metricstest_MainActivity_measureMetricsPerformance(
         updateOomScore(memInfo);
     }
     auto endTime = std::chrono::steady_clock::now();
-    uint32_t avg_microseconds =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            (endTime - startTime) / LOOP_TIMES)
-            .count();
-    ALOGI("Ending metrics collection. Average time for %zu iterations: %u us",
-          LOOP_TIMES, avg_microseconds);
+    uint32_t avg_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+                                        (endTime - startTime) / LOOP_TIMES)
+                                        .count();
+    ALOGI("Ending metrics collection. Average time for %zu iterations: %u us", LOOP_TIMES,
+          avg_microseconds);
 
-    ss << "Average time: " << avg_microseconds << " us (" << LOOP_TIMES
-       << " iterations)" << std::endl
+    ss << "Average time: " << avg_microseconds << " us (" << LOOP_TIMES << " iterations)"
+       << std::endl
        << std::endl;
     ss << "Values for last iteration:" << std::endl;
-    ss << "getNativeHeapAllocatedSize: " << heap / BYTES_IN_KB << " KB"
-       << std::endl;
+    ss << "getNativeHeapAllocatedSize: " << heap / BYTES_IN_KB << " KB" << std::endl;
     printToStringstream(memInfo, ss);
     return env->NewStringUTF(ss.str().c_str());
 }

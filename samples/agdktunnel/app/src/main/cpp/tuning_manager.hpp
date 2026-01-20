@@ -28,28 +28,27 @@
 struct AConfiguration;
 
 class TuningManager {
- private:
-  bool mTFInitialized;
+private:
+    bool mTFInitialized;
 
-  void InitializeChoreographerCallback(AConfiguration *config);
+    void InitializeChoreographerCallback(AConfiguration* config);
 
- public:
-  TuningManager(JNIEnv *env, jobject context, AConfiguration *config);
+public:
+    TuningManager(JNIEnv* env, jobject context, AConfiguration* config);
 
-  ~TuningManager();
+    ~TuningManager();
 
-  void HandleChoreographerFrame();
+    void HandleChoreographerFrame();
 
-  void PostFrameTick(const uint16_t frameKey);
+    void PostFrameTick(const uint16_t frameKey);
 
 #if defined(USE_APT)
-  void SetCurrentAnnotation(
-      const com::google::tuningfork::Annotation *annotation);
+    void SetCurrentAnnotation(const com::google::tuningfork::Annotation* annotation);
 #endif
 
-  void StartLoading();
+    void StartLoading();
 
-  void FinishLoading();
+    void FinishLoading();
 };
 
 #endif

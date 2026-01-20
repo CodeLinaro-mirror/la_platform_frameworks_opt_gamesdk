@@ -23,13 +23,11 @@ using namespace gamesdk_test;
 namespace tuningfork_test {
 
 TuningForkLogEvent TestEndToEndWithAnnotation() {
-    const int NTICKS =
-        101;  // note the first tick doesn't add anything to the histogram
+    const int NTICKS = 101; // note the first tick doesn't add anything to the histogram
     // {3} is the number of values in the Level enum in
     // tuningfork_extensions.proto
-    auto settings =
-        TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
-                     NTICKS - 1, 2, {3});
+    auto settings = TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED,
+                                 NTICKS - 1, 2, {3});
     TuningForkTest test(settings, milliseconds(10));
     Annotation ann;
     ann.set_level(com::google::tuningfork::LEVEL_1);
@@ -40,9 +38,8 @@ TuningForkLogEvent TestEndToEndWithAnnotation() {
         tf::FrameTick(TFTICK_PACED_FRAME_TIME);
     }
     // Wait for the upload thread to complete writing the string
-    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) ==
-                std::cv_status::no_timeout)
-        << "Timeout";
+    EXPECT_TRUE(test.cv_->wait_for(lock, s_test_wait_time) == std::cv_status::no_timeout)
+            << "Timeout";
 
     return test.Result();
 }
@@ -52,8 +49,8 @@ TuningForkLogEvent ExpectedForAnnotationTest() {
 {
   "name": "applications//apks/0",
   "session_context":)TF" +
-           session_context +
-           R"TF(,
+            session_context +
+            R"TF(,
   "telemetry": [{
     "context": {
       "annotations": "CAE=",
@@ -88,4 +85,4 @@ TEST(EndToEndTest, WithAnnotation) {
     CheckStrings("Annotation", result, ExpectedForAnnotationTest());
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

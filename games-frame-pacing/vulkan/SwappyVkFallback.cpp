@@ -21,11 +21,9 @@
 
 namespace swappy {
 
-SwappyVkFallback::SwappyVkFallback(JNIEnv* env, jobject jactivity,
-                                   VkPhysicalDevice physicalDevice,
-                                   VkDevice device,
-                                   const SwappyVkFunctionProvider* provider)
-    : SwappyVkBase(env, jactivity, physicalDevice, device, provider) {}
+SwappyVkFallback::SwappyVkFallback(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
+                                   VkDevice device, const SwappyVkFunctionProvider* provider)
+      : SwappyVkBase(env, jactivity, physicalDevice, device, provider) {}
 
 bool SwappyVkFallback::doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
                                                  uint64_t* pRefreshDuration) {
@@ -41,15 +39,14 @@ bool SwappyVkFallback::doGetRefreshCycleDuration(VkSwapchainKHR swapchain,
 
     // refreshRate is only used for logging, which maybe disabled.
     [[maybe_unused]] double refreshRate = 1000000000.0 / *pRefreshDuration;
-    SWAPPY_LOGI("Returning refresh duration of %" PRIu64 " nsec (approx %f Hz)",
-                *pRefreshDuration, refreshRate);
+    SWAPPY_LOGI("Returning refresh duration of %" PRIu64 " nsec (approx %f Hz)", *pRefreshDuration,
+                refreshRate);
 
     return true;
 }
 
-VkResult SwappyVkFallback::doQueuePresent(
-    VkQueue queue, uint32_t queueFamilyIndex,
-    const VkPresentInfoKHR* pPresentInfo) {
+VkResult SwappyVkFallback::doQueuePresent(VkQueue queue, uint32_t queueFamilyIndex,
+                                          const VkPresentInfoKHR* pPresentInfo) {
     if (!isEnabled()) {
         SWAPPY_LOGE("Swappy is disabled.");
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -61,10 +58,8 @@ VkResult SwappyVkFallback::doQueuePresent(
     }
 
     const SwappyCommon::SwapHandlers handlers = {
-        .lastFrameIsComplete =
-            std::bind(&SwappyVkFallback::lastFrameIsCompleted, this, queue),
-        .getPrevFrameGpuTime =
-            std::bind(&SwappyVkFallback::getLastFenceTime, this, queue),
+            .lastFrameIsComplete = std::bind(&SwappyVkFallback::lastFrameIsCompleted, this, queue),
+            .getPrevFrameGpuTime = std::bind(&SwappyVkFallback::getLastFenceTime, this, queue),
     };
 
     // Inject the fence first and wait for it in onPreSwap() as we don't want to
@@ -88,11 +83,14 @@ VkResult SwappyVkFallback::doQueuePresent(
 
     mCommonBase.onPreSwap(handlers);
 
-    VkPresentInfoKHR replacementPresentInfo = {
-        pPresentInfo->sType,          nullptr,
-        waitSemaphoreCount,           pWaitSemaphores,
-        pPresentInfo->swapchainCount, pPresentInfo->pSwapchains,
-        pPresentInfo->pImageIndices,  pPresentInfo->pResults};
+    VkPresentInfoKHR replacementPresentInfo = {pPresentInfo->sType,
+                                               nullptr,
+                                               waitSemaphoreCount,
+                                               pWaitSemaphores,
+                                               pPresentInfo->swapchainCount,
+                                               pPresentInfo->pSwapchains,
+                                               pPresentInfo->pImageIndices,
+                                               pPresentInfo->pResults};
 
     result = mpfnQueuePresentKHR(queue, &replacementPresentInfo);
 
@@ -117,4 +115,4 @@ void SwappyVkFallback::clearStats() {
     SWAPPY_LOGE("Frame Statistics Unsupported - API ignored");
 }
 
-}  // namespace swappy
+} // namespace swappy

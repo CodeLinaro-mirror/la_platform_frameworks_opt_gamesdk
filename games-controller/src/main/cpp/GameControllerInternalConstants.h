@@ -22,10 +22,9 @@ namespace paddleboat {
 inline constexpr size_t MAX_AXIS_COUNT = 48;
 // Must match GameControllerManager.DEVICEINFO_ARRAY_SIZE
 inline constexpr size_t DEVICEINFO_ARRAY_SIZE = 7;
-inline constexpr size_t DEVICEINFO_ARRAY_BYTESIZE =
-    sizeof(int32_t) * DEVICEINFO_ARRAY_SIZE;
+inline constexpr size_t DEVICEINFO_ARRAY_BYTESIZE = sizeof(int32_t) * DEVICEINFO_ARRAY_SIZE;
 inline constexpr size_t DEVICEINFO_MAX_NAME_LENGTH = 128;
 
 inline constexpr int32_t IGNORED_EVENT = 0;
 inline constexpr int32_t HANDLED_EVENT = 1;
-}  // namespace paddleboat
+} // namespace paddleboat

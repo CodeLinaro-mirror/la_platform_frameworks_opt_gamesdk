@@ -37,46 +37,46 @@
 //     constexpr bool ok() const noexcept;
 // };
 //
-// constexpr bool operator==(const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
-// constexpr bool operator!=(const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
-// constexpr bool operator< (const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
-// constexpr bool operator> (const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
-// constexpr bool operator<=(const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
-// constexpr bool operator>=(const year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
+// constexpr bool operator==(const year_lastweek_weekday& x, const year_lastweek_weekday& y)
+// noexcept; constexpr bool operator!=(const year_lastweek_weekday& x, const year_lastweek_weekday&
+// y) noexcept; constexpr bool operator< (const year_lastweek_weekday& x, const
+// year_lastweek_weekday& y) noexcept; constexpr bool operator> (const year_lastweek_weekday& x,
+// const year_lastweek_weekday& y) noexcept; constexpr bool operator<=(const year_lastweek_weekday&
+// x, const year_lastweek_weekday& y) noexcept; constexpr bool operator>=(const
+// year_lastweek_weekday& x, const year_lastweek_weekday& y) noexcept;
 //
-// constexpr year_lastweek_weekday operator+(const year_lastweek_weekday& x, const years& y) noexcept;
-// constexpr year_lastweek_weekday operator+(const years& y, const year_lastweek_weekday& x) noexcept;
-// constexpr year_lastweek_weekday operator-(const year_lastweek_weekday& x, const years& y) noexcept;
+// constexpr year_lastweek_weekday operator+(const year_lastweek_weekday& x, const years& y)
+// noexcept; constexpr year_lastweek_weekday operator+(const years& y, const year_lastweek_weekday&
+// x) noexcept; constexpr year_lastweek_weekday operator-(const year_lastweek_weekday& x, const
+// years& y) noexcept;
 //
 // std::ostream& operator<<(std::ostream& os, const year_lastweek_weekday& x);
-
-#include "iso_week.h"
 
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-static_assert( std::is_trivially_destructible<iso_week::year_lastweek_weekday>{}, "");
+#include "iso_week.h"
+
+static_assert(std::is_trivially_destructible<iso_week::year_lastweek_weekday>{}, "");
 static_assert(!std::is_default_constructible<iso_week::year_lastweek_weekday>{}, "");
-static_assert( std::is_trivially_copy_constructible<iso_week::year_lastweek_weekday>{}, "");
-static_assert( std::is_trivially_copy_assignable<iso_week::year_lastweek_weekday>{}, "");
-static_assert( std::is_trivially_move_constructible<iso_week::year_lastweek_weekday>{}, "");
-static_assert( std::is_trivially_move_assignable<iso_week::year_lastweek_weekday>{}, "");
+static_assert(std::is_trivially_copy_constructible<iso_week::year_lastweek_weekday>{}, "");
+static_assert(std::is_trivially_copy_assignable<iso_week::year_lastweek_weekday>{}, "");
+static_assert(std::is_trivially_move_constructible<iso_week::year_lastweek_weekday>{}, "");
+static_assert(std::is_trivially_move_assignable<iso_week::year_lastweek_weekday>{}, "");
 
 static_assert(std::is_trivially_copyable<iso_week::year_lastweek_weekday>{}, "");
 static_assert(std::is_standard_layout<iso_week::year_lastweek_weekday>{}, "");
 static_assert(std::is_literal_type<iso_week::year_lastweek_weekday>{}, "");
 
-static_assert( std::is_nothrow_constructible<iso_week::year_lastweek_weekday,
-                                                 iso_week::year, iso_week::weekday>{}, "");
-static_assert( std::is_nothrow_constructible<iso_week::sys_days,
-                                                 iso_week::year_lastweek_weekday>{}, "");
-static_assert( std::is_convertible<iso_week::year_lastweek_weekday,
-                                       iso_week::sys_days>{}, "");
+static_assert(std::is_nothrow_constructible<iso_week::year_lastweek_weekday, iso_week::year,
+                                            iso_week::weekday>{},
+              "");
+static_assert(std::is_nothrow_constructible<iso_week::sys_days, iso_week::year_lastweek_weekday>{},
+              "");
+static_assert(std::is_convertible<iso_week::year_lastweek_weekday, iso_week::sys_days>{}, "");
 
-int
-main()
-{
+int main() {
     using namespace iso_week;
 
     constexpr auto x0 = year_lastweek_weekday{2015_y, tue};
@@ -100,28 +100,26 @@ main()
     assert(x3.weeknum() == 53_w);
     assert(x3.weekday() == tue);
 
-    constexpr sys_days dp = 2015_y/last/wed;
+    constexpr sys_days dp = 2015_y / last / wed;
     static_assert(dp == sys_days{days{16799}}, "");
 
     static_assert(x0.ok(), "");
     assert(x3.ok());
 
-    static_assert(2015_y/last/mon < 2015_y/last/sun, "");
+    static_assert(2015_y / last / mon < 2015_y / last / sun, "");
 
-    static_assert(x0 + years{3} == 2018_y/last/tue, "");
-    static_assert(years{3} + x0 == 2018_y/last/tue, "");
-    static_assert(x0 - years{3} == 2012_y/last/tue, "");
+    static_assert(x0 + years{3} == 2018_y / last / tue, "");
+    static_assert(years{3} + x0 == 2018_y / last / tue, "");
+    static_assert(x0 - years{3} == 2012_y / last / tue, "");
 
     std::ostringstream os;
     os << x0;
     assert(os.str() == "2015-W last-Tue");
 
-    for (auto y = 1950_y; y <= 2050_y; ++y)
-    {
+    for (auto y = 1950_y; y <= 2050_y; ++y) {
         auto wd = mon;
-        do
-        {
-            auto x = y/last/wd;
+        do {
+            auto x = y / last / wd;
             assert(date::year_month_day{x} == date::year_month_day{year_weeknum_weekday{x}});
             ++wd;
         } while (wd != mon);

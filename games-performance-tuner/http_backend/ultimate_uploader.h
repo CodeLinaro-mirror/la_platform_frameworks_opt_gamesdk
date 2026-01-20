@@ -27,17 +27,16 @@ namespace tuningfork {
 // This class periodically listens on a separate thread for upload packets from
 // the persister and performs the HTTP request to do the upload.
 class UltimateUploader : public Runnable {
-  const TuningFork_Cache* persister_ = nullptr;
-  HttpRequest request_;
+    const TuningFork_Cache* persister_ = nullptr;
+    HttpRequest request_;
 
- public:
-  UltimateUploader(const TuningFork_Cache* persister,
-                   const HttpRequest& request);
-  virtual Duration DoWork() override;
-  virtual void Run() override;
+public:
+    UltimateUploader(const TuningFork_Cache* persister, const HttpRequest& request);
+    virtual Duration DoWork() override;
+    virtual void Run() override;
 
- private:
-  bool CheckUploadPending();
+private:
+    bool CheckUploadPending();
 };
 
-}  // namespace tuningfork
+} // namespace tuningfork

@@ -29,57 +29,54 @@ import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 
 public class DebugInfoController {
+    public DebugInfoController() {}
 
-  public DebugInfoController() {
-  }
-
-  public void setDebugInfo(final LabelScrollPane pane, String descriptor) {
-    String[] lines = descriptor.split("\n");
-    SwingUtilities.invokeLater(() -> {
-      pane.removeAll();
-      for (String line : lines) {
-        pane.addText(line);
-      }
-      SwingUtilities.updateComponentTreeUI(pane.getPanel());
-    });
-  }
-
-
-  public List<QualityDataModel> convertByteStringToModel(List<String> messages,
-      FileDescriptor fileDescriptor) {
-    List<QualityDataModel> qualityDataModels = new ArrayList<>();
-    List<DynamicMessage> dynamicMessages = DataModelTransformer
-        .convertByteStringToDynamicMessage(messages, fileDescriptor);
-    List<FieldDescriptor> fieldDescriptors = fileDescriptor.findMessageTypeByName("FidelityParams")
-        .getFields();
-    dynamicMessages.forEach(message -> {
-      QualityDataModel qualityDataModel = new QualityDataModel();
-      for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
-        Object fieldValue = message.getField(fieldDescriptor);
-        if (fieldValue instanceof EnumValueDescriptor) {
-          int index = ((EnumValueDescriptor) fieldValue).getIndex();
-          fieldValue = fieldDescriptor.getEnumType().getValues().get(index).getName();
-        }
-        qualityDataModel.addField(fieldDescriptor.getName(), fieldValue.toString());
-      }
-      qualityDataModels.add(qualityDataModel);
-    });
-    return qualityDataModels;
-  }
-
-  public DefaultMutableTreeNode getQualityAsTree(List<QualityDataModel> qualityDataModels) {
-    DefaultMutableTreeNode root = new DefaultMutableTreeNode();
-    for (int i = 0; i < qualityDataModels.size(); i++) {
-      QualityDataModel qualityDataModel = qualityDataModels.get(i);
-      String parentText = "Quality " + (i + 1);
-      DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(parentText);
-      for (int j = 0; j < qualityDataModel.getFieldCount(); j++) {
-        String nodeText = qualityDataModel.getFieldNames().get(j) + ": " +
-            qualityDataModel.getFieldValues().get(j);
-        childNode.add(new DefaultMutableTreeNode(nodeText));
-      }
-      root.add(childNode);
+    public void setDebugInfo(final LabelScrollPane pane, String descriptor) {
+        String[] lines = descriptor.split("\n");
+        SwingUtilities.invokeLater(() -> {
+            pane.removeAll();
+            for (String line : lines) {
+                pane.addText(line);
+            }
+            SwingUtilities.updateComponentTreeUI(pane.getPanel());
+        });
     }
-    return root;
-  }
+
+    public List<QualityDataModel> convertByteStringToModel(
+            List<String> messages, FileDescriptor fileDescriptor) {
+        List<QualityDataModel> qualityDataModels = new ArrayList<>();
+        List<DynamicMessage> dynamicMessages =
+                DataModelTransformer.convertByteStringToDynamicMessage(messages, fileDescriptor);
+        List<FieldDescriptor> fieldDescriptors =
+                fileDescriptor.findMessageTypeByName("FidelityParams").getFields();
+        dynamicMessages.forEach(message -> {
+            QualityDataModel qualityDataModel = new QualityDataModel();
+            for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
+                Object fieldValue = message.getField(fieldDescriptor);
+                if (fieldValue instanceof EnumValueDescriptor) {
+                    int index = ((EnumValueDescriptor) fieldValue).getIndex();
+                    fieldValue = fieldDescriptor.getEnumType().getValues().get(index).getName();
+                }
+                qualityDataModel.addField(fieldDescriptor.getName(), fieldValue.toString());
+            }
+            qualityDataModels.add(qualityDataModel);
+        });
+        return qualityDataModels;
+    }
+
+    public DefaultMutableTreeNode getQualityAsTree(List<QualityDataModel> qualityDataModels) {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+        for (int i = 0; i < qualityDataModels.size(); i++) {
+            QualityDataModel qualityDataModel = qualityDataModels.get(i);
+            String parentText = "Quality " + (i + 1);
+            DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(parentText);
+            for (int j = 0; j < qualityDataModel.getFieldCount(); j++) {
+                String nodeText = qualityDataModel.getFieldNames().get(j) + ": "
+                        + qualityDataModel.getFieldValues().get(j);
+                childNode.add(new DefaultMutableTreeNode(nodeText));
+            }
+            root.add(childNode);
+        }
+        return root;
+    }
 }

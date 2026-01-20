@@ -18,16 +18,17 @@
 
 apply plugin: 'com.android.application'
 
-def stlType = 'c++_static'
+def stlType = 'c++_shared'
 
 android {
-    compileSdkVersion  31
+    namespace "com.samples.cube"
+    compileSdk  31
     ndkVersion "23.1.7779620"
 
     defaultConfig {
         applicationId 'com.samples.cube'
-        minSdkVersion    24 // Official vulkan support starts in version 24
-        targetSdkVersion 35
+        minSdk    24 // Official vulkan support starts in version 24
+        targetSdk 35
         versionCode  2
         versionName '0.0.2'
         externalNativeBuild {
@@ -53,6 +54,7 @@ android {
     }
     buildFeatures {
         prefab true
+        buildConfig true
     }
 }
 

@@ -56,15 +56,13 @@ std::string JsonSerializer::FixedAndTruncated(double d) {
 
 static std::string GetVersionString(uint32_t ver) {
     std::stringstream version_str;
-    version_str << ANDROID_GAMESDK_MAJOR_VERSION(ver) << "."
-                << ANDROID_GAMESDK_MINOR_VERSION(ver) << "."
-                << ANDROID_GAMESDK_BUGFIX_VERSION(ver);
+    version_str << ANDROID_GAMESDK_MAJOR_VERSION(ver) << "." << ANDROID_GAMESDK_MINOR_VERSION(ver)
+                << "." << ANDROID_GAMESDK_BUGFIX_VERSION(ver);
     return version_str.str();
 }
 Json::object GameSdkInfoJson(const RequestInfo& request_info) {
-    Json::object info{
-        {"version", GetVersionString(request_info.tuningfork_version)},
-        {"session_id", request_info.session_id}};
+    Json::object info{{"version", GetVersionString(request_info.tuningfork_version)},
+                      {"session_id", request_info.session_id}};
     if (request_info.swappy_version != 0) {
         info["swappy_version"] = GetVersionString(request_info.swappy_version);
     }
@@ -88,8 +86,7 @@ system_clock::time_point RFC3339ToTime(const std::string& s) {
     double secs;
     str >> hours >> delim >> mins >> secs;
     return sys_days(year_month_day(year(y), month(m), day(d))) +
-           microseconds(static_cast<uint64_t>(
-               (hours * 3600 + mins * 60 + secs) * 1000000.0));
+            microseconds(static_cast<uint64_t>((hours * 3600 + mins * 60 + secs) * 1000000.0));
 }
 
 std::string DurationToSecondsString(Duration d) {
@@ -109,16 +106,14 @@ std::string B64Encode(const std::vector<uint8_t>& bytes) {
     if (bytes.size() == 0) return "";
     std::string enc(modp_b64_encode_len(bytes.size()), ' ');
     size_t l = modp_b64_encode(const_cast<char*>(enc.c_str()),
-                               reinterpret_cast<const char*>(bytes.data()),
-                               bytes.size());
+                               reinterpret_cast<const char*>(bytes.data()), bytes.size());
     enc.resize(l);
     return enc;
 }
 std::vector<uint8_t> B64Decode(const std::string& s) {
     if (s.length() == 0) return std::vector<uint8_t>();
     std::vector<uint8_t> ret(modp_b64_decode_len(s.length()));
-    size_t l = modp_b64_decode(reinterpret_cast<char*>(ret.data()), s.c_str(),
-                               s.length());
+    size_t l = modp_b64_decode(reinterpret_cast<char*>(ret.data()), s.c_str(), s.length());
     ret.resize(l);
     return ret;
 }
@@ -130,18 +125,17 @@ std::string JsonUint64(uint64_t x) {
     s << x;
     return s.str();
 }
-Json::object JsonSerializer::TelemetryContextJson(
-    const AnnotationId& annotation_id, const RequestInfo& request_info,
-    const Duration& duration) {
+Json::object JsonSerializer::TelemetryContextJson(const AnnotationId& annotation_id,
+                                                  const RequestInfo& request_info,
+                                                  const Duration& duration) {
     SerializedAnnotation annotation;
     id_provider_->AnnotationIdToSerializedAnnotation(annotation_id, annotation);
-    return Json::object{
-        {"annotations", B64Encode(annotation)},
-        {"tuning_parameters",
-         Json::object{{"experiment_id", request_info.experiment_id},
-                      {"serialized_fidelity_parameters",
-                       B64Encode(session_.GetFidelityParameters())}}},
-        {"duration", DurationToSecondsString(duration)}};
+    return Json::object{{"annotations", B64Encode(annotation)},
+                        {"tuning_parameters",
+                         Json::object{{"experiment_id", request_info.experiment_id},
+                                      {"serialized_fidelity_parameters",
+                                       B64Encode(session_.GetFidelityParameters())}}},
+                        {"duration", DurationToSecondsString(duration)}};
 }
 
 #define SET_METADATA_FIELD(OBJ, KEY) \
@@ -157,8 +151,7 @@ static std::string DurationJsonFromNanos(int64_t ns) {
     return str.str();
 }
 
-Json::object JsonSerializer::LoadingTimeMetadataJson(
-    const LoadingTimeMetadataWithGroup& mdg) {
+Json::object JsonSerializer::LoadingTimeMetadataJson(const LoadingTimeMetadataWithGroup& mdg) {
     const LoadingTimeMetadata& md = mdg.metadata;
     Json::object ret;
     SET_METADATA_FIELD(ret, state);
@@ -167,33 +160,27 @@ Json::object JsonSerializer::LoadingTimeMetadataJson(
     if (md.network_connectivity != 0 || md.network_transfer_speed_bps != 0 ||
         md.network_latency_ns != 0) {
         Json::object network_info;
-        if (md.network_connectivity != 0)
-            network_info["connectivity"] = md.network_connectivity;
+        if (md.network_connectivity != 0) network_info["connectivity"] = md.network_connectivity;
         if (md.network_transfer_speed_bps != 0)
-            network_info["bandwidth_bps"] =
-                JsonUint64(md.network_transfer_speed_bps);
+            network_info["bandwidth_bps"] = JsonUint64(md.network_transfer_speed_bps);
         if (md.network_latency_ns != 0)
-            network_info["latency"] =
-                DurationJsonFromNanos(md.network_latency_ns);
+            network_info["latency"] = DurationJsonFromNanos(md.network_latency_ns);
         ret["network_info"] = network_info;
     }
     if (!mdg.group_id.empty()) ret["group_id"] = mdg.group_id;
     return ret;
 }
 
-static Json::array SerializeIntervalVector(
-    const std::vector<ProcessTimeInterval>& intervals) {
+static Json::array SerializeIntervalVector(const std::vector<ProcessTimeInterval>& intervals) {
     Json::array result;
     for (const auto& i : intervals) {
-        result.push_back(
-            Json::object{{"start", DurationToSecondsString(i.Start())},
-                         {"end", DurationToSecondsString(i.End())}});
+        result.push_back(Json::object{{"start", DurationToSecondsString(i.Start())},
+                                      {"end", DurationToSecondsString(i.End())}});
     }
     return result;
 }
 
-Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
-                                                 bool& empty,
+Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation, bool& empty,
                                                  Duration& duration) {
     std::vector<Json::object> render_histograms;
     std::vector<Json::object> loading_events;
@@ -201,47 +188,39 @@ Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
     std::vector<Json::object> thermal_events;
     std::vector<Json::object> memory_events;
     duration = Duration::zero();
-    for (const auto& th :
-         session_.GetNonEmptyHistograms<FrameTimeMetricData>()) {
+    for (const auto& th : session_.GetNonEmptyHistograms<FrameTimeMetricData>()) {
         auto ft = th->metric_id_.detail;
         if (ft.annotation != annotation) continue;
         std::vector<int32_t> counts;
-        for (auto& c : th->histogram_.buckets())
-            counts.push_back(static_cast<int32_t>(c));
+        for (auto& c : th->histogram_.buckets()) counts.push_back(static_cast<int32_t>(c));
         Json::object o{{"counts", counts}};
         o["instrument_id"] = session_.GetInstrumentationKey(ft.frame_time.ikey);
-        o["kll_quantiles_sketch"] =
-            B64Encode(Serialize(th->aggregator_->SerializeToProto()));
+        o["kll_quantiles_sketch"] = B64Encode(Serialize(th->aggregator_->SerializeToProto()));
         render_histograms.push_back(o);
         duration = std::max(th->duration_, duration);
     }
-    for (const auto& th :
-         session_.GetNonEmptyHistograms<LoadingTimeMetricData>()) {
+    for (const auto& th : session_.GetNonEmptyHistograms<LoadingTimeMetricData>()) {
         if (th->metric_id_.detail.annotation != annotation) continue;
         std::vector<int> loading_events_times;
         std::vector<ProcessTimeInterval> loading_events_intervals;
         for (const auto& c : th->data_.Samples()) {
             if (c.IsDuration()) {
                 loading_events_times.push_back(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(
-                        c.Duration())
-                        .count());
+                        std::chrono::duration_cast<std::chrono::milliseconds>(c.Duration())
+                                .count());
             } else {
                 loading_events_intervals.push_back(c);
             }
             duration = std::max(th->duration_, duration);
         }
-        if (loading_events_times.size() > 0 ||
-            loading_events_intervals.size() > 0) {
+        if (loading_events_times.size() > 0 || loading_events_intervals.size() > 0) {
             LoadingTimeMetadataWithGroup md;
-            if (id_provider_->MetricIdToLoadingTimeMetadata(
-                    th->metric_id_, md) == TUNINGFORK_ERROR_OK) {
+            if (id_provider_->MetricIdToLoadingTimeMetadata(th->metric_id_, md) ==
+                TUNINGFORK_ERROR_OK) {
                 Json::object o({});
-                if (loading_events_times.size() > 0)
-                    o["times_ms"] = loading_events_times;
+                if (loading_events_times.size() > 0) o["times_ms"] = loading_events_times;
                 if (loading_events_intervals.size() > 0)
-                    o["intervals"] =
-                        SerializeIntervalVector(loading_events_intervals);
+                    o["intervals"] = SerializeIntervalVector(loading_events_intervals);
                 o["loading_metadata"] = LoadingTimeMetadataJson(md);
                 loading_events.push_back(o);
             }
@@ -252,8 +231,7 @@ Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
         if (ft.annotation != annotation) continue;
         for (auto& report : th->data_) {
             Json::object o({});
-            o["event_time"] =
-                DurationToSecondsString(report.time_since_process_start_);
+            o["event_time"] = DurationToSecondsString(report.time_since_process_start_);
             o["percentage"] = report.percentage_;
             o["current_charge_microampere_hours"] = report.current_charge_;
             o["charging"] = report.is_charging_;
@@ -267,8 +245,7 @@ Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
         if (ft.annotation != annotation) continue;
         for (auto& report : th->data_) {
             Json::object o({});
-            o["event_time"] =
-                DurationToSecondsString(report.time_since_process_start_);
+            o["event_time"] = DurationToSecondsString(report.time_since_process_start_);
             o["thermal_state"] = report.thermal_state_;
             thermal_events.push_back(o);
         }
@@ -278,12 +255,10 @@ Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
         if (ft.annotation != annotation) continue;
         for (auto& report : th->data_) {
             Json::object o({});
-            o["event_time"] =
-                DurationToSecondsString(report.time_since_process_start_);
+            o["event_time"] = DurationToSecondsString(report.time_since_process_start_);
             o["avail_mem"] = static_cast<double>(report.avail_mem_);
             o["oom_score"] = static_cast<double>(report.oom_score_);
-            o["proportional_set_size"] =
-                static_cast<double>(report.proportional_set_size_);
+            o["proportional_set_size"] = static_cast<double>(report.proportional_set_size_);
             memory_events.push_back(o);
         }
     }
@@ -292,8 +267,7 @@ Json::object JsonSerializer::TelemetryReportJson(const AnnotationId& annotation,
     empty = (total_size == 0);
     Json::object ret;
     if (render_histograms.size() > 0) {
-        ret["rendering"] =
-            Json::object{{"render_time_histogram", render_histograms}};
+        ret["rendering"] = Json::object{{"render_time_histogram", render_histograms}};
     }
     // Loading events
     if (loading_events.size() > 0) {
@@ -326,14 +300,13 @@ static int LifecycleEventType(TuningFork_LifecycleState state) {
 }
 
 Json::object JsonSerializer::PartialLoadingTelemetryReportJson(
-    const AnnotationId& annotation, const LifecycleUploadEvent& lifecycle_event,
-    Duration& duration) {
+        const AnnotationId& annotation, const LifecycleUploadEvent& lifecycle_event,
+        Duration& duration) {
     std::vector<Json::object> loading_events;
     for (const auto& e : lifecycle_event.loading_events) {
         if (e.id.detail.annotation != annotation) continue;
         LoadingTimeMetadataWithGroup md;
-        if (id_provider_->MetricIdToLoadingTimeMetadata(e.id, md) ==
-            TUNINGFORK_ERROR_OK) {
+        if (id_provider_->MetricIdToLoadingTimeMetadata(e.id, md) == TUNINGFORK_ERROR_OK) {
             Json::object o({});
             o["intervals"] = SerializeIntervalVector({e.interval});
             duration += e.interval.Duration();
@@ -343,62 +316,55 @@ Json::object JsonSerializer::PartialLoadingTelemetryReportJson(
     }
     Json::object ret;
     if (loading_events.size() > 0) {
-        ret["partial_loading"] = Json::object{
-            {"event_type", LifecycleEventType(lifecycle_event.state)},
-            {"report", Json::object{{"loading_events", loading_events}}}};
+        ret["partial_loading"] =
+                Json::object{{"event_type", LifecycleEventType(lifecycle_event.state)},
+                             {"report", Json::object{{"loading_events", loading_events}}}};
     }
     return ret;
 }
 
 Json::object JsonSerializer::TelemetryJson(const AnnotationId& annotation,
-                                           const RequestInfo& request_info,
-                                           Duration& duration, bool& empty) {
+                                           const RequestInfo& request_info, Duration& duration,
+                                           bool& empty) {
     auto report = TelemetryReportJson(annotation, empty, duration);
-    return Json::object{
-        {"context", TelemetryContextJson(annotation, request_info, duration)},
-        {"report", report}};
+    return Json::object{{"context", TelemetryContextJson(annotation, request_info, duration)},
+                        {"report", report}};
 }
-Json::object JsonSerializer::PartialLoadingTelemetryJson(
-    const AnnotationId& annotation, const LifecycleUploadEvent& event,
-    const RequestInfo& request_info) {
+Json::object JsonSerializer::PartialLoadingTelemetryJson(const AnnotationId& annotation,
+                                                         const LifecycleUploadEvent& event,
+                                                         const RequestInfo& request_info) {
     Duration duration = Duration::zero();
-    auto report =
-        PartialLoadingTelemetryReportJson(annotation, event, duration);
-    return Json::object{
-        {"context", TelemetryContextJson(annotation, request_info, duration)},
-        {"report", report}};
+    auto report = PartialLoadingTelemetryReportJson(annotation, event, duration);
+    return Json::object{{"context", TelemetryContextJson(annotation, request_info, duration)},
+                        {"report", report}};
 }
 
-void JsonSerializer::SerializeTelemetryRequest(
-    const RequestInfo& request_info, const std::vector<Json::object>& telemetry,
-    std::string& evt_json_ser) {
-    std::map<std::string, Json> context_items = {
-        {"device", json_utils::DeviceSpecJson(request_info)},
-        {"game_sdk_info", GameSdkInfoJson(request_info)},
-        {"time_period",
-         Json::object{{"start_time", TimeToRFC3339(session_.time().start)},
-                      {"end_time", TimeToRFC3339(session_.time().end)}}}};
+void JsonSerializer::SerializeTelemetryRequest(const RequestInfo& request_info,
+                                               const std::vector<Json::object>& telemetry,
+                                               std::string& evt_json_ser) {
+    std::map<std::string, Json> context_items =
+            {{"device", json_utils::DeviceSpecJson(request_info)},
+             {"game_sdk_info", GameSdkInfoJson(request_info)},
+             {"time_period",
+              Json::object{{"start_time", TimeToRFC3339(session_.time().start)},
+                           {"end_time", TimeToRFC3339(session_.time().end)}}}};
     if (!session_.GetCrashReports().empty())
         context_items["crash_reports"] = CrashReportsJson(request_info);
     Json session_context = Json::object{context_items};
-    Json telemetry_request =
-        Json::object{{"name", json_utils::GetResourceName(request_info)},
-                     {"session_context", session_context},
-                     {"telemetry", telemetry}};
+    Json telemetry_request = Json::object{{"name", json_utils::GetResourceName(request_info)},
+                                          {"session_context", session_context},
+                                          {"telemetry", telemetry}};
     evt_json_ser = telemetry_request.dump();
 }
 
-void JsonSerializer::SerializeEvent(const RequestInfo& request_info,
-                                    std::string& evt_json_ser) {
+void JsonSerializer::SerializeEvent(const RequestInfo& request_info, std::string& evt_json_ser) {
     std::vector<Json::object> telemetry;
     // Loop over unique annotations
     std::set<AnnotationId> annotations;
-    for (const auto& p :
-         session_.GetNonEmptyHistograms<FrameTimeMetricData>()) {
+    for (const auto& p : session_.GetNonEmptyHistograms<FrameTimeMetricData>()) {
         annotations.insert(p->metric_id_.detail.annotation);
     }
-    for (const auto& p :
-         session_.GetNonEmptyHistograms<LoadingTimeMetricData>()) {
+    for (const auto& p : session_.GetNonEmptyHistograms<LoadingTimeMetricData>()) {
         annotations.insert(p->metric_id_.detail.annotation);
     }
     Duration max_duration = Duration::zero();
@@ -422,20 +388,18 @@ void JsonSerializer::SerializeLifecycleEvent(const LifecycleUploadEvent& event,
         annotations.insert(p.id.detail.annotation);
     }
     for (const auto& a : annotations) {
-        telemetry.push_back(
-            PartialLoadingTelemetryJson(a, event, request_info));
+        telemetry.push_back(PartialLoadingTelemetryJson(a, event, request_info));
     }
     SerializeTelemetryRequest(request_info, telemetry, evt_json_ser);
 }
 
-std::vector<Json::object> JsonSerializer::CrashReportsJson(
-    const RequestInfo& request_info) {
+std::vector<Json::object> JsonSerializer::CrashReportsJson(const RequestInfo& request_info) {
     std::vector<Json::object> crash_reports;
     std::vector<CrashReason> session_crash_reports = session_.GetCrashReports();
     for (int i = 0; i < session_crash_reports.size(); i++) {
-        crash_reports.push_back(Json::object{
-            {"crash_reason", static_cast<int>(session_crash_reports[i])},
-            {"session_id", request_info.previous_session_id}});
+        crash_reports.push_back(
+                Json::object{{"crash_reason", static_cast<int>(session_crash_reports[i])},
+                             {"session_id", request_info.previous_session_id}});
     }
     return crash_reports;
 };
@@ -457,25 +421,21 @@ struct Hist {
     Duration duration;
     std::vector<uint32_t> counts;
 };
-}  // namespace
+} // namespace
 
 /* static */ TuningFork_ErrorCode JsonSerializer::DeserializeAndMerge(
-    const std::string& evt_json_ser, IdProvider& id_provider,
-    Session& session) {
+        const std::string& evt_json_ser, IdProvider& id_provider, Session& session) {
     std::string err;
     Json in = Json::parse(evt_json_ser, err);
     ALOGI("Deserializing saved session");
     if (!err.empty()) {
-        ALOGE("Failed to deserialize %s\n%s", evt_json_ser.c_str(),
-              err.c_str());
+        ALOGE("Failed to deserialize %s\n%s", evt_json_ser.c_str(), err.c_str());
         return TUNINGFORK_ERROR_BAD_PARAMETER;
     }
 
     // Deserialize
-    auto start = RFC3339ToTime(
-        in["session_context"]["time_period"]["start_time"].string_value());
-    auto end = RFC3339ToTime(
-        in["session_context"]["time_period"]["start_time"].string_value());
+    auto start = RFC3339ToTime(in["session_context"]["time_period"]["start_time"].string_value());
+    auto end = RFC3339ToTime(in["session_context"]["time_period"]["start_time"].string_value());
     std::vector<Hist> hists;
     for (auto& telemetry : in["telemetry"].array_items()) {
         // Context
@@ -483,8 +443,7 @@ struct Hist {
         if (context.is_null()) return TUNINGFORK_ERROR_BAD_PARAMETER;
         auto annotation = B64Decode(context["annotations"].string_value());
         auto fps = B64Decode(
-            context["tuning_parameters"]["serialized_fidelity_parameters"]
-                .string_value());
+                context["tuning_parameters"]["serialized_fidelity_parameters"].string_value());
         auto duration = StringToDuration(context["duration"].string_value());
         // Report
         auto& report = telemetry["report"]["rendering"];
@@ -495,8 +454,7 @@ struct Hist {
             for (auto& c : histogram["counts"].array_items()) {
                 cs.push_back(c.int_value());
             }
-            if (cs.size() > 0)
-                hists.push_back({annotation, fps, instrument_id, duration, cs});
+            if (cs.size() > 0) hists.push_back({annotation, fps, instrument_id, duration, cs});
         }
     }
 
@@ -504,8 +462,7 @@ struct Hist {
     for (auto& h : hists) {
         MetricId id{0};
         AnnotationId annotation_id;
-        id_provider.SerializedAnnotationToAnnotationId(h.annotation,
-                                                       annotation_id);
+        id_provider.SerializedAnnotationToAnnotationId(h.annotation, annotation_id);
         if (annotation_id == annotation_util::kAnnotationError)
             return TUNINGFORK_ERROR_BAD_PARAMETER;
         auto r = id_provider.MakeCompoundId(h.instrument_id, annotation_id, id);
@@ -518,4 +475,4 @@ struct Hist {
     return TUNINGFORK_ERROR_OK;
 }
 
-}  // namespace tuningfork
+} // namespace tuningfork

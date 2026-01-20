@@ -12,12 +12,37 @@ set -e # Exit on error
 
 # Set up the environment
 export ANDROID_HOME=$(pwd)/../prebuilts/sdk
-export ANDROID_NDK_HOME=$(pwd)/../prebuilts/ndk/r23
+unset  ANDROID_SDK_ROOT
+unset  ANDROID_NDK_HOME
 export BUILDBOT_SCRIPT=true
 export BUILDBOT_CMAKE=$(pwd)/../prebuilts/cmake/linux-x86
 export PATH="$PATH:$(pwd)/../prebuilts/ninja/linux-x86/"
 
-cp -Rf samples/sdk_licenses ../prebuilts/sdk/licenses
+if [ "$(uname)" == "Darwin" ]; then
+    : # Do nothing but skip the next condition so we don't get a bash warning on macos
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    # Do only for GNU/Linux platform
+    export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk17/linux-x86
+fi
+
+sdkmanager_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+if [ ! -f "$sdkmanager_path" ]; then
+    pushd $ANDROID_HOME
+    mkdir -p cmdline-tools/latest && \
+        curl -o cmdline-tools/latest/sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+        unzip cmdline-tools/latest/sdk-tools.zip -d cmdline-tools/latest && \
+        mv cmdline-tools/latest/cmdline-tools/* cmdline-tools/latest/ && \
+        rm -rf cmdline-tools/latest/cmdline-tools && \
+        rm cmdline-tools/latest/sdk-tools.zip
+    popd
+fi
+echo yes | $sdkmanager_path "platform-tools"
+echo yes | $sdkmanager_path "platforms;android-35"
+echo yes | $sdkmanager_path "platforms;android-31"
+echo yes | $sdkmanager_path "build-tools;35.0.0"
+echo yes | $sdkmanager_path "ndk;23.1.7779620"
+echo yes | $sdkmanager_path "ndk;27.2.12479018"
 
 # Use the distribution path given to the script by the build bot in DIST_DIR. Otherwise,
 # build in the default location.
@@ -26,13 +51,6 @@ then
     dist_dir=$(pwd)/../dist
 else
     dist_dir=$DIST_DIR
-fi
-
-if [ "$(uname)" == "Darwin" ]; then
-    : # Do nothing but skip the next condition so we don't get a bash warning on macos
-elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    # Do only for GNU/Linux platform
-    export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk11/linux-x86
 fi
 
 ## Build the Game SDK distribution zip and the zips for Maven AARs

@@ -26,46 +26,46 @@
 namespace swappy {
 
 class ChoreographerThread {
- public:
-  enum class Type {
-    // choreographer ticks are provided by application
-    App,
+public:
+    enum class Type {
+        // choreographer ticks are provided by application
+        App,
 
-    // register internally with choreographer
-    Swappy,
-  };
+        // register internally with choreographer
+        Swappy,
+    };
 
-  static const char* CT_CLASS;
-  static const JNINativeMethod CTNativeMethods[];
-  static constexpr int CTNativeMethodsSize = 1;
+    static const char* CT_CLASS;
+    static const JNINativeMethod CTNativeMethods[];
+    static constexpr int CTNativeMethodsSize = 1;
 
-  using RefreshRateChangedCallback = std::function<void()>;
-  using ChoreographerCallback = std::function<void(
-      std::optional<std::chrono::nanoseconds> sfToVsyncDelay)>;
+    using RefreshRateChangedCallback = std::function<void()>;
+    using ChoreographerCallback =
+            std::function<void(std::optional<std::chrono::nanoseconds> sfToVsyncDelay)>;
 
-  static std::unique_ptr<ChoreographerThread> createChoreographerThread(
-      Type type, JavaVM* vm, jobject jactivity,
-      ChoreographerCallback onChoreographer,
-      RefreshRateChangedCallback onRefreshRateChanged, SdkVersion sdkVersion);
+    static std::unique_ptr<ChoreographerThread> createChoreographerThread(
+            Type type, JavaVM* vm, jobject jactivity, ChoreographerCallback onChoreographer,
+            RefreshRateChangedCallback onRefreshRateChanged, SdkVersion sdkVersion);
 
-  virtual ~ChoreographerThread() = 0;
+    virtual ~ChoreographerThread() = 0;
 
-  virtual void postFrameCallbacks();
+    virtual void postFrameCallbacks();
 
-  bool isInitialized() { return mInitialized; }
+    bool isInitialized() {
+        return mInitialized;
+    }
 
- protected:
-  ChoreographerThread(ChoreographerCallback onChoreographer);
-  virtual void scheduleNextFrameCallback() REQUIRES(mWaitingMutex) = 0;
-  virtual void onChoreographer(
-      std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
+protected:
+    ChoreographerThread(ChoreographerCallback onChoreographer);
+    virtual void scheduleNextFrameCallback() REQUIRES(mWaitingMutex) = 0;
+    virtual void onChoreographer(std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
 
-  std::mutex mWaitingMutex;
-  int mCallbacksBeforeIdle GUARDED_BY(mWaitingMutex) = 0;
-  ChoreographerCallback mCallback;
-  bool mInitialized = false;
+    std::mutex mWaitingMutex;
+    int mCallbacksBeforeIdle GUARDED_BY(mWaitingMutex) = 0;
+    ChoreographerCallback mCallback;
+    bool mInitialized = false;
 
-  static constexpr int MAX_CALLBACKS_BEFORE_IDLE = 10;
+    static constexpr int MAX_CALLBACKS_BEFORE_IDLE = 10;
 };
 
-}  // namespace swappy
+} // namespace swappy

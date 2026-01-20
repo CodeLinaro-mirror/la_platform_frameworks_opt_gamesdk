@@ -20,31 +20,32 @@ import com.google.common.collect.Multimap;
 
 /** Collecting validation errors */
 public interface ErrorCollector {
-  void addError(ErrorType errorType, String message);
+    void addError(ErrorType errorType, String message);
 
-  void addError(ErrorType errorType, String message, Exception e);
+    void addError(ErrorType errorType, String message, Exception e);
 
-  Integer getErrorCount();
+    Integer getErrorCount();
 
-  Integer getErrorCount(ErrorType errorType);
+    Integer getErrorCount(ErrorType errorType);
 
-  void printStatus();
+    void printStatus();
 
-  Boolean hasErrors(ErrorType.ErrorGroup group);
+    Boolean hasErrors(ErrorType.ErrorGroup group);
 
-  Boolean hasAnnotationErrors();
+    Boolean hasAnnotationErrors();
 
-  Boolean hasFidelityParamsErrors();
+    Boolean hasFidelityParamsErrors();
 
-  Boolean hasSettingsErrors();
+    Boolean hasSettingsErrors();
 
-  Multimap<ErrorType, String> getErrors();
+    Multimap<ErrorType, String> getErrors();
 
-  void addWarning(ErrorType errorType, String message);
+    void addWarning(ErrorType errorType, String message);
 
-  Multimap<ErrorType, String> getWarnings();
+    Multimap<ErrorType, String> getWarnings();
 
-  Integer getWarningCount();
+    Integer getWarningCount();
 
-  Integer getWarningCount(ErrorType errorType);
-};
+    Integer getWarningCount(ErrorType errorType);
+}
+;

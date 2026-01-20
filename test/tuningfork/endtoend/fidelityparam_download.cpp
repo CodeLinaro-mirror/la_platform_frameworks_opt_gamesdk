@@ -38,33 +38,29 @@ void TestFidelityParamDownloadThread(bool insights) {
     TuningFork_CProtobufSerialization c_default_fps;
     tf::ToCProtobufSerialization(default_fps, c_default_fps);
 
-    auto settings = TestSettings(
-        tf::Settings::AggregationStrategy::Submission::TICK_BASED, 100, 1, {});
+    auto settings =
+            TestSettings(tf::Settings::AggregationStrategy::Submission::TICK_BASED, 100, 1, {});
 
     settings.api_key = "dummy_api_key";
     settings.c_settings.training_fidelity_params = nullptr;
 
     auto download_backend = insights ? std::make_shared<TestDownloadBackend>(
-                                           /*wait_count*/ 0, nullptr)
+                                               /*wait_count*/ 0, nullptr)
                                      : std::make_shared<TestDownloadBackend>(
-                                           /*wait_count*/ 3, &default_fps);
+                                               /*wait_count*/ 3, &default_fps);
 
     TuningForkTest test(settings, milliseconds(20), download_backend);
 
-    auto r = TuningFork_startFidelityParamDownloadThread(
-        nullptr, FidelityParamsCallback);
+    auto r = TuningFork_startFidelityParamDownloadThread(nullptr, FidelityParamsCallback);
     EXPECT_EQ(r, TUNINGFORK_ERROR_BAD_PARAMETER);
     std::unique_lock<std::mutex> lock(fp_mutex);
-    r = TuningFork_startFidelityParamDownloadThread(&c_default_fps,
-                                                    FidelityParamsCallback);
+    r = TuningFork_startFidelityParamDownloadThread(&c_default_fps, FidelityParamsCallback);
     EXPECT_EQ(r, TUNINGFORK_ERROR_OK);
 
     fp_n_callbacks_called = 0;
 
     if (insights) {
-        EXPECT_TRUE(fp_cv.wait_for(lock, s_test_wait_time) !=
-                    std::cv_status::timeout)
-            << "Timeout";
+        EXPECT_TRUE(fp_cv.wait_for(lock, s_test_wait_time) != std::cv_status::timeout) << "Timeout";
         EXPECT_EQ(fp_n_callbacks_called, 1);
         EXPECT_EQ(download_backend->n_times_called_, 1);
     } else {
@@ -72,9 +68,8 @@ void TestFidelityParamDownloadThread(bool insights) {
         // defaults and
         //  one with the ones from the loader.
         for (int i = 0; i < 2; ++i) {
-            EXPECT_TRUE(fp_cv.wait_for(lock, s_test_wait_time) !=
-                        std::cv_status::timeout)
-                << "Timeout";
+            EXPECT_TRUE(fp_cv.wait_for(lock, s_test_wait_time) != std::cv_status::timeout)
+                    << "Timeout";
         }
         EXPECT_EQ(fp_n_callbacks_called, 2);
         EXPECT_EQ(download_backend->n_times_called_, 4);
@@ -98,12 +93,11 @@ class TestRequest : public tf::HttpRequest {
     std::vector<TestResponse> responses_;
     int next_response_ = 0;
 
-   public:
+public:
     TestRequest(const HttpRequest& r, std::vector<TestResponse> responses)
-        : HttpRequest(r), responses_(responses) {}
-    TuningFork_ErrorCode Send(const std::string& rpc_name,
-                              const std::string& request, int& response_code,
-                              std::string& response_body) override {
+          : HttpRequest(r), responses_(responses) {}
+    TuningFork_ErrorCode Send(const std::string& rpc_name, const std::string& request,
+                              int& response_code, std::string& response_body) override {
         EXPECT_LT(next_response_, responses_.size()) << "Unexpected request";
         if (next_response_ < responses_.size()) {
             auto& expected = responses_[next_response_];
@@ -142,13 +136,11 @@ static const std::string empty_tuning_parameters_request = R"({
 
 TEST(EndToEndTest, FidelityParamDownloadRequest) {
     tf::HttpBackend backend;
-    tf::HttpRequest inner_request("https://test.google.com", "dummy_api_key",
-                                  milliseconds(1000));
-    TestRequest request(inner_request,
-                        {{empty_tuning_parameters_request, 200, "out"}});
+    tf::HttpRequest inner_request("https://test.google.com", "dummy_api_key", milliseconds(1000));
+    TestRequest request(inner_request, {{empty_tuning_parameters_request, 200, "out"}});
     tf::ProtobufSerialization fps;
     std::string experiment_id;
     backend.GenerateTuningParameters(request, nullptr, fps, experiment_id);
 }
 
-}  // namespace tuningfork_test
+} // namespace tuningfork_test

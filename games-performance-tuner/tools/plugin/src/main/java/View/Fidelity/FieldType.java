@@ -16,21 +16,21 @@
 package View.Fidelity;
 
 public enum FieldType {
-  INT32("int32"),
-  FLOAT("float"),
-  ENUM("enum");
-  private final String name;
+    INT32("int32"),
+    FLOAT("float"),
+    ENUM("enum");
+    private final String name;
 
-  FieldType(String name) {
-    this.name = name;
-  }
+    FieldType(String name) {
+        this.name = name;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 
-  @Override
-  public String toString() {
-    return getName();
-  }
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

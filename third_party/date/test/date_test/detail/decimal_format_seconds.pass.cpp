@@ -33,38 +33,34 @@
 // private:
 //     std::chrono::seconds s_;
 //     precision            sub_s_;
-// 
+//
 // public:
 //     constexpr explicit decimal_format_seconds(const Duration& d) noexcept;
-// 
+//
 //     constexpr std::chrono::seconds& seconds() noexcept;
 //     constexpr std::chrono::seconds seconds() const noexcept;
 //     constexpr precision subseconds() const noexcept;
 //     constexpr precision to_duration() const noexcept;
-// 
+//
 //     template <class CharT, class Traits>
 //     friend
 //     std::basic_ostream<CharT, Traits>&
 //     operator<<(std::basic_ostream<CharT, Traits>& os, const decimal_format_seconds& x);
 // };
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
+#include "date.h"
+
 using fortnights = std::chrono::duration<date::weeks::rep,
-                                         std::ratio_multiply<std::ratio<2>,
-                                                             date::weeks::period>>;
+                                         std::ratio_multiply<std::ratio<2>, date::weeks::period>>;
 
-using microfortnights = std::chrono::duration<std::int64_t,
-                                              std::ratio_multiply<fortnights::period,
-                                                                  std::micro>>;
+using microfortnights =
+        std::chrono::duration<std::int64_t, std::ratio_multiply<fortnights::period, std::micro>>;
 
-int
-main()
-{
+int main() {
     using namespace date::detail;
     using namespace std;
     using namespace std::chrono;

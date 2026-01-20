@@ -3,13 +3,14 @@ plugins {
 }
 
 android {
-    compileSdkVersion 29
-    ndkVersion "21.4.7075529"
+    namespace "com.memory_advice.hogger"
+    compileSdk 31
+    ndkVersion "23.1.7779620"
 
     defaultConfig {
         applicationId "com.memory_advice.hogger"
-        minSdkVersion 19
-        targetSdkVersion 35
+        minSdk      21
+        targetSdk   35
         versionCode 17
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

@@ -17,7 +17,6 @@ import android.hardware.input.InputManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import java.lang.Thread;
 
 public class GameControllerThread extends Thread implements InputManager.InputDeviceListener {
@@ -31,7 +30,7 @@ public class GameControllerThread extends Thread implements InputManager.InputDe
     }
 
     @Override
-    public void run () {
+    public void run() {
         Looper.prepare();
         mHandler = new Handler(Looper.myLooper());
         onStart();

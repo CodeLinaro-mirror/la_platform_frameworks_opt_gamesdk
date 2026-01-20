@@ -14,4 +14,4 @@ void set(const ::com::google::tuningfork::Annotation& a);
 #define SYS_GPU 1
 void tick(int instrumentKey);
 
-}  // namespace mocktuningfork
+} // namespace mocktuningfork

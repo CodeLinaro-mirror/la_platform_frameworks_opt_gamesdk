@@ -32,73 +32,71 @@ namespace paddleboat {
 #define PADDLEBOAT_MAX_NUM_POINTERS_IN_MOTION_EVENT 8
 
 typedef struct Paddleboat_GameActivityPointerInfo {
-  int32_t id;
-  float axisValues[PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT];
-  float rawX;
-  float rawY;
+    int32_t id;
+    float axisValues[PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT];
+    float rawX;
+    float rawY;
 } Paddleboat_GameActivityPointerInfo;
 
 typedef struct Paddleboat_GameActivityMotionEvent {
-  int32_t deviceId;
-  int32_t source;
-  int32_t action;
-  int64_t eventTime;
-  int64_t downTime;
-  int32_t flags;
-  int32_t metaState;
-  int32_t actionButton;
-  int32_t buttonState;
-  int32_t classification;
-  int32_t edgeFlags;
-  uint32_t pointerCount;
-  Paddleboat_GameActivityPointerInfo
-      pointers[PADDLEBOAT_MAX_NUM_POINTERS_IN_MOTION_EVENT];
-  float precisionX;
-  float precisionY;
+    int32_t deviceId;
+    int32_t source;
+    int32_t action;
+    int64_t eventTime;
+    int64_t downTime;
+    int32_t flags;
+    int32_t metaState;
+    int32_t actionButton;
+    int32_t buttonState;
+    int32_t classification;
+    int32_t edgeFlags;
+    uint32_t pointerCount;
+    Paddleboat_GameActivityPointerInfo pointers[PADDLEBOAT_MAX_NUM_POINTERS_IN_MOTION_EVENT];
+    float precisionX;
+    float precisionY;
 } Paddleboat_GameActivityMotionEvent;
 
 typedef struct Paddleboat_GameActivityKeyEvent {
-  int32_t deviceId;
-  int32_t source;
-  int32_t action;
-  int64_t eventTime;
-  int64_t downTime;
-  int32_t flags;
-  int32_t metaState;
-  int32_t modifiers;
-  int32_t repeatCount;
-  int32_t keyCode;
+    int32_t deviceId;
+    int32_t source;
+    int32_t action;
+    int64_t eventTime;
+    int64_t downTime;
+    int32_t flags;
+    int32_t metaState;
+    int32_t modifiers;
+    int32_t repeatCount;
+    int32_t keyCode;
 } Paddleboat_GameActivityKeyEvent;
 
 // Used in GameActivity 1.2.2 and higher
 typedef struct Paddleboat_GameActivityPointerInfoV2 {
-  int32_t id;
-  int32_t toolType;
-  float axisValues[PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT];
-  float rawX;
-  float rawY;
+    int32_t id;
+    int32_t toolType;
+    float axisValues[PADDLEBOAT_GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT];
+    float rawX;
+    float rawY;
 } Paddleboat_GameActivityPointerInfoV2;
 
 typedef struct Paddleboat_GameActivityMotionEventV2 {
-  int32_t deviceId;
-  int32_t source;
-  int32_t action;
-  int64_t eventTime;
-  int64_t downTime;
-  int32_t flags;
-  int32_t metaState;
-  int32_t actionButton;
-  int32_t buttonState;
-  int32_t classification;
-  int32_t edgeFlags;
-  uint32_t pointerCount;
-  Paddleboat_GameActivityPointerInfoV2
-      pointers[PADDLEBOAT_MAX_NUM_POINTERS_IN_MOTION_EVENT];
-  int historySize;
-  long* historicalEventTimes;
-  float* historicalAxisValues;
-  float precisionX;
-  float precisionY;
+    int32_t deviceId;
+    int32_t source;
+    int32_t action;
+    int64_t eventTime;
+    int64_t downTime;
+    int32_t flags;
+    int32_t metaState;
+    int32_t actionButton;
+    int32_t buttonState;
+    int32_t classification;
+    int32_t edgeFlags;
+    uint32_t pointerCount;
+    Paddleboat_GameActivityPointerInfoV2 pointers[PADDLEBOAT_MAX_NUM_POINTERS_IN_MOTION_EVENT];
+    int historySize;
+    long* historicalEventTimes;
+    float* historicalAxisValues;
+    float precisionX;
+    float precisionY;
 } Paddleboat_GameActivityMotionEventV2;
 
-}  // namespace paddleboat
+} // namespace paddleboat

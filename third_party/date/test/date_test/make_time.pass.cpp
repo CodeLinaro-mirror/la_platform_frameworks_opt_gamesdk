@@ -27,21 +27,20 @@
 // time_of_day<std::chrono::duration<Rep, Period>>
 // make_time(std::chrono::duration<Rep, Period> d) noexcept;
 
-#include "date.h"
-
 #include <cassert>
 #include <type_traits>
 
-int
-main()
-{
+#include "date.h"
+
+int main() {
     using namespace date;
     using namespace std;
     using namespace std::chrono;
 
     {
         static_assert(is_same<decltype(make_time(nanoseconds{18429000000022})),
-                              time_of_day<nanoseconds>>{}, "");
+                              time_of_day<nanoseconds>>{},
+                      "");
         auto tod = make_time(nanoseconds{18429000000022});
         assert(tod.hours() == hours{5});
         assert(tod.minutes() == minutes{7});
@@ -50,7 +49,8 @@ main()
     }
     {
         static_assert(is_same<decltype(make_time(microseconds{18429000022})),
-                              time_of_day<microseconds>>{}, "");
+                              time_of_day<microseconds>>{},
+                      "");
         auto tod = make_time(microseconds{18429000022});
         assert(tod.hours() == hours{5});
         assert(tod.minutes() == minutes{7});
@@ -58,23 +58,20 @@ main()
         assert(tod.subseconds() == microseconds{22});
     }
     {
-        static_assert(is_same<decltype(make_time(seconds{18429})),
-                              time_of_day<seconds>>{}, "");
+        static_assert(is_same<decltype(make_time(seconds{18429})), time_of_day<seconds>>{}, "");
         auto tod = make_time(seconds{18429});
         assert(tod.hours() == hours{5});
         assert(tod.minutes() == minutes{7});
         assert(tod.seconds() == seconds{9});
     }
     {
-        static_assert(is_same<decltype(make_time(minutes{307})),
-                              time_of_day<minutes>>{}, "");
+        static_assert(is_same<decltype(make_time(minutes{307})), time_of_day<minutes>>{}, "");
         auto tod = make_time(minutes{307});
         assert(tod.hours() == hours{5});
         assert(tod.minutes() == minutes{7});
     }
     {
-        static_assert(is_same<decltype(make_time(hours{5})),
-                              time_of_day<hours>>{}, "");
+        static_assert(is_same<decltype(make_time(hours{5})), time_of_day<hours>>{}, "");
         auto tod = make_time(hours{5});
         assert(tod.hours() == hours{5});
     }

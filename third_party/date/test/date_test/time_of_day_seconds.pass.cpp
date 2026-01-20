@@ -45,15 +45,13 @@
 
 // std::ostream& operator<<(std::ostream& os, const time_of_day<std::chrono::seconds>& t);
 
-#include "date.h"
-
 #include <cassert>
 #include <sstream>
 #include <type_traits>
 
-int
-main()
-{
+#include "date.h"
+
+int main() {
     using namespace date;
     using namespace std;
     using namespace std::chrono;
@@ -62,12 +60,12 @@ main()
 
     static_assert(is_same<tod::precision::period, seconds::period>{}, "");
 
-    static_assert( is_trivially_destructible<tod>{}, "");
-    static_assert( is_default_constructible<tod>{}, "");
-    static_assert( is_trivially_copy_constructible<tod>{}, "");
-    static_assert( is_trivially_copy_assignable<tod>{}, "");
-    static_assert( is_trivially_move_constructible<tod>{}, "");
-    static_assert( is_trivially_move_assignable<tod>{}, "");
+    static_assert(is_trivially_destructible<tod>{}, "");
+    static_assert(is_default_constructible<tod>{}, "");
+    static_assert(is_trivially_copy_constructible<tod>{}, "");
+    static_assert(is_trivially_copy_assignable<tod>{}, "");
+    static_assert(is_trivially_move_constructible<tod>{}, "");
+    static_assert(is_trivially_move_assignable<tod>{}, "");
 
     static_assert(is_nothrow_constructible<tod, seconds>{}, "");
     static_assert(!is_convertible<seconds, tod>{}, "");
@@ -80,8 +78,7 @@ main()
     static_assert(t1.minutes() == minutes{7}, "");
     static_assert(t1.seconds() == seconds{5}, "");
 #if __cplusplus >= 201402
-    static_assert(static_cast<tod::precision>(t1) == hours{13} + minutes{7}
-                                                     + seconds{5}, "");
+    static_assert(static_cast<tod::precision>(t1) == hours{13} + minutes{7} + seconds{5}, "");
     static_assert(t1.to_duration() == hours{13} + minutes{7} + seconds{5}, "");
 #endif
 

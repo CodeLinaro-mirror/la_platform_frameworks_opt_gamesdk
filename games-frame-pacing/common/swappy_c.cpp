@@ -25,12 +25,14 @@ void SWAPPY_VERSION_SYMBOL() {
     // shared libraries for the Swappy version.
 }
 
-uint32_t Swappy_version() { return SWAPPY_PACKED_VERSION; }
-
-const char* Swappy_versionString() {
-  static const char version[] = AGDK_STRING_VERSION(
-      SWAPPY_MAJOR_VERSION, SWAPPY_MINOR_VERSION, SWAPPY_BUGFIX_VERSION);
-  return version;
+uint32_t Swappy_version() {
+    return SWAPPY_PACKED_VERSION;
 }
 
-}  // extern "C"
+const char* Swappy_versionString() {
+    static const char version[] =
+            AGDK_STRING_VERSION(SWAPPY_MAJOR_VERSION, SWAPPY_MINOR_VERSION, SWAPPY_BUGFIX_VERSION);
+    return version;
+}
+
+} // extern "C"
