@@ -9,7 +9,7 @@ AGDK            NA                      NA                      2022.1.1 alpha01
 swappy          games-frame-pacing      games-frame-pacing      2.3.0    alpha01
 tuningfork      games-performance-tuner games-performance-tuner 2.3.0    alpha01
 oboe            oboe                    None                    1.0.1    alpha01
-game_activity   games-activity          game-activity           4.4.0    beta01
-game_text_input games-text-input        game-text-input         4.3.0    beta01
+game_activity   games-activity          game-activity           4.4.0    rc01
+game_text_input games-text-input        game-text-input         4.3.0    rc01
 paddleboat      games-controller        games-controller        2.3.0    alpha01
 memory_advice   games-memory-advice     games-memory-advice     2.3.0    alpha01
