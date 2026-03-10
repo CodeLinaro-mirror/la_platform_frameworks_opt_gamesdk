@@ -159,7 +159,7 @@ void ChoreographerFilter::terminateThreadsLocked() {
 
 void ChoreographerFilter::onSettingsChanged() {
     const bool useAffinity = Settings::getInstance()->getUseAffinity();
-    const Settings::DisplayTimings& displayTimings = Settings::getInstance()->getDisplayTimings();
+    const Settings::DisplayTimings displayTimings = Settings::getInstance()->getDisplayTimings();
     std::lock_guard<std::mutex> lock(mThreadPoolMutex);
     if (useAffinity == mUseAffinity && mRefreshPeriod == displayTimings.refreshPeriod) {
         return;

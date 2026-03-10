@@ -23,7 +23,7 @@ buildDir="../../out_tuningfork"
 android {
     namespace 'com.google.androidgamesdk.tuningfork'
     compileSdk 31
-    ndkVersion "23.1.7779620"
+    ndkVersion "27.3.13750724"
 
     defaultConfig {
         minSdkVersion 21

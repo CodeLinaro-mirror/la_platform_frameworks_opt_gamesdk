@@ -67,7 +67,7 @@ void Settings::setUseAffinity(bool tf) {
     notifyListeners();
 }
 
-const Settings::DisplayTimings& Settings::getDisplayTimings() const {
+Settings::DisplayTimings Settings::getDisplayTimings() const {
     std::lock_guard<std::mutex> lock(mMutex);
     return mDisplayTimings;
 }

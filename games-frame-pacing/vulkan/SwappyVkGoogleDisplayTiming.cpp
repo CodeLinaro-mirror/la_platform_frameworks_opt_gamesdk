@@ -18,6 +18,8 @@
 
 #include "SwappyVkGoogleDisplayTiming.h"
 
+#include <vector>
+
 #define LOG_TAG "SwappyVkGoogleDisplayTiming"
 #include "SwappyLog.h"
 
@@ -96,7 +98,7 @@ VkResult SwappyVkGoogleDisplayTiming::doQueuePresent(VkQueue queue, uint32_t que
 
     mCommonBase.onPreSwap(handlers);
 
-    VkPresentTimeGOOGLE pPresentTimes[pPresentInfo->swapchainCount];
+    std::vector<VkPresentTimeGOOGLE> pPresentTimes(pPresentInfo->swapchainCount);
     VkPresentInfoKHR replacementPresentInfo;
     VkPresentTimesInfoGOOGLE presentTimesInfo;
     // Set up the new structures to pass:
@@ -109,13 +111,19 @@ VkResult SwappyVkGoogleDisplayTiming::doQueuePresent(VkQueue queue, uint32_t que
         pPresentTimes[i].desiredPresentTime = desiredPresentTime;
     }
 
-    presentTimesInfo = {VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE, pPresentInfo->pNext,
-                        pPresentInfo->swapchainCount, pPresentTimes};
+    presentTimesInfo.sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE;
+    presentTimesInfo.pNext = pPresentInfo->pNext;
+    presentTimesInfo.swapchainCount = pPresentInfo->swapchainCount;
+    presentTimesInfo.pTimes = pPresentTimes.data();
 
-    replacementPresentInfo = {pPresentInfo->sType,          &presentTimesInfo,
-                              waitSemaphoreCount,           pWaitSemaphores,
-                              pPresentInfo->swapchainCount, pPresentInfo->pSwapchains,
-                              pPresentInfo->pImageIndices,  pPresentInfo->pResults};
+    replacementPresentInfo.sType = pPresentInfo->sType;
+    replacementPresentInfo.pNext = &presentTimesInfo;
+    replacementPresentInfo.waitSemaphoreCount = waitSemaphoreCount;
+    replacementPresentInfo.pWaitSemaphores = pWaitSemaphores;
+    replacementPresentInfo.swapchainCount = pPresentInfo->swapchainCount;
+    replacementPresentInfo.pSwapchains = pPresentInfo->pSwapchains;
+    replacementPresentInfo.pImageIndices = pPresentInfo->pImageIndices;
+    replacementPresentInfo.pResults = pPresentInfo->pResults;
 
     mPresentID++;
 

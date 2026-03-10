@@ -23,7 +23,7 @@ def stlType = 'c++_shared'
 android {
     namespace "com.samples.cube"
     compileSdk  31
-    ndkVersion "23.1.7779620"
+    ndkVersion "27.3.13750724"
 
     defaultConfig {
         applicationId 'com.samples.cube'

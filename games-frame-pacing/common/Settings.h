@@ -55,7 +55,7 @@ public:
     void setSwapDuration(uint64_t swapNs);
     void setUseAffinity(bool);
 
-    const DisplayTimings& getDisplayTimings() const;
+    DisplayTimings getDisplayTimings() const;
     std::chrono::nanoseconds getSwapDuration() const;
     bool getUseAffinity() const;
 

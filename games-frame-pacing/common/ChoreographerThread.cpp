@@ -425,7 +425,7 @@ NoChoreographerThread::~NoChoreographerThread() {
 }
 
 void NoChoreographerThread::onSettingsChanged() {
-    const Settings::DisplayTimings& displayTimings = Settings::getInstance()->getDisplayTimings();
+    const Settings::DisplayTimings displayTimings = Settings::getInstance()->getDisplayTimings();
     std::lock_guard<std::mutex> lock(mWaitingMutex);
     mRefreshPeriod = displayTimings.refreshPeriod;
     SWAPPY_LOGV("onSettingsChanged(): refreshPeriod=%lld",

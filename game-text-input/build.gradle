@@ -7,7 +7,7 @@ buildDir="../../out_game_text_input"
 android {
     namespace "com.google.androidgamesdk.gametextinput"
     compileSdk 35
-    ndkVersion "23.1.7779620"
+    ndkVersion "27.3.13750724"
 
     defaultConfig {
         minSdk 21

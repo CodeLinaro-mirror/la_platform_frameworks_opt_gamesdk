@@ -27,7 +27,7 @@ buildDir="../../out_paddleboat"
 android {
     namespace 'com.google.android.games.paddleboat'
     compileSdk 31
-    ndkVersion "23.1.7779620"
+    ndkVersion "27.3.13750724"
 
     defaultConfig {
         minSdk 21

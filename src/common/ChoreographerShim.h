@@ -65,6 +65,7 @@ typedef struct AChoreographerFrameCallbackData AChoreographerFrameCallbackData;
 typedef void (*AChoreographer_vsyncCallback)(const AChoreographerFrameCallbackData* callbackData,
                                              void* data);
 
+#if !defined(__NDK_MAJOR__) || __NDK_MAJOR__ < 27
 /**
  * Posts a callback to be run when the application should begin rendering the
  * next frame. The data pointer provided will be passed to the callback function
@@ -100,5 +101,6 @@ typedef int64_t (*AChoreographerFrameCallbackData_getFrameTimelineExpectedPresen
  */
 typedef int64_t (*AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos)(
         const AChoreographerFrameCallbackData* data, size_t index);
+#endif // !defined(__NDK_MAJOR__) || __NDK_MAJOR__ < 27
 
 #endif // __ANDROID_API__ < 33
