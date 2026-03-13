@@ -46,3 +46,11 @@ set_target_properties(game-activity PROPERTIES
 
 set_target_properties(game-activity_static PROPERTIES
      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/build )
+
+option(BUILD_ANDROID_TESTS "Build Android tests" OFF)
+if(BUILD_ANDROID_TESTS)
+    add_library(gameactivity_test_native SHARED
+        ${GAMEACTIVITY_SRCS}
+        src/androidTest/cpp/gameactivity_test.cpp)
+    target_link_libraries(gameactivity_test_native android log)
+endif()

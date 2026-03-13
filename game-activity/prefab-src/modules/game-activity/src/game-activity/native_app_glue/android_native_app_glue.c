@@ -176,10 +176,79 @@ static void android_app_destroy(struct android_app* android_app) {
     // Can't touch android_app object after this.
 }
 
+static const char* android_app_get_cmd_name(int8_t cmd) {
+    switch (cmd) {
+        case UNUSED_APP_CMD_INPUT_CHANGED:
+            return "UNUSED_APP_CMD_INPUT_CHANGED";
+        case APP_CMD_INIT_WINDOW:
+            return "APP_CMD_INIT_WINDOW";
+        case APP_CMD_TERM_WINDOW:
+            return "APP_CMD_TERM_WINDOW";
+        case APP_CMD_WINDOW_RESIZED:
+            return "APP_CMD_WINDOW_RESIZED";
+        case APP_CMD_WINDOW_REDRAW_NEEDED:
+            return "APP_CMD_WINDOW_REDRAW_NEEDED";
+        case APP_CMD_CONTENT_RECT_CHANGED:
+            return "APP_CMD_CONTENT_RECT_CHANGED";
+        case APP_CMD_SOFTWARE_KB_VIS_CHANGED:
+            return "APP_CMD_SOFTWARE_KB_VIS_CHANGED";
+        case APP_CMD_GAINED_FOCUS:
+            return "APP_CMD_GAINED_FOCUS";
+        case APP_CMD_LOST_FOCUS:
+            return "APP_CMD_LOST_FOCUS";
+        case APP_CMD_CONFIG_CHANGED:
+            return "APP_CMD_CONFIG_CHANGED";
+        case APP_CMD_LOW_MEMORY:
+            return "APP_CMD_LOW_MEMORY";
+        case APP_CMD_START:
+            return "APP_CMD_START";
+        case APP_CMD_RESUME:
+            return "APP_CMD_RESUME";
+        case APP_CMD_SAVE_STATE:
+            return "APP_CMD_SAVE_STATE";
+        case APP_CMD_PAUSE:
+            return "APP_CMD_PAUSE";
+        case APP_CMD_STOP:
+            return "APP_CMD_STOP";
+        case APP_CMD_DESTROY:
+            return "APP_CMD_DESTROY";
+        case APP_CMD_WINDOW_INSETS_CHANGED:
+            return "APP_CMD_WINDOW_INSETS_CHANGED";
+        case APP_CMD_EDITOR_ACTION:
+            return "APP_CMD_EDITOR_ACTION";
+        case APP_CMD_KEY_EVENT:
+            return "APP_CMD_KEY_EVENT";
+        case APP_CMD_TOUCH_EVENT:
+            return "APP_CMD_TOUCH_EVENT";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+static uint64_t get_now_ns() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
 static void process_cmd(struct android_app* app, struct android_poll_source* source) {
     int8_t cmd = android_app_read_cmd(app);
     android_app_pre_exec_cmd(app, cmd);
-    if (app->onAppCmd != NULL) app->onAppCmd(app, cmd);
+    if (app->onAppCmd != NULL) {
+        uint64_t start = get_now_ns();
+
+        app->onAppCmd(app, cmd);
+
+        double duration_ms = (get_now_ns() - start) / 1000000.0;
+
+        if (duration_ms > 3000) {
+            LOGE("Application callback for event %s took %.1f ms", android_app_get_cmd_name(cmd),
+                 duration_ms);
+        } else if (duration_ms > 1000) {
+            LOGW("Application callback for event %s took %.1f ms", android_app_get_cmd_name(cmd),
+                 duration_ms);
+        }
+    }
     android_app_post_exec_cmd(app, cmd);
 }
 

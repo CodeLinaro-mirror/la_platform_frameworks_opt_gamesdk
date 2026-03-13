@@ -35,6 +35,11 @@ android {
         }
         debug {
             testCoverageEnabled true
+            externalNativeBuild {
+                cmake {
+                    arguments "-DBUILD_ANDROID_TESTS=ON"
+                }
+            }
         }
     }
     compileOptions {
@@ -62,6 +67,13 @@ android {
         }
     }
 
+    sourceSets {
+        androidTest {
+            jniLibs.srcDirs = ['libs']
+            jni.srcDirs = ['src/androidTest/jni']
+        }
+    }
+
     // If we don't include this line the created .aar contains the c++ std lib
     // at <.aar_file>/jni/<abi>/libc++_shared.so. When we have multiple
     // libraries containing libc++_shared.so the linker complains because it
@@ -69,7 +81,7 @@ android {
     // contents of the <.aar_file>/jni/* folder so we can just exclude it here
     // to prevent the jni folder from being created.
     packagingOptions {
-        exclude("**.so")
+        exclude("jni/**/libc++_shared.so")
     }
 }
 
@@ -77,6 +89,11 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'androidx.core:core:1.5.0'
     implementation 'com.google.android.material:material:1.2.1'
+
+    androidTestImplementation 'androidx.test:core:1.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
 
 repositories {
