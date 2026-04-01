@@ -126,6 +126,7 @@ static struct ConfigurationClassInfo {
     jfieldID uiMode;
 
     jmethodID getLocales;
+    jfieldID locale;
 } gConfigurationClassInfo;
 
 /*
@@ -639,6 +640,50 @@ static std::string getStringField(JNIEnv* env, jobject obj, jmethodID method) {
     return res;
 }
 
+static void fillLocale(JNIEnv* env, jobject jniLocale, Locale& locale) {
+    locale.language = getStringField(env, jniLocale, gLocaleClassInfo.getLanguage);
+    locale.script = getStringField(env, jniLocale, gLocaleClassInfo.getScript);
+    locale.country = getStringField(env, jniLocale, gLocaleClassInfo.getCountry);
+    locale.variant = getStringField(env, jniLocale, gLocaleClassInfo.getVariant);
+}
+
+static void readLocales(NativeCode* code, jobject javaConfig) {
+    if (gConfigurationClassInfo.getLocales == NULL) {
+        // if gConfigurationClassInfo.getLocales is NULL, it means we are on Android < API 24.
+        // For Android < API 24, we fall back to reading the single Configuration.locale field.
+        jobject jniLocale = code->env->GetObjectField(javaConfig, gConfigurationClassInfo.locale);
+        checkAndClearException(code->env, "locale");
+
+        if (jniLocale != nullptr) {
+            gConfiguration.locales.resize(1);
+            Locale& locale = gConfiguration.locales[0];
+            fillLocale(code->env, jniLocale, locale);
+        } else {
+            gConfiguration.locales.clear();
+        }
+        return;
+    }
+    // Android N (API 24) introduced LocaleList and Configuration.getLocales().
+    jobject locales = code->env->CallObjectMethod(javaConfig, gConfigurationClassInfo.getLocales);
+    checkAndClearException(code->env, "getLocales");
+
+    int localesCount = code->env->CallIntMethod(locales, gLocaleListClassInfo.size);
+    checkAndClearException(code->env, "size");
+    gConfiguration.locales.resize(localesCount);
+
+    // extract the data for every locale
+    for (int i = 0; i < localesCount; ++i) {
+        Locale& locale = gConfiguration.locales[i];
+
+        // get locale object from the array
+        jobject jniLocale = code->env->CallObjectMethod(locales, gLocaleListClassInfo.get, i);
+        checkAndClearException(code->env, "GetObjectArrayElement");
+
+        // get data strings for this locale
+        fillLocale(code->env, jniLocale, locale);
+    }
+}
+
 static void readConfigurationValues(NativeCode* code, jobject javaConfig) {
     const std::lock_guard<std::mutex> lock(gConfigMutex);
 
@@ -684,27 +729,7 @@ static void readConfigurationValues(NativeCode* code, jobject javaConfig) {
 
     checkAndClearException(code->env, "Configuration.get");
 
-    jobject locales = code->env->CallObjectMethod(javaConfig, gConfigurationClassInfo.getLocales);
-    checkAndClearException(code->env, "getLocales");
-
-    int localesCount = code->env->CallIntMethod(locales, gLocaleListClassInfo.size);
-    checkAndClearException(code->env, "size");
-    gConfiguration.locales.resize(localesCount);
-
-    // extract the data for every locale
-    for (int i = 0; i < localesCount; ++i) {
-        Locale& locale = gConfiguration.locales[i];
-
-        // get locale object from the array
-        jobject jniLocale = code->env->CallObjectMethod(locales, gLocaleListClassInfo.get, i);
-        checkAndClearException(code->env, "GetObjectArrayElement");
-
-        // get data strings for this locale
-        locale.language = getStringField(code->env, jniLocale, gLocaleClassInfo.getLanguage);
-        locale.script = getStringField(code->env, jniLocale, gLocaleClassInfo.getScript);
-        locale.country = getStringField(code->env, jniLocale, gLocaleClassInfo.getCountry);
-        locale.variant = getStringField(code->env, jniLocale, gLocaleClassInfo.getVariant);
-    }
+    readLocales(code, javaConfig);
 }
 
 static void onConfigurationChanged_native(JNIEnv* env, jobject javaGameActivity, jlong handle,
@@ -1262,13 +1287,18 @@ extern "C" int GameActivity_register(JNIEnv* env) {
     GET_FIELD_ID(gConfigurationClassInfo.touchscreen, configuration_class, "touchscreen", "I");
     GET_FIELD_ID(gConfigurationClassInfo.uiMode, configuration_class, "uiMode", "I");
 
-    GET_METHOD_ID(gConfigurationClassInfo.getLocales, configuration_class, "getLocales",
-                  "()Landroid/os/LocaleList;");
+    if (android_get_device_api_level() >= 24) {
+        GET_METHOD_ID(gConfigurationClassInfo.getLocales, configuration_class, "getLocales",
+                      "()Landroid/os/LocaleList;");
 
-    jclass localeListClass;
-    FIND_CLASS(localeListClass, kLocaleListPathName);
-    GET_METHOD_ID(gLocaleListClassInfo.size, localeListClass, "size", "()I");
-    GET_METHOD_ID(gLocaleListClassInfo.get, localeListClass, "get", "(I)Ljava/util/Locale;");
+        jclass localeListClass;
+        FIND_CLASS(localeListClass, kLocaleListPathName);
+        GET_METHOD_ID(gLocaleListClassInfo.size, localeListClass, "size", "()I");
+        GET_METHOD_ID(gLocaleListClassInfo.get, localeListClass, "get", "(I)Ljava/util/Locale;");
+    } else {
+        GET_FIELD_ID(gConfigurationClassInfo.locale, configuration_class, "locale",
+                     "Ljava/util/Locale;");
+    }
 
     jclass localeClass;
     FIND_CLASS(localeClass, kLocalePathName);
