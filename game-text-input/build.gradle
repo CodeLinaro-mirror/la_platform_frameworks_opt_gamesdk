@@ -90,6 +90,6 @@ dependencies {
     androidTestImplementation 'com.android.ndk.thirdparty:googletest:1.11.0-beta-1'
     androidTestImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
     androidTestImplementation 'com.google.guava:guava:33.4.0-android'
 }
