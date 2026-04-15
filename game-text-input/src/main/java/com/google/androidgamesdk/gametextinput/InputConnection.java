@@ -332,7 +332,46 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
     @Override
     public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
         Log.d(TAG, "deleteSurroundingTextInCodePoints: " + beforeLength + ":" + afterLength);
-        return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength);
+        if (android.os.Build.VERSION.SDK_INT >= 24) {
+            return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength);
+        }
+
+        if (beforeLength < 0 || afterLength < 0) {
+            return false;
+        }
+
+        Pair selection = getSelection();
+        if (selection.first == -1 || selection.second == -1) {
+            return false;
+        }
+
+        int start = Math.min(selection.first, selection.second);
+        int end = Math.max(selection.first, selection.second);
+
+        int deleteStart = start;
+        if (beforeLength > 0) {
+            deleteStart = findIndexBackward(mEditable, start, beforeLength);
+            if (deleteStart == INVALID_INDEX) {
+                return false;
+            }
+        }
+
+        int deleteEnd = end;
+        if (afterLength > 0) {
+            deleteEnd = findIndexForward(mEditable, end, afterLength);
+            if (deleteEnd == INVALID_INDEX) {
+                return false;
+            }
+        }
+
+        if (deleteEnd > end) {
+            mEditable.delete(end, deleteEnd);
+        }
+        if (start > deleteStart) {
+            mEditable.delete(deleteStart, start);
+        }
+
+        return true;
     }
 
     // From BaseInputConnection
@@ -386,13 +425,20 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
     @Override
     public void closeConnection() {
         Log.d(TAG, "closeConnection");
-        super.closeConnection();
+        if (android.os.Build.VERSION.SDK_INT >= 24) {
+            super.closeConnection();
+            return;
+        }
+        finishComposingText();
     }
 
     @Override
     public boolean setImeConsumesInput(boolean imeConsumesInput) {
         Log.d(TAG, "setImeConsumesInput: " + imeConsumesInput);
-        return super.setImeConsumesInput(imeConsumesInput);
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            return super.setImeConsumesInput(imeConsumesInput);
+        }
+        return false;
     }
 
     @Override
