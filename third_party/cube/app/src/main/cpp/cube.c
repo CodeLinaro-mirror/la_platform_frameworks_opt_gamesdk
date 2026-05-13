@@ -433,6 +433,7 @@ struct demo {
     bool is_minimized;
 
     bool VK_KHR_incremental_present_enabled;
+    bool set_30_fps_limit;
 
     bool VK_GOOGLE_display_timing_enabled;
     bool syncd_with_actual_presents;
@@ -1117,11 +1118,14 @@ void DemoUpdateTargetIPD(struct demo* demo) {
             //
             // TODO: Try to calculate a better target_IPD based
             // on the most recently-seen present (this is overly-simplistic).
-            demo->refresh_duration_multiplier--;
-            if (demo->refresh_duration_multiplier == 0) {
-                // This should never happen, but in case it does, don't
-                // try to go faster.
-                demo->refresh_duration_multiplier = 1;
+            uint64_t min_multiplier = 1;
+            if (demo->set_30_fps_limit) {
+                uint64_t target_ns = 1000000000 / 30;
+                min_multiplier = (target_ns + demo->refresh_duration - 1) / demo->refresh_duration;
+            }
+
+            if (demo->refresh_duration_multiplier > min_multiplier) {
+                demo->refresh_duration_multiplier--;
             }
             demo->target_IPD = demo->refresh_duration * demo->refresh_duration_multiplier;
         }
@@ -1137,6 +1141,8 @@ void DemoUpdateTargetIPD(struct demo* demo) {
 
         if (calibrate_next) {
             int64_t multiple = demo->next_present_id - past[count - 1].presentID;
+            // We are setting the desired present time for prev frame hence -= 1
+            multiple -= 1;
             demo->prev_desired_present_time =
                     (past[count - 1].actualPresentTime + (multiple * demo->target_IPD));
         }
@@ -1203,7 +1209,10 @@ static void demo_draw(struct demo* demo) {
     if (demo->VK_GOOGLE_display_timing_enabled) {
         // Look at what happened to previous presents, and make appropriate
         // adjustments in timing:
-        DemoUpdateTargetIPD(demo);
+        // BUG: Temporarily disabled. This logic is outdated and drops the framerate too
+        // aggressively. We are working on an updated approach.
+
+        // DemoUpdateTargetIPD(demo);
 
         // Note: a real application would position its geometry to that it's in
         // the correct location for when the next image is presented.  It might
@@ -1330,8 +1339,11 @@ static void demo_draw(struct demo* demo) {
 
     logEvent(EVENT_CALLING_QP);
     ATrace_beginSection("cube_QueuePresent");
-    // err = demo->fpQueuePresentKHR(demo->present_queue, &present);
-    err = SwappyVk_queuePresent(demo->present_queue, &present);
+    if (demo->swappy_enabled) {
+        err = SwappyVk_queuePresent(demo->present_queue, &present);
+    } else {
+        err = demo->fpQueuePresentKHR(demo->present_queue, &present);
+    }
     ATrace_endSection();
     logEvent(EVENT_CALLED_QP);
 
@@ -1531,8 +1543,6 @@ static void demo_prepare_buffers(struct demo* demo) {
             .clipped = true,
     };
     uint32_t i;
-    // Reset swappy enabled.
-    demo->swappy_enabled = false;
     err = demo->fpCreateSwapchainKHR(demo->device, &swapchain_ci, NULL, &demo->swapchain);
     assert(!err);
 
@@ -1596,9 +1606,16 @@ static void demo_prepare_buffers(struct demo* demo) {
         demo->refresh_duration = rc_dur.refreshDuration;
 
         demo->syncd_with_actual_presents = false;
-        // Initially target 1X the refresh duration:
-        demo->target_IPD = demo->refresh_duration;
-        demo->refresh_duration_multiplier = 1;
+        if (demo->set_30_fps_limit) {
+            uint64_t target_ns = 1000000000 / 30; // 33333333 ns
+            demo->refresh_duration_multiplier =
+                    (target_ns + demo->refresh_duration - 1) / demo->refresh_duration;
+            demo->target_IPD = demo->refresh_duration * demo->refresh_duration_multiplier;
+        } else {
+            // Initially target 1X the refresh duration:
+            demo->target_IPD = demo->refresh_duration;
+            demo->refresh_duration_multiplier = 1;
+        }
         demo->prev_desired_present_time = 0;
         demo->next_present_id = 1;
     }
@@ -1611,7 +1628,11 @@ static void demo_prepare_buffers(struct demo* demo) {
                                                    demo->device, demo->swapchain,
                                                    &demo->refresh_duration));
 
-    assert(SwappyVk_isEnabled(demo->swapchain, &demo->swappy_enabled));
+    bool swappy_is_enabled = false;
+    assert(SwappyVk_isEnabled(demo->swapchain, &swappy_is_enabled));
+    if (demo->swappy_enabled) {
+        demo->swappy_enabled = swappy_is_enabled;
+    }
 
     SwappyVk_setWindow(demo->device, demo->swapchain, demo->window);
     // Refresh rate of this demo is locked to 30 FPS.
