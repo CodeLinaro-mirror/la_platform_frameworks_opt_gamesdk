@@ -4131,6 +4131,18 @@ static void demo_init_connection(struct demo* demo) {
 #endif
 }
 
+static bool s_options_set = false;
+static bool s_display_timing_enabled = true;
+static bool s_swappy_enabled = false;
+static bool s_set_30_fps_limit = true;
+
+void set_options(bool display_timing_enabled, bool swappy_enabled, bool set_30_fps_limit) {
+    s_options_set = true;
+    s_display_timing_enabled = display_timing_enabled;
+    s_swappy_enabled = swappy_enabled;
+    s_set_30_fps_limit = set_30_fps_limit;
+}
+
 static void demo_init(struct demo* demo, int argc, char** argv) {
     vec3 eye = {0.0f, 3.0f, 5.0f};
     vec3 origin = {0, 0, 0};
@@ -4138,6 +4150,16 @@ static void demo_init(struct demo* demo, int argc, char** argv) {
 
     demo->presentMode = VK_PRESENT_MODE_FIFO_KHR;
     demo->frameCount = INT32_MAX;
+
+    if (s_options_set) {
+        demo->VK_GOOGLE_display_timing_enabled = s_display_timing_enabled;
+        demo->swappy_enabled = s_swappy_enabled;
+        demo->set_30_fps_limit = s_set_30_fps_limit;
+    } else {
+        demo->VK_GOOGLE_display_timing_enabled = true;
+        demo->swappy_enabled = false;
+        demo->set_30_fps_limit = true;
+    }
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--use_staging") == 0) {
@@ -4179,6 +4201,14 @@ static void demo_init(struct demo* demo, int argc, char** argv) {
             demo->VK_GOOGLE_display_timing_enabled = true;
             continue;
         }
+        if (strcmp(argv[i], "--swappy") == 0) {
+            demo->swappy_enabled = true;
+            continue;
+        }
+        if (strcmp(argv[i], "--set_30_fps_limit") == 0) {
+            demo->set_30_fps_limit = true;
+            continue;
+        }
         if (strcmp(argv[i], "--incremental_present") == 0) {
             demo->VK_KHR_incremental_present_enabled = true;
             continue;
@@ -4191,7 +4221,7 @@ static void demo_init(struct demo* demo, int argc, char** argv) {
                 "Usage:\n  %s\t[--use_staging] [--validate] "
                 "[--validate-checks-disabled] [--break]\n"
                 "\t[--c <framecount>] [--suppress_popups] [--incremental_present] "
-                "[--display_timing]\n"
+                "[--display_timing] [--swappy] [--set_30_fps_limit]\n"
                 "\t[--present_mode <present mode enum>]\n"
                 "\t <present_mode_enum>\tVK_PRESENT_MODE_IMMEDIATE_KHR = %d\n"
                 "\t\t\t\tVK_PRESENT_MODE_MAILBOX_KHR = %d\n"

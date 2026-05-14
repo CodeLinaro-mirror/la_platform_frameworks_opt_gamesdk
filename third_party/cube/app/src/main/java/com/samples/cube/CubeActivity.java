@@ -58,22 +58,48 @@ public class CubeActivity
         surfaceView.getHolder().addCallback(this);
 
         Intent intent = getIntent();
-        String action = intent.getAction();
-        switch (action) {
-            case Intent.ACTION_MAIN:
-                updateGpuWork(0);
-                updateCpuWork(0);
-                break;
-            case Intent.ACTION_SEND:
-                handleSendIntent(intent);
-                break;
-            default:
-                Log.e(APP_NAME, "Unknown intent received: " + action);
-                break;
+        if (intent != null) {
+            boolean displayTiming = getBooleanOption(intent, "display_timing", true);
+            boolean swappy = getBooleanOption(intent, "swappy", false);
+            boolean set30Fps = getBooleanOption(intent, "set_30_fps_limit", true);
+            Log.d(APP_NAME,
+                    "Launching with options: display_timing=" + displayTiming + ", swappy=" + swappy
+                            + ", set_30_fps_limit=" + set30Fps);
+            nSetOptions(displayTiming, swappy, set30Fps);
+        }
+
+        String action = intent != null ? intent.getAction() : null;
+        if (action != null) {
+            switch (action) {
+                case Intent.ACTION_MAIN:
+                    updateGpuWork(0);
+                    updateCpuWork(0);
+                    break;
+                case Intent.ACTION_SEND:
+                    handleSendIntent(intent);
+                    break;
+                default:
+                    Log.e(APP_NAME, "Unknown intent received: " + action);
+                    break;
+            }
         }
 
         mInfoOverlay = findViewById(R.id.info_overlay);
         buildSwappyStatsGrid();
+    }
+
+    private boolean getBooleanOption(Intent intent, String key, boolean defaultValue) {
+        if (intent.hasExtra(key)) {
+            try {
+                return intent.getBooleanExtra(key, defaultValue);
+            } catch (Exception e) {
+                String str = intent.getStringExtra(key);
+                if (str != null) {
+                    return Boolean.parseBoolean(str);
+                }
+            }
+        }
+        return defaultValue;
     }
 
     private void toggleOptionsPanel() {
@@ -211,6 +237,8 @@ public class CubeActivity
      * Native methods that are implemented by the 'cube' native library,
      * which is packaged with this application.
      */
+    public native void nSetOptions(
+            boolean displayTimingEnabled, boolean swappyEnabled, boolean set30FpsLimit);
     public native void nStartCube(Surface holder);
     public native void nStopCube();
     public native void nUpdateGpuWorkload(int newWorkload);

@@ -18,6 +18,12 @@ static void* startCubes(void* state_void_ptr) {
     return NULL;
 }
 
+JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nSetOptions(
+        JNIEnv* env, jobject clazz, jboolean display_timing_enabled, jboolean swappy_enabled,
+        jboolean set_30_fps_limit) {
+    set_options(display_timing_enabled, swappy_enabled, set_30_fps_limit);
+}
+
 JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nStartCube(JNIEnv* env, jobject clazz,
                                                                      jobject surface) {
     if (!surface || state.running) {
