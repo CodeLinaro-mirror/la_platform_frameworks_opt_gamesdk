@@ -41,6 +41,10 @@ public class CubeActivity
     private SeekBar cpuWorkSeekBar;
     private TextView cpuWorkText;
 
+    private Switch mSwitchSwappy;
+    private TextView mSwappyStatsText;
+    private GridLayout mSwappyStatsGrid;
+
     // Used to load the 'cube' library on application startup.
     static {
         try {
@@ -78,15 +82,18 @@ public class CubeActivity
             nSetOptions(displayTiming, swappy, set30Fps);
         }
 
-        Switch switchSwappy = findViewById(R.id.switchSwappy);
+        mSwitchSwappy = findViewById(R.id.switchSwappy);
+        mSwappyStatsText = findViewById(R.id.swappy_stats);
+        mSwappyStatsGrid = findViewById(R.id.swappy_stats_grid);
+
         Switch switchGoogleTiming = findViewById(R.id.switchGoogleTiming);
         Switch switch30FpsLimit = findViewById(R.id.switch30FpsLimit);
 
-        switchSwappy.setChecked(swappy);
+        mSwitchSwappy.setChecked(swappy);
         switchGoogleTiming.setChecked(displayTiming);
         switch30FpsLimit.setChecked(set30Fps);
 
-        switchSwappy.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        mSwitchSwappy.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (mSuppressOptionEvents)
                 return;
             if (isChecked) {
@@ -101,15 +108,15 @@ public class CubeActivity
                 return;
             if (isChecked) {
                 mSuppressOptionEvents = true;
-                switchSwappy.setChecked(false);
+                mSwitchSwappy.setChecked(false);
                 mSuppressOptionEvents = false;
             }
-            recreateDemo(isChecked, switchSwappy.isChecked(), switch30FpsLimit.isChecked());
+            recreateDemo(isChecked, mSwitchSwappy.isChecked(), switch30FpsLimit.isChecked());
         });
         switch30FpsLimit.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (mSuppressOptionEvents)
                 return;
-            recreateDemo(switchGoogleTiming.isChecked(), switchSwappy.isChecked(), isChecked);
+            recreateDemo(switchGoogleTiming.isChecked(), mSwitchSwappy.isChecked(), isChecked);
         });
 
         String action = intent != null ? intent.getAction() : null;
@@ -427,12 +434,25 @@ public class CubeActivity
         } else {
             return;
         }
-        if (now - mLastDumpTime > SWAPPY_GET_STATS_PERIOD) {
-            for (int stat = 0; stat < 4; ++stat) {
-                for (int bin = 0; bin < SWAPPY_STATS_BIN_COUNT; ++bin) {
-                    updateSwappyStatsBin(stat + 1, bin, nGetSwappyStats(stat, bin));
+        boolean swappyEnabled = mSwitchSwappy.isChecked();
+        if (swappyEnabled) {
+            mSwappyStatsText.setVisibility(View.VISIBLE);
+            mSwappyStatsGrid.setVisibility(View.VISIBLE);
+            if (now - mLastDumpTime > SWAPPY_GET_STATS_PERIOD) {
+                for (int stat = 0; stat < 4; ++stat) {
+                    for (int bin = 0; bin < SWAPPY_STATS_BIN_COUNT; ++bin) {
+                        updateSwappyStatsBin(stat + 1, bin, nGetSwappyStats(stat, bin));
+                    }
                 }
+                mSwappyStatsText.setText(String.format(
+                        Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));
             }
+        } else {
+            mSwappyStatsText.setVisibility(View.GONE);
+            mSwappyStatsGrid.setVisibility(View.GONE);
+        }
+
+        if (now - mLastDumpTime > SWAPPY_GET_STATS_PERIOD) {
             TextView targetFpsView = findViewById(R.id.target_fps_text);
             long targetIpd = nGetTargetIPD();
             double targetFps = targetIpd > 0 ? (double) NANOS_PER_SECOND / targetIpd : 0.0;
@@ -444,9 +464,6 @@ public class CubeActivity
             targetFpsView.setText(
                     String.format(Locale.US, "Target FPS: %.2f (%.2f ms)", targetFps, targetMs));
 
-            TextView appOffsetView = findViewById(R.id.swappy_stats);
-            appOffsetView.setText(String.format(
-                    Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));
             // Trim off excess precision so we don't drift forward over time
             mLastDumpTime = now - (now % SWAPPY_GET_STATS_PERIOD);
         }
