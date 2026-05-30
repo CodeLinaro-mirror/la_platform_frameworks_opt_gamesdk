@@ -47,7 +47,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="120dp"
         android:layout_alignParentBottom="true">
         <TextView
             android:id="@+id/textViewVersionInfo"
@@ -76,5 +76,26 @@
             android:progress="0"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
+        <Switch
+            android:id="@+id/switchSwappy"
+            android:layout_margin="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_swappy"
+            android:textColor="#FFF"/>
+        <Switch
+            android:id="@+id/switchGoogleTiming"
+            android:layout_margin="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_google_timing"
+            android:textColor="#FFF"/>
+        <Switch
+            android:id="@+id/switch30FpsLimit"
+            android:layout_margin="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/fixed_30_fps_limit"
+            android:textColor="#FFF"/>
     </LinearLayout>
 </RelativeLayout>

@@ -1635,8 +1635,11 @@ static void demo_prepare_buffers(struct demo* demo) {
     }
 
     SwappyVk_setWindow(demo->device, demo->swapchain, demo->window);
-    // Refresh rate of this demo is locked to 30 FPS.
-    SwappyVk_setSwapIntervalNS(demo->device, demo->swapchain, SWAPPY_SWAP_30FPS);
+    if (demo->set_30_fps_limit) {
+        SwappyVk_setSwapIntervalNS(demo->device, demo->swapchain, SWAPPY_SWAP_30FPS);
+    } else {
+        SwappyVk_setSwapIntervalNS(demo->device, demo->swapchain, SWAPPY_SWAP_60FPS);
+    }
 
     DbgMsg("Swappy swap interval = %" PRIu64 " ns", SwappyVk_getSwapIntervalNS(demo->swapchain));
     SwappyVk_enableStats(demo->swapchain, true);
@@ -4409,13 +4412,19 @@ void main_loop(struct android_app_state* app) {
 }
 
 VkSwapchainKHR get_current_swapchain() {
-    if (demo_.swappy_enabled)
+    if (demo_.swappy_enabled && demo_.prepared)
         return demo_.swapchain;
     else
         return 0;
 }
 
 uint64_t get_target_ipd() {
+    if (!demo_.prepared) {
+        return 0;
+    }
+    if (demo_.swappy_enabled && demo_.swapchain) {
+        return SwappyVk_getSwapIntervalNS(demo_.swapchain);
+    }
     return demo_.target_IPD;
 }
 

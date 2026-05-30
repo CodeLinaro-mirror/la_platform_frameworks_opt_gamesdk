@@ -19,6 +19,7 @@ import android.view.View;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import java.util.Locale;
 
@@ -33,6 +34,7 @@ public class CubeActivity
     private static final long NANOS_PER_MILLISECOND = 1000000;
 
     private LinearLayout settingsLayout;
+    private boolean mSuppressOptionEvents = false;
 
     private SeekBar gpuWorkSeekBar;
     private TextView gpuWorkText;
@@ -61,16 +63,54 @@ public class CubeActivity
         SurfaceView surfaceView = findViewById(R.id.surface_view);
         surfaceView.getHolder().addCallback(this);
 
+        boolean displayTiming = true;
+        boolean swappy = false;
+        boolean set30Fps = true;
+
         Intent intent = getIntent();
         if (intent != null) {
-            boolean displayTiming = getBooleanOption(intent, "display_timing", true);
-            boolean swappy = getBooleanOption(intent, "swappy", false);
-            boolean set30Fps = getBooleanOption(intent, "set_30_fps_limit", true);
+            displayTiming = getBooleanOption(intent, "display_timing", false);
+            swappy = getBooleanOption(intent, "swappy", true);
+            set30Fps = getBooleanOption(intent, "set_30_fps_limit", false);
             Log.d(APP_NAME,
                     "Launching with options: display_timing=" + displayTiming + ", swappy=" + swappy
                             + ", set_30_fps_limit=" + set30Fps);
             nSetOptions(displayTiming, swappy, set30Fps);
         }
+
+        Switch switchSwappy = findViewById(R.id.switchSwappy);
+        Switch switchGoogleTiming = findViewById(R.id.switchGoogleTiming);
+        Switch switch30FpsLimit = findViewById(R.id.switch30FpsLimit);
+
+        switchSwappy.setChecked(swappy);
+        switchGoogleTiming.setChecked(displayTiming);
+        switch30FpsLimit.setChecked(set30Fps);
+
+        switchSwappy.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (mSuppressOptionEvents)
+                return;
+            if (isChecked) {
+                mSuppressOptionEvents = true;
+                switchGoogleTiming.setChecked(false);
+                mSuppressOptionEvents = false;
+            }
+            recreateDemo(switchGoogleTiming.isChecked(), isChecked, switch30FpsLimit.isChecked());
+        });
+        switchGoogleTiming.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (mSuppressOptionEvents)
+                return;
+            if (isChecked) {
+                mSuppressOptionEvents = true;
+                switchSwappy.setChecked(false);
+                mSuppressOptionEvents = false;
+            }
+            recreateDemo(isChecked, switchSwappy.isChecked(), switch30FpsLimit.isChecked());
+        });
+        switch30FpsLimit.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (mSuppressOptionEvents)
+                return;
+            recreateDemo(switchGoogleTiming.isChecked(), switchSwappy.isChecked(), isChecked);
+        });
 
         String action = intent != null ? intent.getAction() : null;
         if (action != null) {
@@ -110,8 +150,10 @@ public class CubeActivity
 
     private void toggleOptionsPanel() {
         if (settingsLayout.getVisibility() == View.GONE) {
+            Log.d(APP_NAME, "Showing settings options panel");
             settingsLayout.setVisibility(View.VISIBLE);
         } else {
+            Log.d(APP_NAME, "Hiding settings options panel");
             settingsLayout.setVisibility(View.GONE);
         }
     }
@@ -382,6 +424,8 @@ public class CubeActivity
         long now = System.nanoTime();
         if (mIsRunning) {
             Choreographer.getInstance().postFrameCallback(this);
+        } else {
+            return;
         }
         if (now - mLastDumpTime > SWAPPY_GET_STATS_PERIOD) {
             for (int stat = 0; stat < 4; ++stat) {
@@ -405,6 +449,22 @@ public class CubeActivity
                     Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));
             // Trim off excess precision so we don't drift forward over time
             mLastDumpTime = now - (now % SWAPPY_GET_STATS_PERIOD);
+        }
+    }
+
+    private void recreateDemo(boolean displayTiming, boolean swappy, boolean set30Fps) {
+        Log.d(APP_NAME,
+                "Recreating demo with options: displayTiming=" + displayTiming
+                        + ", swappy=" + swappy + ", set30Fps=" + set30Fps);
+        mIsRunning = false;
+        nStopCube();
+        nSetOptions(displayTiming, swappy, set30Fps);
+        SurfaceView surfaceView = findViewById(R.id.surface_view);
+        Surface surface = surfaceView.getHolder().getSurface();
+        if (surface != null && surface.isValid()) {
+            nStartCube(surface);
+            mIsRunning = true;
+            Choreographer.getInstance().postFrameCallback(this);
         }
     }
 

@@ -25,5 +25,8 @@ limitations under the License.
     <string name="offset_frames">Offset</string>
     <string name="latency_frames">Latency</string>
     <string name="target_fps_ms">Target FPS: - (- ms)</string>
+    <string name="use_swappy">Use Swappy Frame Pacing</string>
+    <string name="use_google_timing">Use Google Display Timing</string>
+    <string name="fixed_30_fps_limit">Fixed 30 FPS Limit</string>
 
 </resources>

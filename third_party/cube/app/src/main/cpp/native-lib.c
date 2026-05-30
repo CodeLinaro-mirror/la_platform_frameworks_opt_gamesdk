@@ -2,12 +2,17 @@
 #include <jni.h>
 #include <math.h>
 #include <pthread.h>
+#include <string.h>
 #include <swappy/swappyVk.h>
 
 #include "cube.h"
 
 static struct android_app_state state;
 static pthread_t thread;
+
+static bool s_swappy_stats_enabled = false;
+static int s_swappy_stats_idx = -1;
+static SwappyStats s_swappy_stats;
 
 static void* startCubes(void* state_void_ptr) {
     struct android_app_state* state = (struct android_app_state*)state_void_ptr;
@@ -21,6 +26,9 @@ static void* startCubes(void* state_void_ptr) {
 JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nSetOptions(
         JNIEnv* env, jobject clazz, jboolean display_timing_enabled, jboolean swappy_enabled,
         jboolean set_30_fps_limit) {
+    s_swappy_stats_enabled = false;
+    s_swappy_stats_idx = -1;
+    memset(&s_swappy_stats, 0, sizeof(s_swappy_stats));
     set_options(display_timing_enabled, swappy_enabled, set_30_fps_limit);
 }
 
@@ -57,45 +65,40 @@ JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nUpdateCpuWorkload(JNI
 
 JNIEXPORT int JNICALL Java_com_samples_cube_CubeActivity_nGetSwappyStats(JNIEnv* env, jobject clazz,
                                                                          jint stat, jint bin) {
-    static bool enabled = false;
     VkSwapchainKHR swapchain = get_current_swapchain();
     if (!swapchain) {
         return -1;
     }
-    if (!enabled) {
+    if (!s_swappy_stats_enabled) {
         SwappyVk_enableStats(swapchain, true);
-        enabled = true;
+        s_swappy_stats_enabled = true;
     }
 
-    // stats are read one by one, query once per stat
-    static SwappyStats stats;
-    static int stat_idx = -1;
-
-    if (stat_idx != stat) {
-        SwappyVk_getStats(swapchain, &stats);
-        stat_idx = stat;
+    if (s_swappy_stats_idx != stat) {
+        SwappyVk_getStats(swapchain, &s_swappy_stats);
+        s_swappy_stats_idx = stat;
     }
 
     int value = 0;
 
-    if (stats.totalFrames) {
+    if (s_swappy_stats.totalFrames) {
         switch (stat) {
             case 0:
-                value = stats.idleFrames[bin];
+                value = s_swappy_stats.idleFrames[bin];
                 break;
             case 1:
-                value = stats.lateFrames[bin];
+                value = s_swappy_stats.lateFrames[bin];
                 break;
             case 2:
-                value = stats.offsetFromPreviousFrame[bin];
+                value = s_swappy_stats.offsetFromPreviousFrame[bin];
                 break;
             case 3:
-                value = stats.latencyFrames[bin];
+                value = s_swappy_stats.latencyFrames[bin];
                 break;
             default:
-                return stats.totalFrames;
+                return s_swappy_stats.totalFrames;
         }
-        value = round(value * 100.0f / stats.totalFrames);
+        value = round(value * 100.0f / s_swappy_stats.totalFrames);
     }
 
     return value;
