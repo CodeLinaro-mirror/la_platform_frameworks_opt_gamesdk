@@ -28,5 +28,6 @@ limitations under the License.
     <string name="use_swappy">Use Swappy Frame Pacing</string>
     <string name="use_google_timing">Use Google Display Timing</string>
     <string name="fixed_30_fps_limit">Fixed 30 FPS Limit</string>
+    <string name="show_vsync_graph">Show VSYNC count in graph</string>
 
 </resources>

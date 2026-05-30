@@ -45,7 +45,6 @@ public class CubeActivity
     private TextView mSwappyStatsText;
     private GridLayout mSwappyStatsGrid;
     private FrameTimeGraphView mFrameTimeGraph;
-    private long mLastFrameTimeNanos = 0;
 
     // Used to load the 'cube' library on application startup.
     static {
@@ -121,6 +120,10 @@ public class CubeActivity
                 return;
             recreateDemo(switchGoogleTiming.isChecked(), mSwitchSwappy.isChecked(), isChecked);
         });
+
+        Switch switchVsyncGraph = findViewById(R.id.switchVsyncGraph);
+        switchVsyncGraph.setOnCheckedChangeListener(
+                (buttonView, isChecked) -> { mFrameTimeGraph.setShowVsyncCount(isChecked); });
 
         String action = intent != null ? intent.getAction() : null;
         if (action != null) {
@@ -275,7 +278,6 @@ public class CubeActivity
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.d(APP_NAME, "Surface created.");
-        mLastFrameTimeNanos = 0;
         Surface surface = holder.getSurface();
         nStartCube(surface);
         mIsRunning = true;
@@ -304,6 +306,8 @@ public class CubeActivity
     public native void nUpdateCpuWorkload(int newWorkload);
     public native int nGetSwappyStats(int stat, int bin);
     public native long nGetTargetIPD();
+    public native long nGetLastFrameDurationNS();
+    public native long nGetRefreshDurationNS();
 
     private void infoOverlayToggle() {
         if (mInfoOverlay == null) {
@@ -439,12 +443,12 @@ public class CubeActivity
             return;
         }
 
-        if (mLastFrameTimeNanos > 0) {
-            float frameTimeMs =
-                    (frameTimeNanos - mLastFrameTimeNanos) / (float) NANOS_PER_MILLISECOND;
-            mFrameTimeGraph.addFrameTime(frameTimeMs);
+        long durationNs = nGetLastFrameDurationNS();
+        if (durationNs > 0) {
+            long refreshNs = nGetRefreshDurationNS();
+            mFrameTimeGraph.addFrameTime(durationNs, refreshNs);
+            mActualFrameCount++;
         }
-        mLastFrameTimeNanos = frameTimeNanos;
 
         long targetIpd = nGetTargetIPD();
         if (targetIpd > 0) {
@@ -473,12 +477,16 @@ public class CubeActivity
             targetIpd = nGetTargetIPD();
             double targetFps = targetIpd > 0 ? (double) NANOS_PER_SECOND / targetIpd : 0.0;
             double targetMs = (double) targetIpd / NANOS_PER_MILLISECOND;
+            double elapsedSec = (now - mLastDumpTime) / 1000000000.0;
+            double actualFps = mActualFrameCount / elapsedSec;
+            mActualFrameCount = 0; // Reset counter
             Log.d(APP_NAME,
                     String.format(Locale.US,
                             "Updating UI: targetIpd=%d, targetFps=%.2f, targetMs=%.2f", targetIpd,
                             targetFps, targetMs));
             targetFpsView.setText(
-                    String.format(Locale.US, "Target FPS: %.2f (%.2f ms)", targetFps, targetMs));
+                    String.format(Locale.US, "Target FPS: %.2f (%.2f ms) | Actual FPS: %.2f",
+                            targetFps, targetMs, actualFps));
 
             // Trim off excess precision so we don't drift forward over time
             mLastDumpTime = now - (now % SWAPPY_GET_STATS_PERIOD);
@@ -490,7 +498,6 @@ public class CubeActivity
                 "Recreating demo with options: displayTiming=" + displayTiming
                         + ", swappy=" + swappy + ", set30Fps=" + set30Fps);
         mIsRunning = false;
-        mLastFrameTimeNanos = 0;
         nStopCube();
         nSetOptions(displayTiming, swappy, set30Fps);
         SurfaceView surfaceView = findViewById(R.id.surface_view);
@@ -511,4 +518,5 @@ public class CubeActivity
     private static final long SWAPPY_GET_STATS_PERIOD = 1000000000; // 1s in ns.
     private long mLastDumpTime;
     private boolean mIsRunning;
+    private int mActualFrameCount = 0;
 }

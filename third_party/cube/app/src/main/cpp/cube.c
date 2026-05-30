@@ -559,6 +559,9 @@ struct demo {
 
     bool tracer_injected;
     bool swappy_enabled;
+
+    uint64_t last_frame_time_ns;
+    uint64_t last_frame_duration_ns;
 };
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
@@ -3052,8 +3055,20 @@ static void demo_create_window(struct demo* demo) {
     wl_shell_surface_set_title(demo->shell_surface, APP_SHORT_NAME);
 }
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+static uint64_t get_time_ns() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
 static void demo_run(struct demo* demo) {
     if (!demo->prepared) return;
+
+    uint64_t now = get_time_ns();
+    if (demo->last_frame_time_ns > 0) {
+        demo->last_frame_duration_ns = now - demo->last_frame_time_ns;
+    }
+    demo->last_frame_time_ns = now;
 
     demo_draw(demo);
     demo->curFrame++;
@@ -4426,6 +4441,22 @@ uint64_t get_target_ipd() {
         return SwappyVk_getSwapIntervalNS(demo_.swapchain);
     }
     return demo_.target_IPD;
+}
+
+uint64_t get_last_frame_duration_ns() {
+    if (!demo_.prepared) {
+        return 0;
+    }
+    uint64_t duration = demo_.last_frame_duration_ns;
+    demo_.last_frame_duration_ns = 0;
+    return duration;
+}
+
+uint64_t get_refresh_duration_ns() {
+    if (!demo_.prepared) {
+        return 0;
+    }
+    return demo_.refresh_duration;
 }
 
 #else

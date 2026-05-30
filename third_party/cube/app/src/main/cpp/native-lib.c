@@ -108,3 +108,13 @@ JNIEXPORT jlong JNICALL Java_com_samples_cube_CubeActivity_nGetTargetIPD(JNIEnv*
                                                                          jobject clazz) {
     return (jlong)get_target_ipd();
 }
+
+JNIEXPORT jlong JNICALL Java_com_samples_cube_CubeActivity_nGetLastFrameDurationNS(JNIEnv* env,
+                                                                                   jobject clazz) {
+    return (jlong)get_last_frame_duration_ns();
+}
+
+JNIEXPORT jlong JNICALL Java_com_samples_cube_CubeActivity_nGetRefreshDurationNS(JNIEnv* env,
+                                                                                 jobject clazz) {
+    return (jlong)get_refresh_duration_ns();
+}

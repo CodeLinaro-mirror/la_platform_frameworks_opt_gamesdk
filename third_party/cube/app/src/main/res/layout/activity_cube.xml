@@ -103,5 +103,12 @@
             android:layout_height="wrap_content"
             android:text="@string/fixed_30_fps_limit"
             android:textColor="#FFF"/>
+        <Switch
+            android:id="@+id/switchVsyncGraph"
+            android:layout_margin="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/show_vsync_graph"
+            android:textColor="#FFF"/>
     </LinearLayout>
 </RelativeLayout>

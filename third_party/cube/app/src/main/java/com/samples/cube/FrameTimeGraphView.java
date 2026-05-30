@@ -23,13 +23,16 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
+import java.util.Locale;
 
 public class FrameTimeGraphView extends View {
     private static final int BUFFER_SIZE = 150;
-    private final float[] mFrameTimes = new float[BUFFER_SIZE];
+    private final long[] mFrameDurationsNs = new long[BUFFER_SIZE];
+    private final long[] mRefreshDurationsNs = new long[BUFFER_SIZE];
     private int mHead = 0;
     private int mCount = 0;
     private float mTargetMs = 16.67f;
+    private boolean mShowVsyncCount = false;
 
     private final Paint mBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint mBarPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -67,8 +70,9 @@ public class FrameTimeGraphView extends View {
         mTextPaint.setTextSize(24f);
     }
 
-    public void addFrameTime(float timeMs) {
-        mFrameTimes[mHead] = timeMs;
+    public void addFrameTime(long durationNs, long refreshNs) {
+        mFrameDurationsNs[mHead] = durationNs;
+        mRefreshDurationsNs[mHead] = refreshNs;
         mHead = (mHead + 1) % BUFFER_SIZE;
         if (mCount < BUFFER_SIZE) {
             mCount++;
@@ -81,6 +85,11 @@ public class FrameTimeGraphView extends View {
             mTargetMs = targetMs;
             invalidate();
         }
+    }
+
+    public void setShowVsyncCount(boolean showVsyncCount) {
+        mShowVsyncCount = showVsyncCount;
+        invalidate();
     }
 
     @Override
@@ -97,23 +106,47 @@ public class FrameTimeGraphView extends View {
         mBgRect.set(0, 0, width, height);
         canvas.drawRoundRect(mBgRect, 16f, 16f, mBgPaint);
 
-        // Find max frame time in current buffer to auto-scale graph if there's a huge spike
-        float maxVal = 50f; // Baseline max height (50 ms)
+        // Determine baseline and max values based on current display mode
+        float maxVal = mShowVsyncCount ? 6.0f : 50.0f;
+        float latestRefreshMs = 16.67f;
+
+        if (mCount > 0) {
+            int lastIdx = (mHead - 1 + BUFFER_SIZE) % BUFFER_SIZE;
+            if (mRefreshDurationsNs[lastIdx] > 0) {
+                latestRefreshMs = mRefreshDurationsNs[lastIdx] / 1000000.0f;
+            }
+        }
+
         for (int i = 0; i < mCount; i++) {
-            if (mFrameTimes[i] > maxVal) {
-                maxVal = mFrameTimes[i];
+            float val;
+            if (mShowVsyncCount) {
+                long refresh = mRefreshDurationsNs[i] > 0 ? mRefreshDurationsNs[i] : 16666666L;
+                val = Math.max(1.0f, Math.round((float) mFrameDurationsNs[i] / refresh));
+            } else {
+                val = mFrameDurationsNs[i] / 1000000.0f;
+            }
+            if (val > maxVal) {
+                maxVal = val;
             }
         }
 
         // Render guidelines
-        drawGuideline(canvas, 16.67f, maxVal, width, height, "16.6 ms (60 FPS)");
-        drawGuideline(canvas, 33.33f, maxVal, width, height, "33.3 ms (30 FPS)");
-        if (Math.abs(mTargetMs - 16.67f) > 0.1f && Math.abs(mTargetMs - 33.33f) > 0.1f) {
-            drawGuideline(canvas, mTargetMs, maxVal, width, height,
-                    String.format("%.1f ms (Target)", mTargetMs));
+        if (mShowVsyncCount) {
+            int maxVsyncLine = (int) maxVal;
+            for (int v = 1; v <= maxVsyncLine; v++) {
+                drawGuideline(canvas, (float) v, maxVal, width, height,
+                        String.format(Locale.US, "%d VSYNC%s", v, v > 1 ? "s" : ""));
+            }
+        } else {
+            drawGuideline(canvas, 16.67f, maxVal, width, height, "16.6 ms (60 FPS)");
+            drawGuideline(canvas, 33.33f, maxVal, width, height, "33.3 ms (30 FPS)");
+            if (Math.abs(mTargetMs - 16.67f) > 0.1f && Math.abs(mTargetMs - 33.33f) > 0.1f) {
+                drawGuideline(canvas, mTargetMs, maxVal, width, height,
+                        String.format(Locale.US, "%.1f ms (Target)", mTargetMs));
+            }
         }
 
-        // Draw vertical bars for frame times
+        // Draw vertical bars for frame durations
         if (mCount == 0) {
             return;
         }
@@ -122,22 +155,47 @@ public class FrameTimeGraphView extends View {
         mBarPaint.setStrokeWidth(Math.max(2f, barWidth - 2f));
 
         int startIndex = mCount < BUFFER_SIZE ? 0 : mHead;
+        float targetVsyncs = mTargetMs / latestRefreshMs;
+
         for (int i = 0; i < mCount; i++) {
             int index = (startIndex + i) % BUFFER_SIZE;
-            float val = mFrameTimes[index];
+            long duration = mFrameDurationsNs[index];
+            long refresh = mRefreshDurationsNs[index] > 0 ? mRefreshDurationsNs[index] : 16666666L;
 
-            // Map to screen Y (0 ms = height - 16, maxVal = 16)
+            float val;
+            float rawVsync = (float) duration / refresh;
+            if (mShowVsyncCount) {
+                val = Math.max(1.0f, Math.round(rawVsync));
+            } else {
+                val = duration / 1000000.0f;
+            }
+
+            // Map value to screen Y (bottom offset = 16px, top offset = 16px)
             float startX = i * barWidth + barWidth / 2f;
             float endY = height - 16f - ((val / maxVal) * (height - 32f));
             float startY = height - 16f;
 
-            // Color scheme: Red for missed frames, Green for hit target frames
-            if (val > mTargetMs + 2.0f) {
-                mBarPaint.setColor(Color.parseColor("#FFFF4444")); // Janky/Missed frame (Red)
-            } else if (val > mTargetMs + 0.5f) {
-                mBarPaint.setColor(Color.parseColor("#FFFFBB33")); // Borderline (Orange/Yellow)
+            // Dynamic color scheme matching relative pacing target
+            if (mShowVsyncCount) {
+                if (rawVsync > targetVsyncs + 0.5f) {
+                    mBarPaint.setColor(
+                            Color.parseColor("#FFFF4444")); // Missed target frame-boundary (Red)
+                } else if (rawVsync > targetVsyncs + 0.1f) {
+                    mBarPaint.setColor(
+                            Color.parseColor("#FFFFBB33")); // Slight boundary drift (Orange)
+                } else {
+                    mBarPaint.setColor(Color.parseColor("#FF00C851")); // Perfect lock (Green)
+                }
             } else {
-                mBarPaint.setColor(Color.parseColor("#FF00C851")); // Smooth (Green)
+                if (val > mTargetMs + 2.0f) {
+                    mBarPaint.setColor(
+                            Color.parseColor("#FFFF4444")); // High latency / Missed frame (Red)
+                } else if (val > mTargetMs + 0.5f) {
+                    mBarPaint.setColor(
+                            Color.parseColor("#FFFFBB33")); // Borderline frame pacing (Orange)
+                } else {
+                    mBarPaint.setColor(Color.parseColor("#FF00C851")); // Healthy pacing (Green)
+                }
             }
 
             canvas.drawLine(startX, startY, startX, Math.min(startY - 2f, endY), mBarPaint);
@@ -145,11 +203,11 @@ public class FrameTimeGraphView extends View {
     }
 
     private void drawGuideline(
-            Canvas canvas, float valMs, float maxVal, int width, int height, String label) {
-        if (valMs > maxVal) {
+            Canvas canvas, float val, float maxVal, int width, int height, String label) {
+        if (val > maxVal) {
             return;
         }
-        float y = height - 16f - ((valMs / maxVal) * (height - 32f));
+        float y = height - 16f - ((val / maxVal) * (height - 32f));
         canvas.drawLine(30f, y, width - 30f, y, mLinePaint);
         canvas.drawText(label, 40f, y - 8f, mTextPaint);
     }
