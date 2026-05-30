@@ -44,6 +44,8 @@ public class CubeActivity
     private Switch mSwitchSwappy;
     private TextView mSwappyStatsText;
     private GridLayout mSwappyStatsGrid;
+    private FrameTimeGraphView mFrameTimeGraph;
+    private long mLastFrameTimeNanos = 0;
 
     // Used to load the 'cube' library on application startup.
     static {
@@ -85,6 +87,7 @@ public class CubeActivity
         mSwitchSwappy = findViewById(R.id.switchSwappy);
         mSwappyStatsText = findViewById(R.id.swappy_stats);
         mSwappyStatsGrid = findViewById(R.id.swappy_stats_grid);
+        mFrameTimeGraph = findViewById(R.id.frame_time_graph);
 
         Switch switchGoogleTiming = findViewById(R.id.switchGoogleTiming);
         Switch switch30FpsLimit = findViewById(R.id.switch30FpsLimit);
@@ -272,6 +275,7 @@ public class CubeActivity
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.d(APP_NAME, "Surface created.");
+        mLastFrameTimeNanos = 0;
         Surface surface = holder.getSurface();
         nStartCube(surface);
         mIsRunning = true;
@@ -434,6 +438,18 @@ public class CubeActivity
         } else {
             return;
         }
+
+        if (mLastFrameTimeNanos > 0) {
+            float frameTimeMs =
+                    (frameTimeNanos - mLastFrameTimeNanos) / (float) NANOS_PER_MILLISECOND;
+            mFrameTimeGraph.addFrameTime(frameTimeMs);
+        }
+        mLastFrameTimeNanos = frameTimeNanos;
+
+        long targetIpd = nGetTargetIPD();
+        if (targetIpd > 0) {
+            mFrameTimeGraph.setTargetMs(targetIpd / (float) NANOS_PER_MILLISECOND);
+        }
         boolean swappyEnabled = mSwitchSwappy.isChecked();
         if (swappyEnabled) {
             mSwappyStatsText.setVisibility(View.VISIBLE);
@@ -454,7 +470,7 @@ public class CubeActivity
 
         if (now - mLastDumpTime > SWAPPY_GET_STATS_PERIOD) {
             TextView targetFpsView = findViewById(R.id.target_fps_text);
-            long targetIpd = nGetTargetIPD();
+            targetIpd = nGetTargetIPD();
             double targetFps = targetIpd > 0 ? (double) NANOS_PER_SECOND / targetIpd : 0.0;
             double targetMs = (double) targetIpd / NANOS_PER_MILLISECOND;
             Log.d(APP_NAME,
@@ -474,6 +490,7 @@ public class CubeActivity
                 "Recreating demo with options: displayTiming=" + displayTiming
                         + ", swappy=" + swappy + ", set30Fps=" + set30Fps);
         mIsRunning = false;
+        mLastFrameTimeNanos = 0;
         nStopCube();
         nSetOptions(displayTiming, swappy, set30Fps);
         SurfaceView surfaceView = findViewById(R.id.surface_view);

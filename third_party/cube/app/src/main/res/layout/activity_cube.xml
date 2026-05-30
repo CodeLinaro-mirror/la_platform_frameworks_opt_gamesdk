@@ -24,6 +24,12 @@
             android:text="@string/target_fps_ms"
             android:textAppearance="@style/InfoTextMedium" />
 
+        <com.samples.cube.FrameTimeGraphView
+            android:id="@+id/frame_time_graph"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_marginBottom="12dp" />
+
         <TextView
             android:id="@+id/swappy_stats"
             android:layout_width="match_parent"
