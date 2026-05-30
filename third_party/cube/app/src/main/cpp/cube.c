@@ -1121,7 +1121,7 @@ void DemoUpdateTargetIPD(struct demo* demo) {
             uint64_t min_multiplier = 1;
             if (demo->set_30_fps_limit) {
                 uint64_t target_ns = 1000000000 / 30;
-                min_multiplier = (target_ns + demo->refresh_duration - 1) / demo->refresh_duration;
+                min_multiplier = (target_ns + demo->refresh_duration / 2) / demo->refresh_duration;
             }
 
             if (demo->refresh_duration_multiplier > min_multiplier) {
@@ -1609,7 +1609,7 @@ static void demo_prepare_buffers(struct demo* demo) {
         if (demo->set_30_fps_limit) {
             uint64_t target_ns = 1000000000 / 30; // 33333333 ns
             demo->refresh_duration_multiplier =
-                    (target_ns + demo->refresh_duration - 1) / demo->refresh_duration;
+                    (target_ns + demo->refresh_duration / 2) / demo->refresh_duration;
             demo->target_IPD = demo->refresh_duration * demo->refresh_duration_multiplier;
         } else {
             // Initially target 1X the refresh duration:
