@@ -4415,6 +4415,10 @@ VkSwapchainKHR get_current_swapchain() {
         return 0;
 }
 
+uint64_t get_target_ipd() {
+    return demo_.target_IPD;
+}
+
 #else
 int main(int argc, char** argv) {
     struct demo demo;

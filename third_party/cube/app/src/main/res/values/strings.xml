@@ -24,5 +24,6 @@ limitations under the License.
     <string name="late_frames">Late</string>
     <string name="offset_frames">Offset</string>
     <string name="latency_frames">Latency</string>
+    <string name="target_fps_ms">Target FPS: - (- ms)</string>
 
 </resources>
