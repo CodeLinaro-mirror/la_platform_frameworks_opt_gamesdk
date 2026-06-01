@@ -436,6 +436,8 @@ struct demo {
     bool set_30_fps_limit;
 
     bool VK_GOOGLE_display_timing_enabled;
+    bool VK_EXT_present_timing_enabled;
+    uint64_t monotonic_time_domain_id;
     bool syncd_with_actual_presents;
     uint64_t refresh_duration;
     uint64_t refresh_duration_multiplier;
@@ -444,6 +446,10 @@ struct demo {
     uint32_t next_present_id;
     uint32_t last_early_id; // 0 if no early images
     uint32_t last_late_id;  // 0 if no late images
+    uint64_t target_time_buffer[64];
+    uint32_t window_frame_count;
+    uint32_t window_late_count;
+    uint32_t window_early_count;
 
     VkInstance inst;
     VkPhysicalDevice gpu;
@@ -481,6 +487,10 @@ struct demo {
     PFN_vkQueuePresentKHR fpQueuePresentKHR;
     PFN_vkGetRefreshCycleDurationGOOGLE fpGetRefreshCycleDurationGOOGLE;
     PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE;
+    PFN_vkGetSwapchainTimingPropertiesEXT fpGetSwapchainTimingPropertiesEXT;
+    PFN_vkGetSwapchainTimeDomainPropertiesEXT fpGetSwapchainTimeDomainPropertiesEXT;
+    PFN_vkGetPastPresentationTimingEXT fpGetPastPresentationTimingEXT;
+    PFN_vkSetSwapchainPresentTimingQueueSizeEXT fpSetSwapchainPresentTimingQueueSizeEXT;
     uint32_t swapchainImageCount;
     VkSwapchainKHR swapchain;
     SwapchainImageResources* swapchain_image_resources;
@@ -1224,6 +1234,39 @@ static void demo_draw(struct demo* demo) {
         // simple that it doesn't do either of those.
     }
 
+    if (demo->VK_EXT_present_timing_enabled && demo->fpGetPastPresentationTimingEXT != NULL) {
+        VkPastPresentationTimingInfoEXT timingInfo;
+        memset(&timingInfo, 0, sizeof(timingInfo));
+        timingInfo.sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT;
+        timingInfo.swapchain = demo->swapchain;
+
+        VkPastPresentationTimingPropertiesEXT timingProps;
+        memset(&timingProps, 0, sizeof(timingProps));
+        timingProps.sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT;
+
+        VkResult timing_err =
+                demo->fpGetPastPresentationTimingEXT(demo->device, &timingInfo, &timingProps);
+        if (timing_err == VK_SUCCESS && timingProps.presentationTimingCount > 0) {
+            VkPastPresentationTimingEXT* past = (VkPastPresentationTimingEXT*)malloc(
+                    sizeof(VkPastPresentationTimingEXT) * timingProps.presentationTimingCount);
+            // We request at most 4 stages per presentation
+            VkPresentStageTimeEXT* stages = (VkPresentStageTimeEXT*)malloc(
+                    sizeof(VkPresentStageTimeEXT) * 4 * timingProps.presentationTimingCount);
+            if (past && stages) {
+                for (uint32_t i = 0; i < timingProps.presentationTimingCount; ++i) {
+                    memset(&past[i], 0, sizeof(VkPastPresentationTimingEXT));
+                    past[i].sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
+                    past[i].presentStageCount = 4;
+                    past[i].pPresentStages = &stages[i * 4];
+                }
+                timingProps.pPresentationTimings = past;
+                demo->fpGetPastPresentationTimingEXT(demo->device, &timingInfo, &timingProps);
+            }
+            if (stages) free(stages);
+            if (past) free(past);
+        }
+    }
+
     // Wait for the image acquired semaphore to be signaled to ensure
     // that the image won't be rendered to until the presentation
     // engine has fully released ownership to the application, and it is
@@ -1264,6 +1307,12 @@ static void demo_draw(struct demo* demo) {
 
     // If we are using separate queues we have to wait for image ownership,
     // otherwise wait for draw complete
+    VkPresentTimingInfoEXT ptime_info;
+    VkPresentTimingsInfoEXT present_timings;
+    uint64_t present_id_val;
+    VkPresentIdKHR present_id;
+    VkPresentId2KHR present_id2;
+
     VkPresentInfoKHR present = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .pNext = NULL,
@@ -1338,6 +1387,40 @@ static void demo_draw(struct demo* demo) {
         if (demo->VK_GOOGLE_display_timing_enabled) {
             present.pNext = &present_time;
         }
+    }
+
+    if (demo->VK_EXT_present_timing_enabled) {
+        ptime_info.sType = VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT;
+        ptime_info.pNext = NULL;
+        ptime_info.flags = 0; // Absolute time
+        ptime_info.presentStageQueries = VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT |
+                VK_PRESENT_STAGE_QUEUE_OPERATIONS_END_BIT_EXT |
+                VK_PRESENT_STAGE_REQUEST_DEQUEUED_BIT_EXT;
+        ptime_info.targetTimeDomainPresentStage = VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT;
+        ptime_info.timeDomainId = demo->monotonic_time_domain_id;
+
+        if (demo->prev_desired_present_time == 0) {
+            uint64_t curtime = getTimeInNanoseconds();
+            demo->prev_desired_present_time = curtime + (demo->target_IPD >> 1);
+        } else {
+            demo->prev_desired_present_time += demo->target_IPD;
+        }
+
+        ptime_info.targetTime = demo->prev_desired_present_time - (demo->refresh_duration / 2);
+
+        present_timings.sType = VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT;
+        present_timings.pNext = present.pNext;
+        present_timings.swapchainCount = present.swapchainCount;
+        present_timings.pTimingInfos = &ptime_info;
+        present.pNext = &present_timings;
+
+        present_id_val = demo->next_present_id++;
+        demo->target_time_buffer[present_id_val % 64] = ptime_info.targetTime;
+        present_id2.sType = VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR;
+        present_id2.pNext = present.pNext;
+        present_id2.swapchainCount = present.swapchainCount;
+        present_id2.pPresentIds = &present_id_val;
+        present.pNext = &present_id2;
     }
 
     logEvent(EVENT_CALLING_QP);
@@ -1525,6 +1608,9 @@ static void demo_prepare_buffers(struct demo* demo) {
     VkSwapchainCreateInfoKHR swapchain_ci = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .pNext = NULL,
+            .flags = demo->VK_EXT_present_timing_enabled
+                    ? VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT
+                    : 0,
             .surface = demo->surface,
             .minImageCount = desiredNumOfSwapchainImages,
             .imageFormat = demo->format,
@@ -1621,6 +1707,62 @@ static void demo_prepare_buffers(struct demo* demo) {
         }
         demo->prev_desired_present_time = 0;
         demo->next_present_id = 1;
+    }
+
+    if (demo->VK_EXT_present_timing_enabled) {
+        err = demo->fpSetSwapchainPresentTimingQueueSizeEXT(demo->device, demo->swapchain, 64);
+        assert(!err);
+
+        VkSwapchainTimingPropertiesEXT timing_props =
+                {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT, .pNext = NULL};
+        uint64_t timing_props_counter = 0;
+        err = demo->fpGetSwapchainTimingPropertiesEXT(demo->device, demo->swapchain, &timing_props,
+                                                      &timing_props_counter);
+        assert(!err);
+        demo->refresh_duration = timing_props.refreshDuration;
+        demo->syncd_with_actual_presents = false;
+        if (demo->set_30_fps_limit) {
+            uint64_t target_ns = 1000000000 / 30; // 33333333 ns
+            demo->refresh_duration_multiplier =
+                    (target_ns + demo->refresh_duration / 2) / demo->refresh_duration;
+            demo->target_IPD = demo->refresh_duration * demo->refresh_duration_multiplier;
+        } else {
+            demo->target_IPD = demo->refresh_duration;
+            demo->refresh_duration_multiplier = 1;
+        }
+        demo->prev_desired_present_time = 0;
+        demo->next_present_id = 1;
+
+        // Query the time domains to map to CLOCK_MONOTONIC
+        demo->monotonic_time_domain_id = 0;
+        VkSwapchainTimeDomainPropertiesEXT timeDomainProps =
+                {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT,
+                 .pNext = NULL,
+                 .timeDomainCount = 0,
+                 .pTimeDomains = NULL,
+                 .pTimeDomainIds = NULL};
+        uint64_t domainCount = 0;
+        err = demo->fpGetSwapchainTimeDomainPropertiesEXT(demo->device, demo->swapchain,
+                                                          &timeDomainProps, &domainCount);
+        assert(!err);
+        if (domainCount > 0) {
+            VkTimeDomainKHR* domains = malloc(sizeof(VkTimeDomainKHR) * domainCount);
+            uint64_t* ids = malloc(sizeof(uint64_t) * domainCount);
+            timeDomainProps.timeDomainCount = (uint32_t)domainCount;
+            timeDomainProps.pTimeDomains = domains;
+            timeDomainProps.pTimeDomainIds = ids;
+            err = demo->fpGetSwapchainTimeDomainPropertiesEXT(demo->device, demo->swapchain,
+                                                              &timeDomainProps, &domainCount);
+            assert(!err);
+            for (uint32_t i = 0; i < domainCount; i++) {
+                if (domains[i] == VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR) {
+                    demo->monotonic_time_domain_id = ids[i];
+                    break;
+                }
+            }
+            free(domains);
+            free(ids);
+        }
     }
 
     JavaVM* vm = demo->swappy_init_data.vm;
@@ -3661,6 +3803,39 @@ static void demo_init_vk(struct demo* demo) {
             }
         }
 
+        if (demo->VK_EXT_present_timing_enabled) {
+            // Check the required extensions are supported
+            demo->VK_EXT_present_timing_enabled = false;
+
+            bool has_present_timing = false;
+            bool has_present_id2 = false;
+            bool has_calibrated_timestamps = false;
+
+            for (uint32_t i = 0; i < device_extension_count; i++) {
+                const char* ext = device_extensions[i].extensionName;
+                if (!strcmp(VK_EXT_PRESENT_TIMING_EXTENSION_NAME, ext)) {
+                    has_present_timing = true;
+                } else if (!strcmp(VK_KHR_PRESENT_ID_2_EXTENSION_NAME, ext)) {
+                    has_present_id2 = true;
+                } else if (!strcmp(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, ext)) {
+                    has_calibrated_timestamps = true;
+                }
+            }
+
+            if (has_present_timing && has_present_id2 && has_calibrated_timestamps) {
+                demo->VK_EXT_present_timing_enabled = true;
+
+                demo->extension_names[demo->enabled_extension_count++] =
+                        VK_EXT_PRESENT_TIMING_EXTENSION_NAME;
+                demo->extension_names[demo->enabled_extension_count++] =
+                        VK_KHR_PRESENT_ID_2_EXTENSION_NAME;
+                demo->extension_names[demo->enabled_extension_count++] =
+                        VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME;
+            } else {
+                DbgMsg("VK_EXT_present_timing or its dependencies NOT AVAILABLE\n");
+            }
+        }
+
         // Add any extensions that SwappyVk requires:
         uint32_t swappy_required_extension_count = 0;
         char** swappy_required_extension_names;
@@ -3772,9 +3947,29 @@ static void demo_create_device(struct demo* demo) {
     queues[0].pQueuePriorities = queue_priorities;
     queues[0].flags = 0;
 
+    void* pNext = NULL;
+    VkPhysicalDevicePresentTimingFeaturesEXT timingFeatures =
+            {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT,
+             .pNext = NULL,
+             .presentTiming = VK_TRUE,
+             .presentAtAbsoluteTime = VK_TRUE,
+             .presentAtRelativeTime = VK_FALSE};
+
+    VkPhysicalDevicePresentId2FeaturesKHR presentId2Features =
+            {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR,
+             .pNext = NULL,
+             .presentId2 = VK_TRUE};
+
+    if (demo->VK_EXT_present_timing_enabled) {
+        timingFeatures.pNext = pNext;
+        pNext = &timingFeatures;
+        presentId2Features.pNext = pNext;
+        pNext = &presentId2Features;
+    }
+
     VkDeviceCreateInfo device = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .pNext = NULL,
+            .pNext = pNext,
             .queueCreateInfoCount = 1,
             .pQueueCreateInfos = queues,
             .enabledLayerCount = 0,
@@ -3923,6 +4118,12 @@ static void demo_init_vk_swapchain(struct demo* demo) {
     if (demo->VK_GOOGLE_display_timing_enabled) {
         GET_DEVICE_PROC_ADDR(demo->device, GetRefreshCycleDurationGOOGLE);
         GET_DEVICE_PROC_ADDR(demo->device, GetPastPresentationTimingGOOGLE);
+    }
+    if (demo->VK_EXT_present_timing_enabled) {
+        GET_DEVICE_PROC_ADDR(demo->device, GetSwapchainTimingPropertiesEXT);
+        GET_DEVICE_PROC_ADDR(demo->device, GetSwapchainTimeDomainPropertiesEXT);
+        GET_DEVICE_PROC_ADDR(demo->device, GetPastPresentationTimingEXT);
+        GET_DEVICE_PROC_ADDR(demo->device, SetSwapchainPresentTimingQueueSizeEXT);
     }
 
     vkGetDeviceQueue(demo->device, demo->graphics_queue_family_index, 0, &demo->graphics_queue);
@@ -4151,12 +4352,16 @@ static void demo_init_connection(struct demo* demo) {
 
 static bool s_options_set = false;
 static bool s_display_timing_enabled = true;
+static bool s_present_timing_enabled = false;
 static bool s_swappy_enabled = false;
 static bool s_set_30_fps_limit = true;
+static bool s_dynamic_adjust = true;
 
-void set_options(bool display_timing_enabled, bool swappy_enabled, bool set_30_fps_limit) {
+void set_options(bool display_timing_enabled, bool present_timing_enabled, bool swappy_enabled,
+                 bool set_30_fps_limit) {
     s_options_set = true;
     s_display_timing_enabled = display_timing_enabled;
+    s_present_timing_enabled = present_timing_enabled;
     s_swappy_enabled = swappy_enabled;
     s_set_30_fps_limit = set_30_fps_limit;
 }
@@ -4171,10 +4376,12 @@ static void demo_init(struct demo* demo, int argc, char** argv) {
 
     if (s_options_set) {
         demo->VK_GOOGLE_display_timing_enabled = s_display_timing_enabled;
+        demo->VK_EXT_present_timing_enabled = s_present_timing_enabled;
         demo->swappy_enabled = s_swappy_enabled;
         demo->set_30_fps_limit = s_set_30_fps_limit;
     } else {
         demo->VK_GOOGLE_display_timing_enabled = true;
+        demo->VK_EXT_present_timing_enabled = false;
         demo->swappy_enabled = false;
         demo->set_30_fps_limit = true;
     }

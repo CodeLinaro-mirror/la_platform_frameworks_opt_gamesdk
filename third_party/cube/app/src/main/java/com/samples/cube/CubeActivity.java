@@ -69,18 +69,27 @@ public class CubeActivity
         surfaceView.getHolder().addCallback(this);
 
         boolean displayTiming = true;
+        boolean presentTiming = false;
         boolean swappy = false;
         boolean set30Fps = true;
 
         Intent intent = getIntent();
         if (intent != null) {
             displayTiming = getBooleanOption(intent, "display_timing", false);
+            presentTiming = getBooleanOption(intent, "present_timing", false);
             swappy = getBooleanOption(intent, "swappy", true);
+            if (swappy) {
+                displayTiming = false;
+                presentTiming = false;
+            } else if (presentTiming) {
+                displayTiming = false;
+            }
             set30Fps = getBooleanOption(intent, "set_30_fps_limit", false);
             Log.d(APP_NAME,
-                    "Launching with options: display_timing=" + displayTiming + ", swappy=" + swappy
+                    "Launching with options: display_timing=" + displayTiming
+                            + ", present_timing=" + presentTiming + ", swappy=" + swappy
                             + ", set_30_fps_limit=" + set30Fps);
-            nSetOptions(displayTiming, swappy, set30Fps);
+            nSetOptions(displayTiming, presentTiming, swappy, set30Fps);
         }
 
         mSwitchSwappy = findViewById(R.id.switchSwappy);
@@ -89,10 +98,12 @@ public class CubeActivity
         mFrameTimeGraph = findViewById(R.id.frame_time_graph);
 
         Switch switchGoogleTiming = findViewById(R.id.switchGoogleTiming);
+        Switch switchPresentTiming = findViewById(R.id.switchPresentTiming);
         Switch switch30FpsLimit = findViewById(R.id.switch30FpsLimit);
 
         mSwitchSwappy.setChecked(swappy);
         switchGoogleTiming.setChecked(displayTiming);
+        switchPresentTiming.setChecked(presentTiming);
         switch30FpsLimit.setChecked(set30Fps);
 
         mSwitchSwappy.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -101,9 +112,10 @@ public class CubeActivity
             if (isChecked) {
                 mSuppressOptionEvents = true;
                 switchGoogleTiming.setChecked(false);
+                switchPresentTiming.setChecked(false);
                 mSuppressOptionEvents = false;
             }
-            recreateDemo(switchGoogleTiming.isChecked(), isChecked, switch30FpsLimit.isChecked());
+            recreateDemo(false, false, false, switch30FpsLimit.isChecked());
         });
         switchGoogleTiming.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (mSuppressOptionEvents)
@@ -111,14 +123,27 @@ public class CubeActivity
             if (isChecked) {
                 mSuppressOptionEvents = true;
                 mSwitchSwappy.setChecked(false);
+                switchPresentTiming.setChecked(false);
                 mSuppressOptionEvents = false;
             }
-            recreateDemo(isChecked, mSwitchSwappy.isChecked(), switch30FpsLimit.isChecked());
+            recreateDemo(isChecked, false, false, switch30FpsLimit.isChecked());
+        });
+        switchPresentTiming.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (mSuppressOptionEvents)
+                return;
+            if (isChecked) {
+                mSuppressOptionEvents = true;
+                mSwitchSwappy.setChecked(false);
+                switchGoogleTiming.setChecked(false);
+                mSuppressOptionEvents = false;
+            }
+            recreateDemo(false, isChecked, false, switch30FpsLimit.isChecked());
         });
         switch30FpsLimit.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (mSuppressOptionEvents)
                 return;
-            recreateDemo(switchGoogleTiming.isChecked(), mSwitchSwappy.isChecked(), isChecked);
+            recreateDemo(switchGoogleTiming.isChecked(), switchPresentTiming.isChecked(),
+                    mSwitchSwappy.isChecked(), isChecked);
         });
 
         Switch switchVsyncGraph = findViewById(R.id.switchVsyncGraph);
@@ -298,8 +323,8 @@ public class CubeActivity
      * Native methods that are implemented by the 'cube' native library,
      * which is packaged with this application.
      */
-    public native void nSetOptions(
-            boolean displayTimingEnabled, boolean swappyEnabled, boolean set30FpsLimit);
+    public native void nSetOptions(boolean displayTimingEnabled, boolean presentTimingEnabled,
+            boolean swappyEnabled, boolean set30FpsLimit);
     public native void nStartCube(Surface holder);
     public native void nStopCube();
     public native void nUpdateGpuWorkload(int newWorkload);
@@ -493,13 +518,14 @@ public class CubeActivity
         }
     }
 
-    private void recreateDemo(boolean displayTiming, boolean swappy, boolean set30Fps) {
+    private void recreateDemo(
+            boolean displayTiming, boolean presentTiming, boolean swappy, boolean set30Fps) {
         Log.d(APP_NAME,
-                "Recreating demo with options: displayTiming=" + displayTiming
-                        + ", swappy=" + swappy + ", set30Fps=" + set30Fps);
+                "Recreating demo with options: displayTiming=" + displayTiming + ", presentTiming="
+                        + presentTiming + ", swappy=" + swappy + ", set30Fps=" + set30Fps);
         mIsRunning = false;
         nStopCube();
-        nSetOptions(displayTiming, swappy, set30Fps);
+        nSetOptions(displayTiming, presentTiming, swappy, set30Fps);
         SurfaceView surfaceView = findViewById(R.id.surface_view);
         Surface surface = surfaceView.getHolder().getSurface();
         if (surface != null && surface.isValid()) {

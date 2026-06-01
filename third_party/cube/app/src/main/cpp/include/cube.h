@@ -34,7 +34,8 @@ VkSwapchainKHR get_current_swapchain();
 uint64_t get_target_ipd();
 
 // Set the application options before starting the main loop.
-void set_options(bool display_timing_enabled, bool swappy_enabled, bool set_30_fps_limit);
+void set_options(bool display_timing_enabled, bool present_timing_enabled, bool swappy_enabled,
+                 bool set_30_fps_limit);
 
 // Get the duration of the last rendered frame in nanoseconds.
 uint64_t get_last_frame_duration_ns();

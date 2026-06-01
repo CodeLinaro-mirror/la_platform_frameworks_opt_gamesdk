@@ -24,12 +24,12 @@ static void* startCubes(void* state_void_ptr) {
 }
 
 JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nSetOptions(
-        JNIEnv* env, jobject clazz, jboolean display_timing_enabled, jboolean swappy_enabled,
-        jboolean set_30_fps_limit) {
+        JNIEnv* env, jobject clazz, jboolean display_timing_enabled,
+        jboolean present_timing_enabled, jboolean swappy_enabled, jboolean set_30_fps_limit) {
     s_swappy_stats_enabled = false;
     s_swappy_stats_idx = -1;
     memset(&s_swappy_stats, 0, sizeof(s_swappy_stats));
-    set_options(display_timing_enabled, swappy_enabled, set_30_fps_limit);
+    set_options(display_timing_enabled, present_timing_enabled, swappy_enabled, set_30_fps_limit);
 }
 
 JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nStartCube(JNIEnv* env, jobject clazz,
@@ -48,6 +48,10 @@ JNIEXPORT void JNICALL Java_com_samples_cube_CubeActivity_nStopCube(JNIEnv* env,
     if (state.running) {
         state.destroyRequested = true;
         pthread_join(thread, NULL);
+    }
+    if (state.window) {
+        ANativeWindow_release(state.window);
+        state.window = NULL;
     }
 }
 

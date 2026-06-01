@@ -97,6 +97,13 @@
             android:text="@string/use_google_timing"
             android:textColor="#FFF"/>
         <Switch
+            android:id="@+id/switchPresentTiming"
+            android:layout_margin="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_present_timing"
+            android:textColor="#FFF"/>
+        <Switch
             android:id="@+id/switch30FpsLimit"
             android:layout_margin="5dp"
             android:layout_width="match_parent"

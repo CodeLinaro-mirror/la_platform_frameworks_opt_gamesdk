@@ -31,6 +31,7 @@ android {
         targetSdk 35
         versionCode  2
         versionName '0.0.2'
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_PLATFORM=android-24"
@@ -56,6 +57,10 @@ android {
         prefab true
         buildConfig true
     }
+
+    testOptions {
+        animationsDisabled = true
+    }
 }
 
 dependencies {
@@ -63,4 +68,9 @@ dependencies {
     // to use a locally built .aar
     //implementation fileTree(dir: '../../../', include: ['games-frame-pacing-release.aar'])
     implementation project(":games-frame-pacing")
+
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    androidTestImplementation 'androidx.test:rules:1.7.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
 }
