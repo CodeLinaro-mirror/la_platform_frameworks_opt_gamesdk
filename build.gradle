@@ -13,6 +13,7 @@ import com.google.androidgamesdk.NativeLibrary.SampleFolder
 import com.google.androidgamesdk.ToolchainEnumerator
 import com.google.androidgamesdk.AarPrefabPatcher
 import com.google.androidgamesdk.LibraryVersions
+import com.google.androidgamesdk.AttestationManifestTaskKt
 
 import org.gradle.internal.logging.text.StyledTextOutputFactory;
 import static org.gradle.internal.logging.text.StyledTextOutput.Style;
@@ -1061,16 +1062,18 @@ task jetpadJson {
     }
 
     doLast {
-	mkdir getBuildInfoPath()
+        mkdir getBuildInfoPath()
 
-	def buildInfoFile = new BuildInfoFile()
+        def buildInfoFile = new BuildInfoFile()
         buildInfoFile.writeLibrariesAggregateBuildInfoFile(
                 filterNativeLibraries(allLibraries),
                 filterAndroidArchiveLibraries(allLibraries),
                 getDistPath(), getPackageName())
-	buildInfoFile.writeLibrariesIndividualBuildInfoFiles(
+        buildInfoFile.writeLibrariesIndividualBuildInfoFiles(
                 filterAndroidArchiveLibraries(allLibraries),
                 getBuildInfoPath(), getPackageName())
 
     }
 }
+
+AttestationManifestTaskKt.registerAttestationManifestTask(project, filterAndroidArchiveLibraries(allLibraries), distPath, getPackageName())

@@ -23,3 +23,6 @@ data class AndroidArchiveLibrary(
         return this
     }
 }
+
+fun AndroidArchiveLibrary.projectZipPath(packageName: String): String =
+    "$packageName/$aarLibraryName-maven-zip.zip"

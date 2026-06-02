@@ -57,13 +57,12 @@ class BuildInfoFile {
         val headCommitSha = getGitCommitShaAtHead()
 
         val artifactsBuildInfo: List<ArtifactBuildInfo> = androidArchiveLibraries.map {
-            androidArchiveLibrary: AndroidArchiveLibrary ->
+                androidArchiveLibrary: AndroidArchiveLibrary ->
             ArtifactBuildInfo(
                 groupId = "androidx.games",
                 artifactId = androidArchiveLibrary.aarLibraryName,
                 path = androidArchiveLibrary.projectName,
-                projectZipPath = packageName + '/' +
-                    androidArchiveLibrary.aarLibraryName + "-maven-zip.zip",
+                projectZipPath = androidArchiveLibrary.projectZipPath(packageName),
                 sha = headCommitSha,
                 version = androidArchiveLibrary.aarVersion
             )
@@ -90,13 +89,12 @@ class BuildInfoFile {
         val headCommitSha = getGitCommitShaAtHead()
 
         val artifactsBuildInfo: List<ArtifactBuildInfo> = androidArchiveLibraries.map {
-            androidArchiveLibrary: AndroidArchiveLibrary ->
+                androidArchiveLibrary: AndroidArchiveLibrary ->
             ArtifactBuildInfo(
                 groupId = "androidx.games",
                 artifactId = androidArchiveLibrary.aarLibraryName,
                 path = androidArchiveLibrary.projectName,
-                projectZipPath = packageName + '/' +
-                    androidArchiveLibrary.aarLibraryName + "-maven-zip.zip",
+                projectZipPath = androidArchiveLibrary.projectZipPath(packageName),
                 sha = headCommitSha,
                 version = androidArchiveLibrary.aarVersion
             )
