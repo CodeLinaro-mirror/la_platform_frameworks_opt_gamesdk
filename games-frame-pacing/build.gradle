@@ -132,7 +132,7 @@ repositories {
     mavenCentral()
 }
 
-tasks.whenTaskAdded {
+tasks.configureEach {
     if (it.name.startsWith('buildCMake')) {
         it.dependsOn ":games-frame-pacing:extras:assembleRelease"
     }

@@ -34,10 +34,15 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        gradlePluginPortal()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.8.1'
     }
+}
+
+plugins {
+    id "org.spdx.sbom" version "0.11.0" apply false
 }
 
 // The following is needed for sub-projects that have their own gradle script and that are
@@ -56,6 +61,37 @@ if (isRunningOnBuildBot) {
 }
 
 def versions = new LibraryVersions(project.rootProject.file('VERSIONS').getPath())
+
+subprojects {
+    if (project.name == "extras") {
+        return
+    }
+    apply plugin: "org.spdx.sbom"
+    version = versions.getByProjectName(project.name).version.toString()
+    spdxSbom {
+        targets {
+            register("release") {
+                def organization = "Organization: Google LLC"
+                configurations = ["releaseRuntimeClasspath"]
+                outputFile = layout.buildDirectory.file(getSbomPath() + "/${project.name}-${project.version}.spdx.json")
+
+                scm {
+                    def repositoryUrl = "https://android.googlesource.com/platform/frameworks/opt/gamesdk"
+                    uri = repositoryUrl
+                    revision = getGitCommit()
+                }
+                document {
+                    def coordinate = "${project.group}:${project.name}:${project.version}"
+                    def coordinateBytes = coordinate.getBytes("UTF-8")
+                    def coordinateUUID = UUID.nameUUIDFromBytes(coordinateBytes)
+                    namespace = "https://spdx.google.com/${coordinateUUID}"
+                    creator = organization
+                    packageSupplier = organization
+                }
+            }
+        }
+    }
+}
 
 ext.getAGDKZipName = { ->
     return "agdk-libraries-"+ versions["AGDK"].version + (isExpressPackage() ? "_express" : "") + ".zip"
@@ -77,11 +113,11 @@ def tuningForkNativeLibrary = new AndroidArchiveLibrary(versions['tuningfork'])
 def memoryAdviceNativeLibrary = new AndroidArchiveLibrary(versions['memory_advice'])
 
 def gameActivityLibrary = new AndroidArchiveLibrary(versions['game_activity'])
-        // This can be removed after migrating to prefabPublishing:
+// This can be removed after migrating to prefabPublishing:
         .setPrefabFolderName("prefab-src")
 
 def gameTextInputLibrary = new AndroidArchiveLibrary(versions['game_text_input'])
-        // This can be removed after migrating to prefabPublishing:
+// This can be removed after migrating to prefabPublishing:
         .setPrefabFolderName("prefab-src")
 
 def gameControllerLibrary = new AndroidArchiveLibrary(versions['paddleboat'])
@@ -131,7 +167,11 @@ def getDistPath() {
 }
 
 def getBuildInfoPath() {
-	return getDistPath()+"/build-info"
+    return getDistPath()+"/build-info"
+}
+
+def getSbomPath() {
+    return getDistPath()+"/sboms"
 }
 
 def getTempPath() {
@@ -519,14 +559,14 @@ def buildNativeLibraries(libraries, buildType = "Release", toolchainSet = Toolch
         toolchainEnumerator.parallelMap(toolchains, {
             enumeratedToolchain ->
                 buildNativeModules(
-                    new BuildOptions(
-                            buildType,
-                            threadChecks,
-                            enumeratedToolchain.stl,
-                            enumeratedToolchain.abi),
-                    enumeratedToolchain.toolchain,
-                    [library],
-                    "src")
+                        new BuildOptions(
+                                buildType,
+                                threadChecks,
+                                enumeratedToolchain.stl,
+                                enumeratedToolchain.abi),
+                        enumeratedToolchain.toolchain,
+                        [library],
+                        "src")
         }, psize, libraryName)
     }.flatten()
 }
@@ -664,7 +704,7 @@ def parallelChunkSize(library) {
         // By default, use less parallelism for memory_advice and oboe since they
         // have parallelised sub-builds
         def isCompoundBuild = library.libraryInfo.nickname=="memory_advice" ||
-            library.libraryInfo.nickname=="oboe"
+                library.libraryInfo.nickname=="oboe"
         if (isCompoundBuild) {
             if (isRunningOnBuildBot)
                 return 16
@@ -807,13 +847,13 @@ task localDeviceInfoUnitTests {
 task format {
     doLast {
         def formattedFiles =
-            fileTree(dir: 'src', include: ['**/*.cpp', '**/*.c', '**/*.h'], excludes: ["protobuf"]) +
-            fileTree(dir: 'include', include: ['**/*.h'], excludes: ["third_party"]) +
-            fileTree(dir: 'test/swappy', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
-            fileTree(dir: 'test/tuningfork', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
-            fileTree(dir: 'games-text-input/prefab-src', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
-            fileTree(dir: 'game-activity/prefab-src', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
-            fileTree(dir: 'games-controller/src', include: ['**/*.cpp', '**/*.c', '**/*.h', '**/*.hpp'])
+                fileTree(dir: 'src', include: ['**/*.cpp', '**/*.c', '**/*.h'], excludes: ["protobuf"]) +
+                        fileTree(dir: 'include', include: ['**/*.h'], excludes: ["third_party"]) +
+                        fileTree(dir: 'test/swappy', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
+                        fileTree(dir: 'test/tuningfork', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
+                        fileTree(dir: 'games-text-input/prefab-src', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
+                        fileTree(dir: 'game-activity/prefab-src', include: ['**/*.cpp', '**/*.c', '**/*.h']) +
+                        fileTree(dir: 'games-controller/src', include: ['**/*.cpp', '**/*.c', '**/*.h', '**/*.hpp'])
 
         formattedFiles.files.each { file ->
             exec {
@@ -838,8 +878,8 @@ task buildSampleArtifacts {
 }
 
 /** Add a task called $zipTask that creates a ZIP or AAR file, $outputArchiveFileName,
-for the entire "package" generated by $buildTask.
-The task then copies the archive to the 'build' directory and to the 'package' directory. */
+ for the entire "package" generated by $buildTask.
+ The task then copies the archive to the 'build' directory and to the 'package' directory. */
 def addZipTask(zipTask, buildTask, outputArchiveFileName) {
     tasks.register(zipTask, Zip) {
         dependsOn buildTask

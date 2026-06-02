@@ -65,6 +65,7 @@ then
     ./gradlew packageMavenZip -Plibraries=paddleboat      -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew packageMavenZip -Plibraries=memory_advice   -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew jetpadJson -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice -PdistPath="$dist_dir" -PpackageName=$package_name
+    ./gradlew spdxSbom -PpackageName=$package_name -PdistPath="$dist_dir" -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice
 elif [[ $1 == "samples" ]]
 then
     package_name=gamesdk
@@ -81,6 +82,7 @@ then
     ./gradlew packageMavenZip -Plibraries=paddleboat      -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew packageMavenZip -Plibraries=memory_advice   -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew jetpadJson -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice -PdistPath="$dist_dir" -PpackageName=$package_name
+    ./gradlew spdxSbom -PpackageName=$package_name -PdistPath="$dist_dir" -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice
 elif [[ $1 == "tests" ]]
 then
     package_name=gamesdk-tests
@@ -99,6 +101,7 @@ else
     ./gradlew packageMavenZip -Plibraries=paddleboat      -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew packageMavenZip -Plibraries=memory_advice   -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew jetpadJson -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice -PdistPath="$dist_dir" -PpackageName=$package_name
+    ./gradlew spdxSbom -PpackageName=$package_name -PdistPath="$dist_dir" -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice
 fi
 
 if [[ $1 != "maven-only" ]]

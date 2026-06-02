@@ -41,6 +41,11 @@ class LibraryVersions(val versions_file_path: String) {
         return libraries[nickname]!!
     }
 
+    fun getByProjectName(projectName: String) =
+        libraries.values.find { it.projectName == projectName }
+            ?: throw Exception("Can't find a library version with projectName '" + projectName + "'")
+
+
     companion object LibraryVersions {
         fun parseLines(lines: List<String>): List<LibraryInfo> {
             val line_re =
