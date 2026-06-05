@@ -28,6 +28,10 @@ public class CubeActivity
     private static final String CPU_WORKLOAD = "com.samples.CPU_WORKLOAD";
     private static final String APP_NAME = "CubeActivity";
 
+    private static final long NANOS_PER_SECOND = 1000000000;
+
+    private static final long NANOS_PER_MILLISECOND = 1000000;
+
     private LinearLayout settingsLayout;
 
     private SeekBar gpuWorkSeekBar;
@@ -86,6 +90,8 @@ public class CubeActivity
 
         mInfoOverlay = findViewById(R.id.info_overlay);
         buildSwappyStatsGrid();
+        mInfoOverlayEnabled = true;
+        mInfoOverlay.setVisibility(View.VISIBLE);
     }
 
     private boolean getBooleanOption(Intent intent, String key, boolean defaultValue) {
@@ -244,6 +250,7 @@ public class CubeActivity
     public native void nUpdateGpuWorkload(int newWorkload);
     public native void nUpdateCpuWorkload(int newWorkload);
     public native int nGetSwappyStats(int stat, int bin);
+    public native long nGetTargetIPD();
 
     private void infoOverlayToggle() {
         if (mInfoOverlay == null) {
@@ -267,6 +274,9 @@ public class CubeActivity
 
         mInfoOverlayButton = menu.findItem(R.id.info_overlay_button);
         if (mInfoOverlayButton != null) {
+            if (mInfoOverlayEnabled) {
+                mInfoOverlayButton.setIcon(R.drawable.ic_info_solid_white_24dp);
+            }
             mInfoOverlayButton.setOnMenuItemClickListener((MenuItem item) -> {
                 infoOverlayToggle();
                 return true;
@@ -379,6 +389,17 @@ public class CubeActivity
                     updateSwappyStatsBin(stat + 1, bin, nGetSwappyStats(stat, bin));
                 }
             }
+            TextView targetFpsView = findViewById(R.id.target_fps_text);
+            long targetIpd = nGetTargetIPD();
+            double targetFps = targetIpd > 0 ? (double) NANOS_PER_SECOND / targetIpd : 0.0;
+            double targetMs = (double) targetIpd / NANOS_PER_MILLISECOND;
+            Log.d(APP_NAME,
+                    String.format(Locale.US,
+                            "Updating UI: targetIpd=%d, targetFps=%.2f, targetMs=%.2f", targetIpd,
+                            targetFps, targetMs));
+            targetFpsView.setText(
+                    String.format(Locale.US, "Target FPS: %.2f (%.2f ms)", targetFps, targetMs));
+
             TextView appOffsetView = findViewById(R.id.swappy_stats);
             appOffsetView.setText(String.format(
                     Locale.US, "SwappyStats: %d Total Frames", nGetSwappyStats(-1, 0)));

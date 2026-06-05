@@ -100,3 +100,8 @@ JNIEXPORT int JNICALL Java_com_samples_cube_CubeActivity_nGetSwappyStats(JNIEnv*
 
     return value;
 }
+
+JNIEXPORT jlong JNICALL Java_com_samples_cube_CubeActivity_nGetTargetIPD(JNIEnv* env,
+                                                                         jobject clazz) {
+    return (jlong)get_target_ipd();
+}

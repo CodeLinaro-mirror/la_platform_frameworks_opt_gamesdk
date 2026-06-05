@@ -30,5 +30,8 @@ void update_cpu_workload(int32_t new_workload);
 // Get the current active swapchain.
 VkSwapchainKHR get_current_swapchain();
 
+// Get the target IPD (image present duration) in nanoseconds.
+uint64_t get_target_ipd();
+
 // Set the application options before starting the main loop.
 void set_options(bool display_timing_enabled, bool swappy_enabled, bool set_30_fps_limit);
