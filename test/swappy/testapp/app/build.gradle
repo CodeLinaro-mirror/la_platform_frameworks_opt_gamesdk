@@ -1,7 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdk 31
+    namespace "com.swappy.testapp"
+    compileSdk 35
     defaultConfig {
         applicationId "com.swappy.testapp"
         minSdk 21
@@ -12,6 +13,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags ""
+                arguments "-DANDROID_STL=c++_shared"
             }
         }
     }

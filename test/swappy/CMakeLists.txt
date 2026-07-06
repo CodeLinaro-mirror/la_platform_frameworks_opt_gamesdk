@@ -54,6 +54,7 @@ set(TEST_SRCS
   ${SOURCE_LOCATION_COMMON}/ChoreographerThread.cpp
   ${SOURCE_LOCATION_COMMON}/SwappyDisplayManager.cpp
   ${SOURCE_LOCATION_COMMON}/Settings.cpp
+  ${SOURCE_LOCATION_COMMON}/../../src/common/system_utils.cpp
   swappycommon_test.cpp
 )
 
