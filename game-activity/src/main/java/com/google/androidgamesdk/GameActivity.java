@@ -248,9 +248,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
      */
     public long getGameActivityNativeHandle() {
         if (isNativeDestroyed()) {
-            return nativeHandle;
+            return 0;
         }
-        return 0;
+        return nativeHandle;
     }
 
     /**
