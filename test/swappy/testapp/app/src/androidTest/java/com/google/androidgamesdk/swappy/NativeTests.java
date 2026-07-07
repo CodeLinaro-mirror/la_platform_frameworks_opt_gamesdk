@@ -21,5 +21,5 @@ import androidx.test.ext.junitgtest.TargetLibrary;
 import org.junit.runner.RunWith;
 
 @RunWith(GtestRunner.class)
-@TargetLibrary(libraryName = "swappy_test")
-class NativeTests {}
+@TargetLibrary(libraryName = "swappy_instrumented_test")
+public class NativeTests {}

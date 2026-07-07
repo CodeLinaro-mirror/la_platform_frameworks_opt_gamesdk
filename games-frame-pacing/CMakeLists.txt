@@ -115,25 +115,6 @@ target_link_libraries( swappy
                         android
                         GLESv2
                         log
-			atomic)
+                        atomic)
 
 
-option(BUILD_TEST "Build native tests" OFF)
-if(BUILD_TEST)
-
-     find_package(googletest REQUIRED CONFIG)
-     find_package(junit-gtest REQUIRED CONFIG)
-
-     add_library(swappy_test SHARED ${SOURCE_LOCATION}/../test/swappy/swappycommon_test.cpp)
-     target_link_libraries(swappy_test
-       PRIVATE
-         swappy
-         android
-         atomic
-         log
-         googletest::gtest
-         googletest::gmock
-         junit-gtest::junit-gtest
-     )
-endif()
-unset(BUILD_TEST CACHE)

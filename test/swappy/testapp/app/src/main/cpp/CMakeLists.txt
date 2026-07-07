@@ -25,12 +25,33 @@ add_subdirectory( "${TEST_DIR}" test_dir)
 
 include_directories("${TEST_DIR}"
         "${TEST_DIR}/../../samples/common/include"
+        "${TEST_DIR}/../../games-frame-pacing"
+        "${TEST_DIR}/../../games-frame-pacing/common"
+        "${TEST_DIR}/../../src/common"
         )
 
 add_library( ${PROJECT_NAME} SHARED
              swappy-test.cpp )
 
-
 target_link_libraries( ${PROJECT_NAME}
                        swappy_test_lib
                        log )
+
+find_package(googletest REQUIRED CONFIG)
+find_package(junit-gtest REQUIRED CONFIG)
+find_package(games-frame-pacing REQUIRED CONFIG)
+
+add_library(swappy_instrumented_test SHARED
+  ${TEST_DIR}/swappycommon_test.cpp
+  ${TEST_DIR}/../../src/common/system_utils.cpp
+)
+target_link_libraries(swappy_instrumented_test
+  PRIVATE
+    games-frame-pacing::swappy
+    android
+    atomic
+    log
+    googletest::gtest
+    googletest::gmock
+    junit-gtest::junit-gtest
+)
