@@ -133,7 +133,7 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     @Override
     public void onGlobalLayout() {
-        if (isNativeDestroyed()) {
+        if (isNativeDestroyed() || mSurfaceView == null) {
             return;
         }
         mSurfaceView.getLocationInWindow(mLocation);
@@ -582,6 +582,8 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     @Keep
     public Insets getWindowInsets(int type) {
+        if (mSurfaceView == null)
+            return null;
         WindowInsetsCompat allInsets = ViewCompat.getRootWindowInsets(mSurfaceView);
         if (allInsets == null)
             return null;
@@ -594,6 +596,8 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     @Keep
     public Insets getWaterfallInsets() {
+        if (mSurfaceView == null)
+            return null;
         WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(mSurfaceView);
         if (insets == null)
             return null;
@@ -655,7 +659,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Keep
     public void setImeEditorInfo(EditorInfo info) {
         imeEditorInfo = info;
-        mSurfaceView.mInputConnection.setEditorInfo(info);
+        if (mSurfaceView != null && mSurfaceView.mInputConnection != null) {
+            mSurfaceView.mInputConnection.setEditorInfo(info);
+        }
     }
 
     /**
@@ -666,6 +672,9 @@ public class GameActivity extends AppCompatActivity implements SurfaceHolder.Cal
      */
     @Keep
     public void setImeEditorInfoFields(int inputType, int actionId, int imeOptions) {
+        if (mSurfaceView == null || mSurfaceView.mInputConnection == null)
+            return;
+
         EditorInfo info = getImeEditorInfo();
         info.inputType = inputType;
         info.actionId = actionId;
