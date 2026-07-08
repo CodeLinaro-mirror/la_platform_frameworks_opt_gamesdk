@@ -22,8 +22,8 @@ set ( SOURCE_LOCATION .)
 set ( SOURCE_LOCATION_COMMON "${SOURCE_LOCATION}/common" )
 set ( SOURCE_LOCATION_OPENGL "${SOURCE_LOCATION}/opengl" )
 set ( SOURCE_LOCATION_VULKAN "${SOURCE_LOCATION}/vulkan" )
-set ( SOURCE_LOCATION_TEST "${SOURCE_LOCATION}/src/androidTest/cpp" )
 
+include_directories( . )
 include_directories( ../include )
 include_directories( ../src/common )
 include_directories( common )
@@ -124,7 +124,7 @@ if(BUILD_TEST)
      find_package(googletest REQUIRED CONFIG)
      find_package(junit-gtest REQUIRED CONFIG)
 
-     add_library(swappy_test SHARED ${SOURCE_LOCATION_TEST}/swappy_test.cpp)
+     add_library(swappy_test SHARED ${SOURCE_LOCATION}/../test/swappy/swappycommon_test.cpp)
      target_link_libraries(swappy_test
        PRIVATE
          swappy
