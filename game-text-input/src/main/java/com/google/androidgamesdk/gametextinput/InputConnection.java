@@ -15,6 +15,7 @@
  */
 package com.google.androidgamesdk.gametextinput;
 
+import static android.view.KeyCharacterMap.COMBINING_ACCENT_MASK;
 import static android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED;
 
 import android.app.Activity;
@@ -477,6 +478,8 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
         if (event == null) {
             return false;
         }
+
+        int action = event.getAction();
         int keyCode = event.getKeyCode();
         Log.d(TAG,
                 String.format(
@@ -488,9 +491,22 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
             sendEditorAction(settings.mEditorInfo.actionId);
             return true;
         }
-        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+
+        String charsToInsert = null;
+        if (action == KeyEvent.ACTION_MULTIPLE && keyCode == KeyEvent.KEYCODE_UNKNOWN) {
+            charsToInsert = event.getCharacters();
+        } else if (action == KeyEvent.ACTION_DOWN) {
+            int unicodeChar = event.getUnicodeChar();
+            // Isolate base character from key event when dead key bit is set.
+            int codePoint = unicodeChar & COMBINING_ACCENT_MASK;
+            // codePoint is 0 for non-printable keys (e.g. arrow keys).
+            if (codePoint != 0) {
+                charsToInsert = new String(Character.toChars(codePoint));
+            }
+        } else {
             return false;
         }
+
         // If no selection is set, move the selection to the end.
         // This is the case when first typing on keys when the selection is not set.
         // Note that for InputType.TYPE_CLASS_TEXT, this is not be needed because the
@@ -549,7 +565,7 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
             return false;
         }
 
-        if (event.getUnicodeChar() == 0) {
+        if (charsToInsert == null || charsToInsert.isEmpty()) {
             return false;
         }
 
@@ -558,8 +574,7 @@ public class InputConnection extends BaseInputConnection implements View.OnKeyLi
             this.mEditable.delete(selection.first, selection.second);
         }
 
-        String charsToInsert = Character.toString((char) event.getUnicodeChar());
-        this.mEditable.insert(selection.first, (CharSequence) charsToInsert);
+        this.mEditable.insert(selection.first, charsToInsert);
         int length = this.mEditable.length();
 
         // Same logic as in setComposingText(): we must update composing region,

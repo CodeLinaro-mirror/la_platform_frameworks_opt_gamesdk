@@ -189,6 +189,35 @@ public class InputTest {
         checkResultText("12");
     }
 
+    @TestToCombine(group = TestGroup.KEY_CHARACTER)
+    public void keyCharacter_emojiMultiple() {
+        if (pressKeyImplementation == PressKeyImplementation.PRESS_KEY) {
+            return; // Can't easily inject a custom KeyEvent via standard Espresso pressKey
+        }
+
+        onInputView().perform(new ViewAction() {
+            @Override
+            public Matcher<View> getConstraints() {
+                return isDisplayed();
+            }
+            @Override
+            public String getDescription() {
+                return "inject multiple key event for emoji";
+            }
+            @Override
+            public void perform(UiController uiController, View view) {
+                InputEnabledTextView inputView = (InputEnabledTextView) view;
+                InputConnection ic = inputView.getInputConnection();
+                long eventTime = SystemClock.uptimeMillis();
+                KeyEvent multipleEvent =
+                        new KeyEvent(eventTime, "😀", KeyCharacterMap.VIRTUAL_KEYBOARD, 0);
+                ic.onKey(view, KeyEvent.KEYCODE_UNKNOWN, multipleEvent);
+            }
+        });
+
+        checkResultText("😀");
+    }
+
     @TestToCombine(group = TestGroup.KEY_DEL)
     public void keyDel_atTheEnd() {
         onInputView().perform(setState("abcdef", 6, 6), key(KeyEvent.KEYCODE_DEL));
