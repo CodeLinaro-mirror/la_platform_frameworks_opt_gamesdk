@@ -20,10 +20,12 @@ plugins {
 
 buildDir="../../out_memory_advice"
 
+apply from: '../ndk_version.gradle'
+
 android {
     namespace 'com.google.androidgamesdk.memory_advice'
     compileSdk 31
-    ndkVersion "23.1.7779620"
+    ndkVersion agdkNdkVersion
 
     defaultConfig {
         minSdkVersion 21

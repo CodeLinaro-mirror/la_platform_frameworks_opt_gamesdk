@@ -41,8 +41,12 @@ echo yes | $sdkmanager_path "platform-tools"
 echo yes | $sdkmanager_path "platforms;android-35"
 echo yes | $sdkmanager_path "platforms;android-31"
 echo yes | $sdkmanager_path "build-tools;35.0.0"
-echo yes | $sdkmanager_path "ndk;23.1.7779620" # for games-memory-advice
-echo yes | $sdkmanager_path "ndk;27.3.13750724"
+AGDK_NDK_VERSION=$(grep -E "ext\.agdkNdkVersion" ndk_version.gradle | sed -E "s/.*['\"]([^'\"]+)['\"].*/\1/")
+if [[ -z "$AGDK_NDK_VERSION" ]]; then
+  echo "Error: Could not parse NDK version from ndk_version.gradle"
+  exit 1
+fi
+echo yes | $sdkmanager_path "ndk;$AGDK_NDK_VERSION"
 
 # Use the distribution path given to the script by the build bot in DIST_DIR. Otherwise,
 # build in the default location.

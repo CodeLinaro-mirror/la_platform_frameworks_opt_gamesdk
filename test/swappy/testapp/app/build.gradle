@@ -1,6 +1,8 @@
 apply plugin: 'com.android.application'
+apply from: "../../../../ndk_version.gradle"
 
 android {
+    ndkVersion agdkNdkVersion
     namespace "com.swappy.testapp"
     compileSdk 35
     defaultConfig {
