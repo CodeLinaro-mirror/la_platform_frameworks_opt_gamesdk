@@ -2,10 +2,12 @@ import org.gradle.internal.os.OperatingSystem;
 
 apply plugin: 'com.android.application'
 
+apply from: '../../../../ndk_version.gradle'
+
 android {
     namespace "com.tuningfork.experimentsdemo"
     compileSdk 31
-    ndkVersion "27.3.13750724"
+    ndkVersion agdkNdkVersion
 
     defaultConfig {
         applicationId "com.tuningfork.experimentsdemo"

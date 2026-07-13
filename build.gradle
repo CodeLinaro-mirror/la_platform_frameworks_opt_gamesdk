@@ -46,6 +46,8 @@ plugins {
     id "org.spdx.sbom" version "0.11.0" apply false
 }
 
+apply from: 'ndk_version.gradle'
+
 // The following is needed for sub-projects that have their own gradle script and that are
 // not using the general swappy/tuningfork multi-ndk build logic below and in buildSrc.
 @Field isRunningOnBuildBot = System.getenv("BUILDBOT_SCRIPT")

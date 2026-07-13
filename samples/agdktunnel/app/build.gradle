@@ -26,10 +26,12 @@ def usePad = PADEnabled
 // If using a relative path, wrap it with file() since CMake requires absolute paths.
 def playcoreDir = file('libs/play-core-native-sdk')
 
+apply from: '../../../ndk_version.gradle'
+
 android {
     namespace 'com.google.sample.agdktunnel'
     compileSdk 31
-    ndkVersion "27.3.13750724"
+    ndkVersion agdkNdkVersion
 
     defaultConfig {
         applicationId 'com.google.sample.agdktunnel'
