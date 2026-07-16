@@ -6,14 +6,49 @@ Unless you need to compile AGDK from sources, it's recommended that you use the 
 
 ## Build AGDK
 
-In order to build AGDK, this project must be initialized using the [*repo* tool](https://gerrit.googlesource.com/git-repo/).
-On [Windows](https://gerrit.googlesource.com/git-repo/+/HEAD/docs/windows.md), we recommend running all commands involving *repo* with Git Bash, and setting `git config --global core.symlinks true` to avoid issues with symlinks.
+In order to build AGDK, this project must be initialized using the [*repo* tool](https://gerrit.googlesource.com/git-repo/). You can either initialize it as a standalone project or develop it within an existing full AOSP checkout.
+
+> **Note for Windows users:** On [Windows](https://gerrit.googlesource.com/git-repo/+/HEAD/docs/windows.md), we recommend running all commands involving *repo* with Git Bash, and setting `git config --global core.symlinks true` to avoid issues with symlinks.
+
+### Option 1: Standalone Checkout
+
+Use this approach if you only want to download the AGDK source and its immediate dependencies.
 
 ```bash
 mkdir android-games-sdk
 cd android-games-sdk
 repo init -u https://android.googlesource.com/platform/manifest -b android-games-sdk
 ```
+
+### Option 2: Within a full AOSP checkout
+
+If you are developing inside a full AOSP tree (e.g., initialized with the `android-latest-release` manifest), the AGDK project is not tracked by the main release branch. You must configure a local manifest to track the `gamesdk-main` branch.
+
+1. Create a local manifest from the root of your AOSP checkout to track the AGDK project explicitly:
+
+   ```bash
+   mkdir -p .repo/local_manifests
+   cat <<EOF> .repo/local_manifests/agdk.xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <manifest>
+     <project path="frameworks/opt/gamesdk" name="platform/frameworks/opt/gamesdk" revision="gamesdk-main" />
+   </manifest>
+EOF
+   ```
+
+2. Sync the project. If your tree is enrolled in the Git submodules experiment, you must bypass the superproject to pull the live branch instead of a pinned commit:
+
+   ```bash
+   repo sync -c --no-use-superproject frameworks/opt/gamesdk
+   ```
+
+3. You can now start your local branch using the project name:
+
+   ```bash
+   repo start my-agdk-feature platform/frameworks/opt/gamesdk
+   ```
+
+> **Note for AOSP users (Option 2):** Subsequent build commands in this document assume a standalone checkout where the project directory is `gamesdk/` (Option 1). If you are building inside a full AOSP tree, navigate to `cd frameworks/opt/gamesdk` instead and adjust relative paths to prebuilts accordingly (e.g., using `../../../prebuilts/sdk` instead of `../prebuilts/sdk`).
 
 ### Build with all prebuilt SDKs
 
