@@ -1,0 +1,8 @@
+{
+  "presubmit": [
+    {
+      "name": "swappy_host_test",
+      "host": true
+    }
+  ]
+}

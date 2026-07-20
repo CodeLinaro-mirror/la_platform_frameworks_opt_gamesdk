@@ -134,7 +134,7 @@ ANDROID_HOME=`pwd`/../prebuilts/sdk ./gradlew packageZip -Plibraries=swappy,tuni
 
 ```bash
 ./gradlew localUnitTests # Requires a connected ARM64 device to run
-./gradlew localDeviceInfoUnitTests # No device required, tests are running on host
+./gradlew hostUnitTests # No device required, tests are running on host
 ```
 
 ## Samples
