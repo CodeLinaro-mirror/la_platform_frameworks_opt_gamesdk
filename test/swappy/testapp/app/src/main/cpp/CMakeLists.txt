@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.18.1)
 project(swappy-test)
 
 set (TEST_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../..")
