@@ -30,7 +30,7 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions" )
 set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
 
 set(ANDROID_GTEST_DIR "../../../external/googletest")
-set(BUILD_GMOCK OFF)
+set(BUILD_GMOCK ON)
 set(INSTALL_GTEST OFF)
 add_subdirectory("${ANDROID_GTEST_DIR}"
    googletest-build
@@ -38,6 +38,7 @@ add_subdirectory("${ANDROID_GTEST_DIR}"
 
 include_directories(
   "${ANDROID_GTEST_DIR}/googletest/include"
+  "${ANDROID_GTEST_DIR}/googlemock/include"
   ../../games-frame-pacing
   ../../games-frame-pacing/common
   ../../src/common
@@ -65,6 +66,7 @@ add_library(swappy_test_lib
 target_link_libraries(swappy_test
   android
   gtest
+  gmock
   log
   vulkan
   mediandk
@@ -74,6 +76,7 @@ target_link_libraries(swappy_test
 target_link_libraries(swappy_test_lib
   android
   gtest
+  gmock
   log
   vulkan
   mediandk
