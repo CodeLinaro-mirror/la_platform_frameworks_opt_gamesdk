@@ -43,6 +43,7 @@ find_package(games-frame-pacing REQUIRED CONFIG)
 
 add_library(swappy_instrumented_test SHARED
   ${TEST_DIR}/swappycommon_test.cpp
+  ${TEST_DIR}/swappy_basic_test.cpp
   ${TEST_DIR}/../../src/common/system_utils.cpp
 )
 target_link_libraries(swappy_instrumented_test
@@ -51,6 +52,8 @@ target_link_libraries(swappy_instrumented_test
     android
     atomic
     log
+    vulkan
+    mediandk
     googletest::gtest
     googletest::gmock
     junit-gtest::junit-gtest
