@@ -837,12 +837,12 @@ task localUnitTests {
     }
 }
 
-task localDeviceInfoUnitTests {
+task hostUnitTests {
     doLast {
-        def buildInfo = buildHostModule("test/device_info", "Release")
+        def buildInfo = buildHostModule("test/swappy_host", "Release")
         exec {
             workingDir buildInfo.outputFolder
-            commandLine "./device_info_test"
+            commandLine "./swappy_host_test"
         }
     }
 }

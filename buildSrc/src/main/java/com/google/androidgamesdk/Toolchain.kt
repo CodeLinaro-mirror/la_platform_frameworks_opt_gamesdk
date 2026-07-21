@@ -80,19 +80,19 @@ abstract class Toolchain {
     }
 
     fun getCMakePath(): String {
-        return File(
-            "${project_.projectDir}/../prebuilts/cmake/" +
-                osFolderName(ExternalToolName.CMAKE) +
-                "/bin/cmake" + osExecutableSuffix()
-        ).path
+        val sdkCmake = File(System.getenv("ANDROID_HOME") ?: "", "cmake/3.22.1/bin/cmake" + osExecutableSuffix())
+        if (sdkCmake.exists()) return sdkCmake.path
+        val prebuiltCmake = File("${project_.projectDir}/../prebuilts/cmake/" + osFolderName(ExternalToolName.CMAKE) + "/bin/cmake" + osExecutableSuffix())
+        if (prebuiltCmake.exists()) return prebuiltCmake.path
+        return "cmake"
     }
 
     fun getNinjaPath(): String {
-        return File(
-            "${project_.projectDir}/../prebuilts/ninja/" +
-                osFolderName(ExternalToolName.CMAKE) +
-                "/ninja" + osExecutableSuffix()
-        ).path
+        val sdkNinja = File(System.getenv("ANDROID_HOME") ?: "", "cmake/3.22.1/bin/ninja" + osExecutableSuffix())
+        if (sdkNinja.exists()) return sdkNinja.path
+        val prebuiltNinja = File("${project_.projectDir}/../prebuilts/ninja/" + osFolderName(ExternalToolName.CMAKE) + "/ninja" + osExecutableSuffix())
+        if (prebuiltNinja.exists()) return prebuiltNinja.path
+        return "ninja"
     }
 
     fun getProtobufInstallPath(): String {
