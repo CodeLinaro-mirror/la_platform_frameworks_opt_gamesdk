@@ -39,6 +39,7 @@ add_subdirectory("${ANDROID_GTEST_DIR}"
 include_directories(
   "${ANDROID_GTEST_DIR}/googletest/include"
   ../../games-frame-pacing
+  ../../games-frame-pacing/common
   ../../src/common
   ../../include
 )
@@ -46,16 +47,8 @@ include_directories(
 set ( SOURCE_LOCATION_COMMON "../../games-frame-pacing/common" )
 
 set(TEST_SRCS
-  ${SOURCE_LOCATION_COMMON}/SwappyCommon.cpp
-  ${SOURCE_LOCATION_COMMON}/CPUTracer.cpp
-  ${SOURCE_LOCATION_COMMON}/CpuInfo.cpp
-  ${SOURCE_LOCATION_COMMON}/Thread.cpp
-  ${SOURCE_LOCATION_COMMON}/ChoreographerFilter.cpp
-  ${SOURCE_LOCATION_COMMON}/ChoreographerThread.cpp
-  ${SOURCE_LOCATION_COMMON}/SwappyDisplayManager.cpp
-  ${SOURCE_LOCATION_COMMON}/Settings.cpp
-  ${SOURCE_LOCATION_COMMON}/../../src/common/system_utils.cpp
   swappycommon_test.cpp
+  swappy_basic_test.cpp
 )
 
 add_executable(swappy_test
@@ -73,10 +66,16 @@ target_link_libraries(swappy_test
   android
   gtest
   log
+  vulkan
+  mediandk
+  games-frame-pacing::swappy_static
 )
 
 target_link_libraries(swappy_test_lib
   android
   gtest
   log
+  vulkan
+  mediandk
+  games-frame-pacing::swappy_static
 )
