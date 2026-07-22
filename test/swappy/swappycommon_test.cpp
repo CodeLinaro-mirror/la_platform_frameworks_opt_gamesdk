@@ -46,6 +46,24 @@ public:
     SwappyCommonTest(const SwappyCommonSettings& settings) : SwappyCommon(settings) {}
 };
 
+// std::this_thread::sleep_for is inaccurate on emulators, where thread wake-up delays
+// can be significant and unpredictable. This custom sleep function improves test
+// reliability by sleeping just short of the target time and busy-waiting the rest.
+void preciseSleep(duration d) {
+    // We sleep using std::this_thread::sleep_for until we are within this margin
+    // of the target time, to avoid oversleeping due to scheduling unpredictability.
+    constexpr auto BUSY_WAIT_MARGIN = 2ms;
+
+    auto end = std::chrono::steady_clock::now() + d;
+    auto sleep_time = d - BUSY_WAIT_MARGIN;
+    if (sleep_time.count() > 0) {
+        std::this_thread::sleep_for(sleep_time);
+    }
+    while (std::chrono::steady_clock::now() < end) {
+        std::this_thread::yield();
+    }
+}
+
 struct Workload {
     std::function<duration()> cpuWorkTime;
     std::function<duration()> gpuWorkTime;
@@ -126,13 +144,14 @@ public:
         fenceCreationTime_ = timeProvider_->timeFromStart();
         threadCondition_.notify_all();
     }
+
     void run() {
         while (running_) {
             {
                 std::unique_lock<std::mutex> lock(threadMutex_);
                 threadCondition_.wait(lock, [this]() { return fence_ == UNSIGNALLED; });
             }
-            std::this_thread::sleep_for(waitTime_);
+            preciseSleep(waitTime_);
             {
                 std::lock_guard<std::mutex> lock(fenceMutex_);
                 fence_ = SIGNALLED;
@@ -245,7 +264,7 @@ public:
                                  std::chrono::steady_clock::now().time_since_epoch())
                                  .count();
                 commonBase_->onChoreographer(t);
-                std::this_thread::sleep_for(16666666ns);
+                preciseSleep(16666666ns);
             }
         });
         mStartTime = std::chrono::steady_clock::now();
@@ -268,7 +287,7 @@ public:
                 ++workloadScheduleIndex;
             }
             // Simulate CPU work
-            std::this_thread::sleep_for(currentWorkload_->cpuWorkTime());
+            preciseSleep(currentWorkload_->cpuWorkTime());
             // Swap
             swapInternal();
         }
