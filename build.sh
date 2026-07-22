@@ -7,6 +7,8 @@
 #   Builds the gamesdk with Swappy and the Swappy samples
 # ./build.sh full
 #   Builds the gamesdk with Swappy, Tuning Fork, Oboe and all samples
+# ./build.sh hostUnitTests
+#   Runs the host C++ unit tests (swappy_host_test) with prebuilt JDK environment
 
 set -e # Exit on error
 
@@ -22,7 +24,11 @@ if [ "$(uname)" == "Darwin" ]; then
     : # Do nothing but skip the next condition so we don't get a bash warning on macos
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     # Do only for GNU/Linux platform
-    export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk17/linux-x86
+    if [ -d "$(pwd)/../prebuilts/jdk/jdk17/linux-x86" ]; then
+        export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk17/linux-x86
+    elif [ -d "$(pwd)/../prebuilts/jdk/jdk21/linux-x86" ]; then
+        export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk21/linux-x86
+    fi
 fi
 
 sdkmanager_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -93,6 +99,10 @@ then
     ./gradlew :game-controller:connectedAndroidTest -Plibraries=paddleboat -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
     # ./gradlew :game-frame-pacing:connectedAndroidTest -Plibraries=swappy -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew :game-text-input:connectedAndroidTest -Plibraries=game_text_input,game_activity -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
+    exit
+elif [[ $1 == "hostUnitTests" ]]
+then
+    ./gradlew hostUnitTests -Pndk=$AGDK_NDK_VERSION
     exit
 else
     # The default is to build the express zip
