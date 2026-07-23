@@ -167,25 +167,18 @@ static jint MockDetachCurrentThread(JavaVM*) {
     return JNI_OK;
 }
 
-class AImageReaderVulkanSwapchainTest : public ::testing::Test {
+class AImageReaderSwapchainTestBase : public ::testing::Test {
 public:
-    AImageReaderVulkanSwapchainTest() {
+    AImageReaderSwapchainTestBase() {
         gTestSerializationMutex.lock();
     }
 
-    ~AImageReaderVulkanSwapchainTest() {
+    virtual ~AImageReaderSwapchainTestBase() {
         gTestSerializationMutex.unlock();
     }
 
     AImageReader* mReader = nullptr;
     ANativeWindow* mWindow = nullptr;
-    VkInstance mVkInstance = VK_NULL_HANDLE;
-    VkPhysicalDevice mPhysicalDev = VK_NULL_HANDLE;
-    VkDevice mDevice = VK_NULL_HANDLE;
-    VkSurfaceKHR mSurface = VK_NULL_HANDLE;
-    VkQueue mPresentQueue = VK_NULL_HANDLE;
-    uint32_t mPresentQueueFamily = UINT32_MAX;
-    VkSwapchainKHR mSwapchain = VK_NULL_HANDLE;
 
     testing::NiceMock<MockJNI> mMockJni;
     _JNIEnv mEnvStruct;
@@ -196,6 +189,11 @@ public:
     void SetUp() override {}
 
     void TearDown() override {
+        if (mReader) {
+            AImageReader_delete(mReader);
+            mReader = nullptr;
+        }
+        mWindow = nullptr;
         teardownMockJni();
     }
 
@@ -318,6 +316,50 @@ public:
     // Helper methods
     // ------------------------------------------------------
 
+    void createAImageReader(int width, int height, int format, int maxImages,
+                            AImageReader_ImageListener* listener = nullptr) {
+        media_status_t status = AImageReader_new(width, height, format, maxImages, &mReader);
+        ASSERT_EQ(AMEDIA_OK, status) << "Failed to create AImageReader";
+        ASSERT_NE(nullptr, mReader) << "AImageReader is null";
+
+        LOGI("AImageReader created with %dx%d, format=%d", width, height, format);
+        if (listener) {
+            AImageReader_setImageListener(mReader, listener);
+        }
+    }
+
+    void getANativeWindowFromReader() {
+        ASSERT_NE(nullptr, mReader);
+
+        media_status_t status = AImageReader_getWindow(mReader, &mWindow);
+        ASSERT_EQ(AMEDIA_OK, status) << "Failed to get ANativeWindow from AImageReader";
+        ASSERT_NE(nullptr, mWindow) << "ANativeWindow is null";
+        LOGI("ANativeWindow obtained from AImageReader");
+    }
+
+    static void onImageAvailable(void*, AImageReader* reader) {
+        LOGI("onImageAvailable callback triggered");
+        AImage* image = nullptr;
+        media_status_t status = AImageReader_acquireLatestImage(reader, &image);
+        if (status != AMEDIA_OK || !image) {
+            LOGE("Failed to acquire latest image");
+            return;
+        }
+        AImage_delete(image);
+        LOGI("Released acquired image");
+    }
+};
+
+class AImageReaderVulkanSwapchainTest : public AImageReaderSwapchainTestBase {
+public:
+    VkInstance mVkInstance = VK_NULL_HANDLE;
+    VkPhysicalDevice mPhysicalDev = VK_NULL_HANDLE;
+    VkDevice mDevice = VK_NULL_HANDLE;
+    VkSurfaceKHR mSurface = VK_NULL_HANDLE;
+    VkQueue mPresentQueue = VK_NULL_HANDLE;
+    uint32_t mPresentQueueFamily = UINT32_MAX;
+    VkSwapchainKHR mSwapchain = VK_NULL_HANDLE;
+
     void createVulkanInstance(std::vector<const char*>& layers) {
         const char* extensions[] = {
                 VK_KHR_SURFACE_EXTENSION_NAME,
@@ -345,32 +387,6 @@ public:
         VkResult res = vkCreateInstance(&instInfo, nullptr, &mVkInstance);
         VK_CHECK(res);
         LOGI("Vulkan instance created");
-    }
-
-    void createAImageReader(int width, int height, int format, int maxImages,
-                            bool set_listener = true) {
-        media_status_t status = AImageReader_new(width, height, format, maxImages, &mReader);
-        ASSERT_EQ(AMEDIA_OK, status) << "Failed to create AImageReader";
-        ASSERT_NE(nullptr, mReader) << "AImageReader is null";
-
-        if (set_listener) {
-            // Optionally set a listener
-            AImageReader_ImageListener listener{};
-            listener.context = this;
-            listener.onImageAvailable = &AImageReaderVulkanSwapchainTest::onImageAvailable;
-            AImageReader_setImageListener(mReader, &listener);
-
-            LOGI("AImageReader created with %dx%d, format=%d", width, height, format);
-        }
-    }
-
-    void getANativeWindowFromReader() {
-        ASSERT_NE(nullptr, mReader);
-
-        media_status_t status = AImageReader_getWindow(mReader, &mWindow);
-        ASSERT_EQ(AMEDIA_OK, status) << "Failed to get ANativeWindow from AImageReader";
-        ASSERT_NE(nullptr, mWindow) << "ANativeWindow is null";
-        LOGI("ANativeWindow obtained from AImageReader");
     }
 
     void createVulkanSurface() {
@@ -541,19 +557,6 @@ public:
         }
     }
 
-    // Image available callback (AImageReader)
-    static void onImageAvailable(void*, AImageReader* reader) {
-        LOGI("onImageAvailable callback triggered");
-        AImage* image = nullptr;
-        media_status_t status = AImageReader_acquireLatestImage(reader, &image);
-        if (status != AMEDIA_OK || !image) {
-            LOGE("Failed to acquire latest image");
-            return;
-        }
-        AImage_delete(image);
-        LOGI("Released acquired image");
-    }
-
     void cleanUpSwapchainForTest() {
         if (mSwapchain != VK_NULL_HANDLE) {
             SwappyVk_destroySwapchain(mDevice, mSwapchain);
@@ -572,19 +575,15 @@ public:
             vkDestroyInstance(mVkInstance, nullptr);
             mVkInstance = VK_NULL_HANDLE;
         }
-        if (mReader) {
-            AImageReader_delete(mReader);
-            mReader = nullptr;
-        }
-        // Note: The ANativeWindow from AImageReader is implicitly
-        // managed by the reader, so we don't explicitly delete it.
-        mWindow = nullptr;
     }
 
     void buildSwapchainForTest(std::vector<const char*>& instanceLayers,
                                std::vector<const char*>& deviceLayers) {
         createVulkanInstance(instanceLayers);
-        createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3);
+        AImageReader_ImageListener listener{};
+        listener.context = this;
+        listener.onImageAvailable = &AImageReaderSwapchainTestBase::onImageAvailable;
+        createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3, &listener);
         getANativeWindowFromReader();
         createVulkanSurface();
         pickPhysicalDeviceAndQueueFamily();
