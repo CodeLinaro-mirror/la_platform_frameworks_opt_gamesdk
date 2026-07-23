@@ -172,7 +172,18 @@ static jint MockDetachCurrentThread(JavaVM*) {
     return JNI_OK;
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_androidgamesdk_ChoreographerCallback_nOnChoreographer(JNIEnv* env, jobject thisObj,
+                                                                      jlong cookie,
+                                                                      jlong frameTimeNanos);
+
 class AImageReaderSwapchainTestBase : public ::testing::Test {
+private:
+    std::atomic<jlong> mChoreographerCookie{0};
+    std::atomic<int> mRunningThreads{0};
+    std::vector<std::thread> mMockThreads;
+    std::mutex mMockThreadsMutex;
+
 public:
     AImageReaderSwapchainTestBase() {
         gTestSerializationMutex.lock();
@@ -191,7 +202,79 @@ public:
     _JavaVM mJavaVM;
     JNINativeInterface mJniInterface = {};
 
-    void SetUp() override {}
+    void setChoreographerCookie(va_list args) {
+        va_list args_copy;
+        va_copy(args_copy, args);
+        mChoreographerCookie = va_arg(args_copy, jlong);
+        va_end(args_copy);
+    }
+
+    void spawnMockChoreographerThread() {
+        mRunningThreads++;
+        std::lock_guard<std::mutex> lock(mMockThreadsMutex);
+        mMockThreads.emplace_back([this]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            jlong cookie = mChoreographerCookie.load();
+            if (cookie != 0) {
+                auto now = std::chrono::steady_clock::now().time_since_epoch();
+                jlong timeNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+                Java_com_google_androidgamesdk_ChoreographerCallback_nOnChoreographer(nullptr,
+                                                                                      nullptr,
+                                                                                      cookie,
+                                                                                      timeNanos);
+            }
+            mRunningThreads--;
+        });
+    }
+
+    void setupMockChoreographer() {
+        // Override JNI Mock for <init> and postFrameCallback to intercept Choreographer callbacks.
+        ON_CALL(mMockJni, GetMethodID(testing::_, testing::_, testing::StrEq("<init>"), testing::_))
+                .WillByDefault(testing::Return(reinterpret_cast<jmethodID>(0x100)));
+        ON_CALL(mMockJni,
+                GetMethodID(testing::_, testing::_, testing::StrEq("postFrameCallback"),
+                            testing::_))
+                .WillByDefault(testing::Return(reinterpret_cast<jmethodID>(0x101)));
+
+        // When Swappy calls into the choreographer, grab the cookie for our mock thread.
+        ON_CALL(mMockJni, NewObjectV(testing::_, testing::_, testing::_, testing::_))
+                .WillByDefault(
+                        testing::Invoke([this](JNIEnv*, jclass, jmethodID methodID, va_list args) {
+                            if (methodID == reinterpret_cast<jmethodID>(0x100)) {
+                                setChoreographerCookie(args);
+                            }
+                            return reinterpret_cast<jobject>(0x8);
+                        }));
+
+        // Spin up a mock thread to simulate the Choreographer firing callbacks on frame events.
+        ON_CALL(mMockJni, CallVoidMethodV(testing::_, testing::_, testing::_, testing::_))
+                .WillByDefault(testing::Invoke(
+                        [this](JNIEnv* env, jobject obj, jmethodID methodID, va_list) {
+                            if (methodID == reinterpret_cast<jmethodID>(0x101)) {
+                                spawnMockChoreographerThread();
+                            }
+                        }));
+    }
+
+    void cleanupMockChoreographer() {
+        mChoreographerCookie = 0;
+        while (true) {
+            std::vector<std::thread> toJoin;
+            {
+                std::lock_guard<std::mutex> lock(mMockThreadsMutex);
+                toJoin = std::move(mMockThreads);
+            }
+            if (toJoin.empty() && mRunningThreads.load() == 0) {
+                break;
+            }
+            for (auto& t : toJoin) {
+                if (t.joinable()) {
+                    t.join();
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
 
     void TearDown() override {
         if (mReader) {
@@ -199,6 +282,7 @@ public:
             mReader = nullptr;
         }
         mWindow = nullptr;
+        cleanupMockChoreographer();
         teardownMockJni();
     }
 
@@ -638,62 +722,11 @@ TEST_F(AImageReaderVulkanSwapchainTest, Initialization) {
     cleanUpSwapchainForTest();
 }
 
-static std::atomic<jlong> g_choreographerCookie{0};
-static std::atomic<int> g_runningThreads{0};
-static std::vector<std::thread> g_mockThreads;
-static std::mutex g_mockThreadsMutex;
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_google_androidgamesdk_ChoreographerCallback_nOnChoreographer(JNIEnv* env, jobject thisObj,
-                                                                      jlong cookie,
-                                                                      jlong frameTimeNanos);
-
 TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoop) {
     // Set up the mocked JNI environment with an SDK version of 23.
     // Different SDK versions trigger different initialization paths in Swappy.
     setupMockJni(23);
-
-    // Override JNI Mock for <init> and postFrameCallback to intercept Choreographer callbacks.
-    ON_CALL(mMockJni, GetMethodID(testing::_, testing::_, testing::StrEq("<init>"), testing::_))
-            .WillByDefault(testing::Return(reinterpret_cast<jmethodID>(0x100)));
-    ON_CALL(mMockJni,
-            GetMethodID(testing::_, testing::_, testing::StrEq("postFrameCallback"), testing::_))
-            .WillByDefault(testing::Return(reinterpret_cast<jmethodID>(0x101)));
-
-    // When Swappy calls into the choreographer, grab the cookie for our mock thread.
-    ON_CALL(mMockJni, NewObjectV(testing::_, testing::_, testing::_, testing::_))
-            .WillByDefault(testing::Invoke([](JNIEnv*, jclass, jmethodID methodID, va_list args) {
-                if (methodID == reinterpret_cast<jmethodID>(0x100)) {
-                    va_list args_copy;
-                    va_copy(args_copy, args);
-                    g_choreographerCookie = va_arg(args_copy, jlong);
-                    va_end(args_copy);
-                }
-                return reinterpret_cast<jobject>(0x8);
-            }));
-
-    // Spin up a mock thread to simulate the Choreographer firing callbacks on frame events.
-    ON_CALL(mMockJni, CallVoidMethodV(testing::_, testing::_, testing::_, testing::_))
-            .WillByDefault(testing::Invoke([](JNIEnv* env, jobject obj, jmethodID methodID,
-                                              va_list) {
-                if (methodID == reinterpret_cast<jmethodID>(0x101)) {
-                    g_runningThreads++;
-                    std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
-                    g_mockThreads.emplace_back([]() {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                        jlong cookie = g_choreographerCookie.load();
-                        if (cookie != 0) {
-                            auto now = std::chrono::steady_clock::now().time_since_epoch();
-                            jlong timeNanos =
-                                    std::chrono::duration_cast<std::chrono::nanoseconds>(now)
-                                            .count();
-                            Java_com_google_androidgamesdk_ChoreographerCallback_nOnChoreographer(
-                                    nullptr, nullptr, cookie, timeNanos);
-                        }
-                        g_runningThreads--;
-                    });
-                }
-            }));
+    setupMockChoreographer();
 
     jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
 
@@ -742,19 +775,10 @@ TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoop) {
 
     vkDestroySemaphore(mDevice, imageAvailableSemaphore, nullptr);
 
-    g_choreographerCookie = 0;
-    {
-        std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
-        for (auto& t : g_mockThreads) {
-            if (t.joinable()) {
-                t.join();
-            }
-        }
-        g_mockThreads.clear();
-    }
-    while (g_runningThreads.load() > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    // Clean up existing mock threads before destroying Swappy to prevent them from
+    // calling into a destroyed Swappy instance. TearDown() will clean up any
+    // additional threads spawned during destruction.
+    cleanupMockChoreographer();
 
     cleanUpSwapchainForTest();
 }
@@ -849,6 +873,36 @@ TEST_F(AImageReaderEGLSwapchainTest, Initialization) {
     EXPECT_TRUE(success);
 
     SwappyGL_setWindow(mWindow);
+
+    SwappyGL_destroy();
+}
+
+TEST_F(AImageReaderEGLSwapchainTest, RenderingLoop) {
+    // Set up the mocked JNI environment with an SDK version of 23.
+    setupMockJni(23);
+    setupMockChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    buildEGLForTest();
+
+    bool success = SwappyGL_init(gMockEnv, fakeActivity);
+    EXPECT_TRUE(success);
+
+    SwappyGL_setWindow(mWindow);
+    SwappyGL_setSwapIntervalNS(16666666);
+
+    for (int i = 0; i < 10; ++i) {
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        EXPECT_TRUE(SwappyGL_swap(mDisplay, mSurface));
+    }
+
+    // Clean up existing mock threads before destroying Swappy to prevent them from
+    // calling into a destroyed Swappy instance. TearDown() will clean up any
+    // additional threads spawned during destruction.
+    cleanupMockChoreographer();
 
     SwappyGL_destroy();
 }
