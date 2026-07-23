@@ -69,6 +69,8 @@ target_link_libraries(swappy_test
   gmock
   log
   vulkan
+  EGL
+  GLESv2
   mediandk
   games-frame-pacing::swappy_static
 )
@@ -79,6 +81,8 @@ target_link_libraries(swappy_test_lib
   gmock
   log
   vulkan
+  EGL
+  GLESv2
   mediandk
   games-frame-pacing::swappy_static
 )

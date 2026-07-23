@@ -1,4 +1,7 @@
 #define VK_USE_PLATFORM_ANDROID_KHR 1
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
 #include <android/log.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -11,6 +14,8 @@
 #include <thread>
 #include <vector>
 
+#include "swappy/swappyGL.h"
+#include "swappy/swappyGL_extra.h"
 #include "swappy/swappyVk.h"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "swappy_test", __VA_ARGS__)
@@ -752,6 +757,100 @@ TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoop) {
     }
 
     cleanUpSwapchainForTest();
+}
+
+class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {
+public:
+    EGLDisplay mDisplay = EGL_NO_DISPLAY;
+    EGLSurface mSurface = EGL_NO_SURFACE;
+    EGLContext mContext = EGL_NO_CONTEXT;
+
+    void createEGLContext() {
+        mDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        ASSERT_NE(mDisplay, EGL_NO_DISPLAY);
+
+        EGLint major, minor;
+        ASSERT_TRUE(eglInitialize(mDisplay, &major, &minor));
+
+        const EGLint configAttribs[] = {EGL_RENDERABLE_TYPE,
+                                        EGL_OPENGL_ES2_BIT,
+                                        EGL_SURFACE_TYPE,
+                                        EGL_WINDOW_BIT,
+                                        EGL_BLUE_SIZE,
+                                        8,
+                                        EGL_GREEN_SIZE,
+                                        8,
+                                        EGL_RED_SIZE,
+                                        8,
+                                        EGL_NONE};
+
+        EGLConfig config;
+        EGLint numConfigs;
+        ASSERT_TRUE(eglChooseConfig(mDisplay, configAttribs, &config, 1, &numConfigs));
+        ASSERT_GT(numConfigs, 0);
+
+        const EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+        mContext = eglCreateContext(mDisplay, config, EGL_NO_CONTEXT, contextAttribs);
+        ASSERT_NE(mContext, EGL_NO_CONTEXT);
+
+        mSurface = eglCreateWindowSurface(mDisplay, config, mWindow, nullptr);
+        ASSERT_NE(mSurface, EGL_NO_SURFACE);
+
+        ASSERT_TRUE(eglMakeCurrent(mDisplay, mSurface, mSurface, mContext));
+    }
+
+    void cleanUpEGLForTest() {
+        if (mDisplay != EGL_NO_DISPLAY) {
+            eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            if (mSurface != EGL_NO_SURFACE) {
+                eglDestroySurface(mDisplay, mSurface);
+            }
+            if (mContext != EGL_NO_CONTEXT) {
+                eglDestroyContext(mDisplay, mContext);
+            }
+            eglTerminate(mDisplay);
+        }
+        mDisplay = EGL_NO_DISPLAY;
+        mSurface = EGL_NO_SURFACE;
+        mContext = EGL_NO_CONTEXT;
+    }
+
+    void TearDown() override {
+        cleanUpEGLForTest();
+        AImageReaderSwapchainTestBase::TearDown();
+    }
+
+    void buildEGLForTest() {
+        AImageReader_ImageListener listener{};
+        listener.context = this;
+        listener.onImageAvailable = &AImageReaderSwapchainTestBase::onImageAvailable;
+        createAImageReader(640, 480, AIMAGE_FORMAT_RGBA_8888, 3, &listener);
+        getANativeWindowFromReader();
+        createEGLContext();
+    }
+};
+
+TEST_F(AImageReaderEGLSwapchainTest, TestHelperMethods) {
+    buildEGLForTest();
+
+    ASSERT_NE(mDisplay, EGL_NO_DISPLAY);
+    ASSERT_NE(mSurface, EGL_NO_SURFACE);
+    ASSERT_NE(mContext, EGL_NO_CONTEXT);
+}
+
+TEST_F(AImageReaderEGLSwapchainTest, Initialization) {
+    setupMockJni(37);
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    buildEGLForTest();
+
+    bool success = SwappyGL_init(gMockEnv, fakeActivity);
+    EXPECT_TRUE(success);
+
+    SwappyGL_setWindow(mWindow);
+
+    SwappyGL_destroy();
 }
 
 } // namespace swappytest

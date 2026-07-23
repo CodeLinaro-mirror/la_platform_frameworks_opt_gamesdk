@@ -53,6 +53,8 @@ target_link_libraries(swappy_instrumented_test
     atomic
     log
     vulkan
+    EGL
+    GLESv2
     mediandk
     googletest::gtest
     googletest::gmock
