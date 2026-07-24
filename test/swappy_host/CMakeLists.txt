@@ -21,7 +21,7 @@ project(swappy_host_test CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(ANDROID_GTEST_DIR "../../../../../external/googletest")
+set(ANDROID_GTEST_DIR "../../../external/googletest")
 set(BUILD_GMOCK OFF)
 set(INSTALL_GTEST OFF)
 set(gtest_disable_pthreads ON CACHE BOOL "" FORCE)
