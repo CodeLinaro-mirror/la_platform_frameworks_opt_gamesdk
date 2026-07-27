@@ -20,6 +20,13 @@ export BUILDBOT_SCRIPT=true
 export BUILDBOT_CMAKE=$(pwd)/../prebuilts/cmake/linux-x86
 export PATH="$PATH:$(pwd)/../prebuilts/ninja/linux-x86/"
 
+# Point to AOSP's internal host clang prebuilts
+CLANG_PREBUILTS_DIR=$(pwd)/../prebuilts/clang/host/linux-x86/clang-r596125/bin
+if [ -d "$CLANG_PREBUILTS_DIR" ]; then
+    export CC="$CLANG_PREBUILTS_DIR/clang"
+    export CXX="$CLANG_PREBUILTS_DIR/clang++"
+fi
+
 if [ "$(uname)" == "Darwin" ]; then
     : # Do nothing but skip the next condition so we don't get a bash warning on macos
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
