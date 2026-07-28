@@ -27,6 +27,57 @@ if [ -d "$CLANG_PREBUILTS_DIR" ]; then
     export CXX="$CLANG_PREBUILTS_DIR/clang++"
 fi
 
+echo "=== 🕵️ Advanced Compiler Diagnostics ==="
+echo "Working Directory: $(pwd)"
+echo "Target Clang Dir: $CLANG_PREBUILTS_DIR"
+echo "System OS & Kernel: $(uname -a)"
+
+# 1. Inspect what prebuilt compilers are actually checked out
+echo -e "\n--- 📂 Available Clang Prebuilts ---"
+if [ -d "$(pwd)/../prebuilts/clang/host/linux-x86/" ]; then
+    ls -F "$(pwd)/../prebuilts/clang/host/linux-x86/"
+else
+    echo "Parent directory $(pwd)/../prebuilts/clang/host/linux-x86/ does not exist!"
+    # Let's see what exists in prebuilts at all
+    ls -F "$(pwd)/../prebuilts/"
+fi
+
+# 2. Check compiler binary executability and Shared Libs
+echo -e "\n--- ⚙️ Compiler Execution & Dependencies ---"
+if [ -f "$CXX" ]; then
+    echo "Binary found: $CXX"
+    echo "File info:"
+    file "$CXX" || echo "file command failed"
+
+    echo -e "\nTesting execution ($CXX --version):"
+    $CXX --version || echo "Failed to execute $CXX"
+
+    # Check if GLIBC / dynamic library linkage is satisfied
+    echo -e "\nChecking Dynamic Linker dependencies (ldd):"
+    ldd "$CXX" || echo "ldd command failed"
+else
+    echo "Binary DOES NOT exist at: $CXX"
+fi
+
+# 3. Check for default system compilers
+echo -e "\n--- 🖥️ System Fallback Compilers ---"
+echo "Default CC: $CC"
+echo "Default CXX: $CXX"
+if command -v clang++ >/dev/null 2>&1; then
+    echo "Found system clang++: $(command -v clang++)"
+    clang++ --version
+else
+    echo "No system clang++ found."
+fi
+
+if command -v g++ >/dev/null 2>&1; then
+    echo "Found system g++: $(command -v g++)"
+    g++ --version
+else
+    echo "No system g++ found."
+fi
+
+echo "========================================"
 if [ "$(uname)" == "Darwin" ]; then
     : # Do nothing but skip the next condition so we don't get a bash warning on macos
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
