@@ -63,6 +63,11 @@ add_library(swappy_test_lib
   ${TEST_SRCS}
 )
 
+add_library(VkLayer_swappy_mock
+  SHARED
+  vk_layer_swappy_mock.cpp
+)
+
 target_link_libraries(swappy_test
   android
   gtest
@@ -85,4 +90,9 @@ target_link_libraries(swappy_test_lib
   GLESv2
   mediandk
   games-frame-pacing::swappy_static
+)
+
+target_link_libraries(VkLayer_swappy_mock
+  android
+  log
 )
