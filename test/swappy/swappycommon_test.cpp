@@ -28,6 +28,7 @@
 #include "common/FrameStatistics.h"
 #include "common/SwappyDisplayManager.h"
 #include "gtest/gtest.h"
+#include "swappy/swappy_common.h"
 
 #define LOG_TAG "SCTest"
 #include "Log.h"
@@ -823,5 +824,21 @@ TEST(CPUTracerTest, StartAndEndTrace) {
     preciseSleep(std::chrono::milliseconds(10));
     tracer.endTrace();
     // CPUTracer does not expose observable state; verify that lifecycle completes without crashing.
+    SUCCEED();
+}
+
+TEST(SwappyCApiTest, VersionFunctions) {
+    uint32_t ver = Swappy_version();
+    EXPECT_GT(ver, 0U);
+    const char* verStr = Swappy_versionString();
+    EXPECT_NE(verStr, nullptr);
+}
+
+TEST(SwappyDisplayManagerTest, PreferredDisplayModeId) {
+    SwappyDisplayManager manager(nullptr, nullptr);
+    manager.setPreferredDisplayModeId(0);
+    // SwappyDisplayManager does not expose a getter or observable state for the
+    // preferred display mode ID. Verify that calling setPreferredDisplayModeId on an
+    // uninitialized instance completes safely without crashing.
     SUCCEED();
 }
