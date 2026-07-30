@@ -655,6 +655,7 @@ public:
             mSwapchain = VK_NULL_HANDLE;
         }
         if (mDevice != VK_NULL_HANDLE) {
+            SwappyVk_destroyDevice(mDevice);
             vkDestroyDevice(mDevice, nullptr);
             mDevice = VK_NULL_HANDLE;
         }
@@ -666,6 +667,13 @@ public:
             vkDestroyInstance(mVkInstance, nullptr);
             mVkInstance = VK_NULL_HANDLE;
         }
+    }
+
+    void TearDown() override {
+        cleanupMockChoreographer();
+        cleanUpSwapchainForTest();
+        unsetenv("MOCK_VK_GOOGLE_DISPLAY_TIMING");
+        AImageReaderSwapchainTestBase::TearDown();
     }
 
     void buildSwapchainForTest(std::vector<const char*>& instanceLayers,
@@ -909,6 +917,206 @@ TEST_F(AImageReaderVulkanSwapchainTest, DisplayTimingMockDisabledTest) {
     createSwapchain();
     cleanUpSwapchainForTest();
     unsetenv("MOCK_VK_GOOGLE_DISPLAY_TIMING");
+}
+
+// This test exercises the Swappy Vulkan rendering loop when the VK_GOOGLE_display_timing
+// extension is available and enabled via VK_LAYER_swappy_mock. It initializes Swappy and
+// queries the refresh cycle duration, sets the present queue and swap interval, and runs a
+// 10-frame rendering loop (acquiring and queuing images with SwappyVk_queuePresent) to verify
+// stable frame pacing and presentation under VK_GOOGLE_display_timing.
+TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoopWithGoogleDisplayTiming) {
+    setenv("MOCK_VK_GOOGLE_DISPLAY_TIMING", "1", 1);
+    setupMockJni(23);
+    setupMockChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    std::vector<const char*> instanceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceExtensions = {
+            VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
+    };
+
+    createVulkanInstance(instanceLayers);
+    createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3);
+    getANativeWindowFromReader();
+    createVulkanSurface();
+    pickPhysicalDeviceAndQueueFamily();
+    createDeviceAndGetQueue(deviceLayers, deviceExtensions);
+    createSwapchain();
+
+    uint64_t refreshDuration = 0;
+    EXPECT_TRUE(SwappyVk_initAndGetRefreshCycleDuration(gMockEnv, fakeActivity, mPhysicalDev,
+                                                        mDevice, mSwapchain, &refreshDuration));
+
+    SwappyVk_setQueueFamilyIndex(mDevice, mPresentQueue, mPresentQueueFamily);
+    SwappyVk_setSwapIntervalNS(mDevice, mSwapchain, SWAPPY_SWAP_60FPS);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkSemaphore imageAvailableSemaphore;
+    VK_CHECK(vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
+
+    for (int i = 0; i < 10; ++i) {
+        uint32_t imageIndex;
+        ASSERT_EQ(VK_SUCCESS,
+                  vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, imageAvailableSemaphore,
+                                        VK_NULL_HANDLE, &imageIndex));
+
+        SwappyVk_recordFrameStart(mPresentQueue, mSwapchain, imageIndex);
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &imageAvailableSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &mSwapchain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        ASSERT_EQ(VK_SUCCESS, SwappyVk_queuePresent(mPresentQueue, &presentInfo));
+    }
+
+    vkDestroySemaphore(mDevice, imageAvailableSemaphore, nullptr);
+}
+
+// This test provides end-to-end coverage for Swappy's Vulkan C API functions, configuration
+// setters/getters, tracer injection, and statistics collection. It verifies device extension
+// determination, tests toggling affinity/auto-swap/frame-pacing modes, injects custom tracer
+// callbacks, runs a 5-frame presentation loop, and confirms that frame statistics are recorded.
+TEST_F(AImageReaderVulkanSwapchainTest, CApiAndStatsTest) {
+    setenv("MOCK_VK_GOOGLE_DISPLAY_TIMING", "1", 1);
+    setupMockJni(23);
+    setupMockChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    std::vector<const char*> instanceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceExtensions = {
+            VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
+    };
+
+    createVulkanInstance(instanceLayers);
+    createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3);
+    getANativeWindowFromReader();
+    createVulkanSurface();
+    pickPhysicalDeviceAndQueueFamily();
+    createDeviceAndGetQueue(deviceLayers, deviceExtensions);
+    createSwapchain();
+
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, nullptr, &extensionCount,
+                                         availableExtensions.data());
+
+    uint32_t requiredCount = 0;
+    SwappyVk_determineDeviceExtensions(mPhysicalDev, extensionCount, availableExtensions.data(),
+                                       &requiredCount, nullptr);
+    std::vector<std::vector<char>> requiredExtensionBuffers(requiredCount,
+                                                            std::vector<char>(
+                                                                    VK_MAX_EXTENSION_NAME_SIZE));
+    std::vector<char*> requiredExtensions(requiredCount);
+    for (uint32_t i = 0; i < requiredCount; ++i) {
+        requiredExtensions[i] = requiredExtensionBuffers[i].data();
+    }
+    SwappyVk_determineDeviceExtensions(mPhysicalDev, extensionCount, availableExtensions.data(),
+                                       &requiredCount, requiredExtensions.data());
+
+    uint64_t refreshDuration = 0;
+    EXPECT_TRUE(SwappyVk_initAndGetRefreshCycleDuration(gMockEnv, fakeActivity, mPhysicalDev,
+                                                        mDevice, mSwapchain, &refreshDuration));
+    SwappyVk_setWindow(mDevice, mSwapchain, mWindow);
+    SwappyVk_setQueueFamilyIndex(mDevice, mPresentQueue, mPresentQueueFamily);
+    SwappyVk_setSwapIntervalNS(mDevice, mSwapchain, SWAPPY_SWAP_60FPS);
+    EXPECT_EQ(SwappyVk_getSwapIntervalNS(mSwapchain), refreshDuration);
+
+    SwappyVk_setAutoSwapInterval(true);
+    SwappyVk_setMaxAutoSwapIntervalNS(SWAPPY_SWAP_30FPS);
+    SwappyVk_setAutoPipelineMode(true);
+    SwappyVk_setAutoPipelineMode(false);
+
+    bool isEnabled = false;
+    EXPECT_TRUE(SwappyVk_isEnabled(mSwapchain, &isEnabled));
+
+    SwappyVk_setFenceTimeoutNS(50000000);
+    EXPECT_EQ(SwappyVk_getFenceTimeoutNS(), 50000000U);
+
+    uint64_t refreshRates[5];
+    int count = SwappyVk_getSupportedRefreshPeriodsNS(refreshRates, 5, mSwapchain);
+    // With SDK version 23 in this mock test, SwappyDisplayManager is disabled (requires SDK >= 28),
+    // so 0 supported refresh periods are returned.
+    EXPECT_EQ(count, 0);
+
+    SwappyVk_enableFramePacing(mSwapchain, true);
+    SwappyVk_enableBlockingWait(mSwapchain, true);
+    SwappyVk_resetFramePacing(mSwapchain);
+    SwappyVk_setFunctionProvider(nullptr);
+
+    struct TracerCounters {
+        int startCount = 0;
+        int endCount = 0;
+        int swapStartCount = 0;
+        int swapEndCount = 0;
+    } counters;
+
+    SwappyTracer tracer{};
+    tracer.userData = &counters;
+    tracer.preWait = [](void* userData) { static_cast<TracerCounters*>(userData)->startCount++; };
+    tracer.postWait = [](void* userData, int64_t, int64_t) {
+        static_cast<TracerCounters*>(userData)->endCount++;
+    };
+    tracer.preSwapBuffers = [](void* userData) {
+        static_cast<TracerCounters*>(userData)->swapStartCount++;
+    };
+    tracer.postSwapBuffers = [](void* userData, int64_t) {
+        static_cast<TracerCounters*>(userData)->swapEndCount++;
+    };
+    tracer.startFrame = [](void*, int, int64_t) {};
+    tracer.swapIntervalChanged = [](void*) {};
+
+    SwappyVk_injectTracer(&tracer);
+
+    SwappyVk_enableStats(mSwapchain, true);
+    SwappyVk_clearStats(mSwapchain);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkSemaphore imageAvailableSemaphore;
+    VK_CHECK(vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
+
+    for (int i = 0; i < 5; ++i) {
+        uint32_t imageIndex;
+        ASSERT_EQ(VK_SUCCESS,
+                  vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, imageAvailableSemaphore,
+                                        VK_NULL_HANDLE, &imageIndex));
+
+        SwappyVk_recordFrameStart(mPresentQueue, mSwapchain, imageIndex);
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &imageAvailableSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &mSwapchain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        ASSERT_EQ(VK_SUCCESS, SwappyVk_queuePresent(mPresentQueue, &presentInfo));
+    }
+
+    vkDestroySemaphore(mDevice, imageAvailableSemaphore, nullptr);
+
+    SwappyStats stats{};
+    SwappyVk_getStats(mSwapchain, &stats);
+    // In a 5-iteration loop with MIN_FRAME_LAG = 5, recordFrameStart on the 5th iteration
+    // collects statistics for the 4 previously presented frames.
+    EXPECT_EQ(stats.totalFrames, 4U);
+    EXPECT_EQ(counters.startCount, 5);
+    EXPECT_EQ(counters.endCount, 5);
+    EXPECT_EQ(counters.swapStartCount, 5);
+    EXPECT_EQ(counters.swapEndCount, 5);
+
+    SwappyVk_uninjectTracer(&tracer);
 }
 
 class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {
