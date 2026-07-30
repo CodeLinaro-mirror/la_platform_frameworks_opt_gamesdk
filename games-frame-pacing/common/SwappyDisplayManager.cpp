@@ -96,6 +96,9 @@ SwappyDisplayManager::SwappyDisplayManager(JavaVM* vm, jobject mainActivity) : m
 }
 
 SwappyDisplayManager::~SwappyDisplayManager() {
+    if (!mInitialized) {
+        return;
+    }
     JNIEnv* env;
     mJVM->AttachCurrentThread(&env, nullptr);
 
@@ -105,6 +108,9 @@ SwappyDisplayManager::~SwappyDisplayManager() {
 
 std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap>
 SwappyDisplayManager::getSupportedRefreshPeriods() {
+    if (!mInitialized) {
+        return nullptr;
+    }
     std::unique_lock<std::mutex> lock(mMutex);
 
     mCondition.wait(lock, [&]() { return mSupportedRefreshPeriods.get() != nullptr; });
@@ -112,6 +118,9 @@ SwappyDisplayManager::getSupportedRefreshPeriods() {
 }
 
 void SwappyDisplayManager::setPreferredDisplayModeId(int index) {
+    if (!mInitialized) {
+        return;
+    }
     JNIEnv* env;
     mJVM->AttachCurrentThread(&env, nullptr);
 

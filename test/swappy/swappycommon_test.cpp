@@ -23,6 +23,10 @@
 #include <thread>
 #include <vector>
 
+#include "common/CPUTracer.h"
+#include "common/CpuInfo.h"
+#include "common/FrameStatistics.h"
+#include "common/SwappyDisplayManager.h"
 #include "gtest/gtest.h"
 
 #define LOG_TAG "SCTest"
@@ -711,4 +715,113 @@ TEST(SwappyCommonTest, AutoModeOnAutoPipeliningOffSwitchDownFrom60HzAndBack) {
                 Result{10ms, 10ms, 190, SwapEvents{{16667us, 4600ms}}}},
                {Result{1ms, 1ms, 3, SwapEvents{{1ms, 100ms}}},
                 Result{1ms, 1ms, 3, SwapEvents{{1ms, 200ms}}}});
+}
+
+extern "C" {
+void Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(
+        JNIEnv* env, jobject, jlong cookie, jlong refreshPeriod, jlong appOffset, jlong sfOffset);
+}
+
+TEST(FrameStatisticsTest, BasicLifecycleAndStats) {
+    FrameStatistics stats;
+    stats.enableStats(true);
+
+    FrameTimings timings{};
+    timings.startFrameTime = 10000000;
+    timings.desiredPresentTime = 26666666;
+    timings.actualPresentTime = 27000000;
+    timings.presentMargin = 1000000;
+
+    stats.updateFrameStats(timings, 16666666);
+
+    timings.startFrameTime = 30000000;
+    timings.desiredPresentTime = 46666666;
+    timings.actualPresentTime = 65000000;
+    timings.presentMargin = 1000000;
+    stats.updateFrameStats(timings, 16666666);
+
+    SwappyStats outStats = stats.getStats();
+    EXPECT_EQ(outStats.totalFrames, 2);
+
+    stats.invalidateLastFrame();
+    stats.clearStats();
+    outStats = stats.getStats();
+    EXPECT_EQ(outStats.totalFrames, 0);
+    stats.enableStats(false);
+}
+
+TEST(FrameStatisticsTest, HistogramAndLogging) {
+    FrameStatistics stats;
+    stats.enableStats(true);
+
+    for (int i = 0; i < 10; ++i) {
+        FrameTimings timings{};
+        timings.startFrameTime = i * 200000000ULL;
+        timings.desiredPresentTime = timings.startFrameTime + 16666666ULL;
+        timings.actualPresentTime = timings.desiredPresentTime + (i % 3) * 5000000ULL;
+        timings.presentMargin = 1000000;
+        stats.updateFrameStats(timings, 16666666);
+    }
+    SwappyStats outStats = stats.getStats();
+    EXPECT_EQ(outStats.totalFrames, 10);
+    EXPECT_GE(stats.lastLatencyRecorded(), 0);
+    stats.clearStats();
+}
+
+TEST(SwappyDisplayManagerTest, SdkVersionChecks) {
+    EXPECT_FALSE(SwappyDisplayManager::usesMinSdkOrLater(SdkVersion{27, 0}));
+    EXPECT_TRUE(SwappyDisplayManager::usesMinSdkOrLater(SdkVersion{28, 0}));
+    EXPECT_TRUE(SwappyDisplayManager::usesMinSdkOrLater(SdkVersion{31, 0}));
+
+    EXPECT_FALSE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{27, 0}));
+    EXPECT_TRUE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{28, 0}));
+    EXPECT_TRUE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{29, 0}));
+    EXPECT_TRUE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{30, 0}));
+    EXPECT_FALSE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{30, 1}));
+    EXPECT_FALSE(SwappyDisplayManager::useSwappyDisplayManager(SdkVersion{31, 0}));
+}
+
+TEST(SwappyDisplayManagerTest, NullInitialization) {
+    SwappyDisplayManager manager(nullptr, nullptr);
+    EXPECT_FALSE(manager.isInitialized());
+    EXPECT_EQ(manager.getSupportedRefreshPeriods(), nullptr);
+}
+
+TEST(SwappyDisplayManagerTest, OnRefreshPeriodChanged) {
+    Java_com_google_androidgamesdk_SwappyDisplayManager_nOnRefreshPeriodChanged(nullptr, nullptr, 0,
+                                                                                16666666L, 1000000L,
+                                                                                2000000L);
+    auto displayTimings = Settings::getInstance()->getDisplayTimings();
+    EXPECT_EQ(displayTimings.refreshPeriod.count(), 16666666);
+    EXPECT_EQ(displayTimings.appOffset.count(), 1000000);
+    EXPECT_EQ(displayTimings.sfOffset.count(), 2000000);
+    Settings::reset();
+}
+
+TEST(CpuInfoTest, BasicCpuInfoQuery) {
+    CpuInfo info;
+    EXPECT_GT(info.getNumberOfCpus(), 0U);
+    EXPECT_EQ(info.getCpus().size(), info.getNumberOfCpus());
+    unsigned int littleCores = info.getNumberOfLittleCores();
+    unsigned int bigCores = info.getNumberOfBigCores();
+    EXPECT_EQ(littleCores + bigCores, info.getNumberOfCpus());
+    cpu_set_t littleMask = info.getLittleCoresMask();
+    cpu_set_t bigMask = info.getBigCoresMask();
+    unsigned int littleBits = to_mask(littleMask);
+    unsigned int bigBits = to_mask(bigMask);
+    EXPECT_NE(littleBits | bigBits, 0U);
+    // Modern Linux/Android kernels and emulators often omit the "Hardware:" field
+    // from /proc/cpuinfo, so getHardware() may be empty. Assert that the string
+    // is safely retrieved and has a reasonable length.
+    std::string hardware = info.getHardware();
+    EXPECT_LE(hardware.size(), 1024U);
+}
+
+TEST(CPUTracerTest, StartAndEndTrace) {
+    CPUTracer tracer;
+    tracer.startTrace();
+    preciseSleep(std::chrono::milliseconds(10));
+    tracer.endTrace();
+    // CPUTracer does not expose observable state; verify that lifecycle completes without crashing.
+    SUCCEED();
 }
