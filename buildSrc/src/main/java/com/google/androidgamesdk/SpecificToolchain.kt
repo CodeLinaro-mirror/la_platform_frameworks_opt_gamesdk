@@ -9,8 +9,10 @@ class SpecificToolchain(
     override var ndkVersion_: String
 ) : Toolchain() {
     override fun getAndroidNDKPath(): String {
-        return File(
-            "${project_.projectDir}/../prebuilts/ndk/" + ndkVersion_
-        ).path
+        val specificNdk = File(prebuiltsDir, "ndk/$ndkVersion_")
+        if (specificNdk.exists()) return specificNdk.path
+        val currentNdk = File(prebuiltsDir, "ndk/current")
+        if (currentNdk.exists()) return currentNdk.path
+        return specificNdk.path
     }
 }
