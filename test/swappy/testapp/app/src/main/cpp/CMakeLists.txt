@@ -59,4 +59,5 @@ target_link_libraries(swappy_instrumented_test
     googletest::gtest
     googletest::gmock
     junit-gtest::junit-gtest
+    VkLayer_swappy_mock
 )

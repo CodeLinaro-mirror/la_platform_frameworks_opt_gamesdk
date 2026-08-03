@@ -9,6 +9,8 @@
 #include <vulkan/vulkan.h>
 
 #include <atomic>
+#include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -747,7 +749,7 @@ TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoop) {
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkSemaphore imageAvailableSemaphore;
-    vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
+    VK_CHECK(vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
 
     // Spin for 10 frames, acquiring and presenting to verify the rendering loop
     // correctly interacts with our mocked choreographer.
@@ -781,6 +783,132 @@ TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoop) {
     cleanupMockChoreographer();
 
     cleanUpSwapchainForTest();
+}
+
+// This test verifies that the VK_LAYER_swappy_mock layer correctly emulates the
+// VK_GOOGLE_display_timing extension when enabled. It checks if the extension is
+// exposed, sets up a swapchain, queues a frame with mock display timing data,
+// and confirms that past presentation timing history can be retrieved successfully.
+TEST_F(AImageReaderVulkanSwapchainTest, DisplayTimingMockEnabledTest) {
+    // Enables the mock timing behavior in the VK_LAYER_swappy_mock layer.
+    // The layer reads this environment variable during vkCreateInstance and, when set to "1",
+    // actively intercepts presentation calls to record and return mock timing data.
+    setenv("MOCK_VK_GOOGLE_DISPLAY_TIMING", "1", 1);
+
+    std::vector<const char*> instanceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceLayers = {"VK_LAYER_swappy_mock"};
+    std::vector<const char*> deviceExtensions = {
+            VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
+    };
+
+    createVulkanInstance(instanceLayers);
+    createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3);
+    getANativeWindowFromReader();
+    createVulkanSurface();
+    pickPhysicalDeviceAndQueueFamily();
+
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, "VK_LAYER_swappy_mock", &extensionCount,
+                                         nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, "VK_LAYER_swappy_mock", &extensionCount,
+                                         availableExtensions.data());
+
+    bool timingExtSupported = false;
+    for (const auto& extension : availableExtensions) {
+        if (strcmp(extension.extensionName, VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME) == 0) {
+            timingExtSupported = true;
+            break;
+        }
+    }
+
+    ASSERT_TRUE(timingExtSupported);
+
+    createDeviceAndGetQueue(deviceLayers, deviceExtensions);
+    createSwapchain();
+
+    uint32_t imageIndex;
+    VkSemaphoreCreateInfo semInfo{};
+    semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkSemaphore imageAcquiredSemaphore = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateSemaphore(mDevice, &semInfo, nullptr, &imageAcquiredSemaphore));
+
+    VkResult res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, imageAcquiredSemaphore,
+                                         VK_NULL_HANDLE, &imageIndex);
+    VK_CHECK(res);
+
+    VkPresentTimeGOOGLE presentTime = {1, 1000};
+    VkPresentTimesInfoGOOGLE presentTimesInfo = {};
+    presentTimesInfo.sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE;
+    presentTimesInfo.swapchainCount = 1;
+    presentTimesInfo.pTimes = &presentTime;
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = &presentTimesInfo;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &mSwapchain;
+    presentInfo.pImageIndices = &imageIndex;
+
+    res = vkQueuePresentKHR(mPresentQueue, &presentInfo);
+    VK_CHECK(res);
+
+    auto pfnGetPastPresentationTimingGOOGLE = (PFN_vkGetPastPresentationTimingGOOGLE)
+            vkGetDeviceProcAddr(mDevice, "vkGetPastPresentationTimingGOOGLE");
+    ASSERT_NE(pfnGetPastPresentationTimingGOOGLE, nullptr);
+
+    uint32_t timingCount = 0;
+    res = pfnGetPastPresentationTimingGOOGLE(mDevice, mSwapchain, &timingCount, nullptr);
+    ASSERT_EQ(res, VK_SUCCESS);
+    ASSERT_TRUE(timingCount > 0);
+
+    vkDestroySemaphore(mDevice, imageAcquiredSemaphore, nullptr);
+    cleanUpSwapchainForTest();
+    unsetenv("MOCK_VK_GOOGLE_DISPLAY_TIMING");
+}
+
+// This test verifies that the VK_LAYER_swappy_mock layer behaves transparently
+// when its mock functionality is explicitly disabled. It ensures that normal Vulkan
+// initialization, enumeration, and swapchain creation still succeed without the
+// mock layer interfering.
+TEST_F(AImageReaderVulkanSwapchainTest, DisplayTimingMockDisabledTest) {
+    // Disables the mock timing behavior in the VK_LAYER_swappy_mock layer.
+    // When set to "0", the layer acts as a pass-through and will not emulate the
+    // VK_GOOGLE_display_timing extension or intercept its related function calls.
+    setenv("MOCK_VK_GOOGLE_DISPLAY_TIMING", "0", 1);
+
+    std::vector<const char*> instanceLayers = {};
+    std::vector<const char*> deviceLayers = {"VK_LAYER_swappy_mock"};
+
+    createVulkanInstance(instanceLayers);
+    createAImageReader(640, 480, AIMAGE_FORMAT_PRIVATE, 3);
+    getANativeWindowFromReader();
+    createVulkanSurface();
+    pickPhysicalDeviceAndQueueFamily();
+
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(mPhysicalDev, nullptr, &extensionCount,
+                                         availableExtensions.data());
+
+    bool timingExtSupported = false;
+    for (const auto& extension : availableExtensions) {
+        if (strcmp(extension.extensionName, VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME) == 0) {
+            timingExtSupported = true;
+            break;
+        }
+    }
+
+    std::vector<const char*> deviceExtensions;
+    if (timingExtSupported) {
+        deviceExtensions.push_back(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
+    }
+
+    createDeviceAndGetQueue(deviceLayers, deviceExtensions);
+    createSwapchain();
+    cleanUpSwapchainForTest();
+    unsetenv("MOCK_VK_GOOGLE_DISPLAY_TIMING");
 }
 
 class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {
