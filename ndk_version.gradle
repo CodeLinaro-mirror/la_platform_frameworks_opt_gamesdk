@@ -1,1 +1,23 @@
-ext.agdkNdkVersion = '27.0.12077973'
+def getNdkVersion() {
+    if (project.hasProperty("ndk")) {
+        return project.property("ndk")
+    }
+    def envPrebuilts = System.getenv("PREBUILTS_DIR")
+    def prebuiltsDir = (envPrebuilts && project.file(envPrebuilts).exists()) ?
+        project.file(envPrebuilts) :
+        (project.file("${project.rootDir}/../prebuilts").exists() ?
+            project.file("${project.rootDir}/../prebuilts") :
+            project.file("${project.rootDir}/../../../prebuilts"))
+
+    def propsFile = new File(prebuiltsDir, "ndk/current/source.properties")
+    if (propsFile.exists()) {
+        def props = new Properties()
+        propsFile.withInputStream { props.load(it) }
+        if (props.containsKey("Pkg.Revision")) {
+            return props.getProperty("Pkg.Revision")
+        }
+    }
+    return '27.0.12077973'
+}
+
+ext.agdkNdkVersion = getNdkVersion()

@@ -79,10 +79,30 @@ abstract class Toolchain {
         return findNDKTool("ar")
     }
 
+    val prebuiltsDir: File by lazy {
+        val envPrebuilts = System.getenv("PREBUILTS_DIR")
+        if (!envPrebuilts.isNullOrEmpty() && File(envPrebuilts).exists()) {
+            File(envPrebuilts)
+        } else {
+            val standalone = File(project_.projectDir, "../prebuilts")
+            if (standalone.exists()) standalone
+            else {
+                val aosp = File(project_.projectDir, "../../../prebuilts")
+                if (aosp.exists()) aosp else standalone
+            }
+        }
+    }
+
+    val isAospCheckout: Boolean by lazy {
+        System.getenv("IS_AOSP_CHECKOUT")?.toBoolean() ?:
+            (!File(project_.projectDir, "../prebuilts").exists() &&
+                File(project_.projectDir, "../../../prebuilts").exists())
+    }
+
     fun getCMakePath(): String {
         val sdkCmake = File(System.getenv("ANDROID_HOME") ?: "", "cmake/3.22.1/bin/cmake" + osExecutableSuffix())
         if (sdkCmake.exists()) return sdkCmake.path
-        val prebuiltCmake = File("${project_.projectDir}/../prebuilts/cmake/" + osFolderName(ExternalToolName.CMAKE) + "/bin/cmake" + osExecutableSuffix())
+        val prebuiltCmake = File(prebuiltsDir, "cmake/" + osFolderName(ExternalToolName.CMAKE) + "/bin/cmake" + osExecutableSuffix())
         if (prebuiltCmake.exists()) return prebuiltCmake.path
         return "cmake"
     }
@@ -90,8 +110,10 @@ abstract class Toolchain {
     fun getNinjaPath(): String {
         val sdkNinja = File(System.getenv("ANDROID_HOME") ?: "", "cmake/3.22.1/bin/ninja" + osExecutableSuffix())
         if (sdkNinja.exists()) return sdkNinja.path
-        val prebuiltNinja = File("${project_.projectDir}/../prebuilts/ninja/" + osFolderName(ExternalToolName.CMAKE) + "/ninja" + osExecutableSuffix())
+        val prebuiltNinja = File(prebuiltsDir, "ninja/" + osFolderName(ExternalToolName.CMAKE) + "/ninja" + osExecutableSuffix())
         if (prebuiltNinja.exists()) return prebuiltNinja.path
+        val aospNinja = File(prebuiltsDir, "build-tools/" + osFolderName(ExternalToolName.CMAKE) + "/bin/ninja" + osExecutableSuffix())
+        if (aospNinja.exists()) return aospNinja.path
         return "ninja"
     }
 

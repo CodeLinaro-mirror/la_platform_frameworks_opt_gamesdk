@@ -13,15 +13,24 @@
 set -e # Exit on error
 
 # Set up the environment
-export ANDROID_HOME=$(pwd)/../prebuilts/sdk
+PREBUILTS_DIR="$(pwd)/../prebuilts"
+IS_AOSP_CHECKOUT=false
+if [ ! -d "$PREBUILTS_DIR" ] && [ -d "$(pwd)/../../../prebuilts" ]; then
+    PREBUILTS_DIR="$(pwd)/../../../prebuilts"
+    IS_AOSP_CHECKOUT=true
+fi
+export PREBUILTS_DIR
+export IS_AOSP_CHECKOUT
+
+export ANDROID_HOME=$PREBUILTS_DIR/sdk
 unset  ANDROID_SDK_ROOT
 unset  ANDROID_NDK_HOME
 export BUILDBOT_SCRIPT=true
-export BUILDBOT_CMAKE=$(pwd)/../prebuilts/cmake/linux-x86
-export PATH="$PATH:$(pwd)/../prebuilts/ninja/linux-x86/"
+export BUILDBOT_CMAKE=$PREBUILTS_DIR/cmake/linux-x86
+export PATH="$PATH:$PREBUILTS_DIR/ninja/linux-x86/:$PREBUILTS_DIR/build-tools/linux-x86/bin/:$PREBUILTS_DIR/cmake/linux-x86/bin/"
 
 # Point to AOSP's internal host clang prebuilts
-CLANG_PREBUILTS_DIR=$(pwd)/../prebuilts/clang/host/linux-x86/clang-r596125/bin
+CLANG_PREBUILTS_DIR=$PREBUILTS_DIR/clang/host/linux-x86/clang-r596125/bin
 if [ -d "$CLANG_PREBUILTS_DIR" ]; then
     export CC="$CLANG_PREBUILTS_DIR/clang"
     export CXX="$CLANG_PREBUILTS_DIR/clang++"
@@ -34,12 +43,12 @@ echo "System OS & Kernel: $(uname -a)"
 
 # 1. Inspect what prebuilt compilers are actually checked out
 echo -e "\n--- 📂 Available Clang Prebuilts ---"
-if [ -d "$(pwd)/../prebuilts/clang/host/linux-x86/" ]; then
-    ls -F "$(pwd)/../prebuilts/clang/host/linux-x86/"
+if [ -d "$PREBUILTS_DIR/clang/host/linux-x86/" ]; then
+    ls -F "$PREBUILTS_DIR/clang/host/linux-x86/"
 else
-    echo "Parent directory $(pwd)/../prebuilts/clang/host/linux-x86/ does not exist!"
+    echo "Parent directory $PREBUILTS_DIR/clang/host/linux-x86/ does not exist!"
     # Let's see what exists in prebuilts at all
-    ls -F "$(pwd)/../prebuilts/"
+    ls -F "$PREBUILTS_DIR/"
 fi
 
 # 2. Check compiler binary executability and Shared Libs
@@ -82,35 +91,50 @@ if [ "$(uname)" == "Darwin" ]; then
     : # Do nothing but skip the next condition so we don't get a bash warning on macos
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     # Do only for GNU/Linux platform
-    if [ -d "$(pwd)/../prebuilts/jdk/jdk17/linux-x86" ]; then
-        export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk17/linux-x86
-    elif [ -d "$(pwd)/../prebuilts/jdk/jdk21/linux-x86" ]; then
-        export JAVA_HOME=$(pwd)/../prebuilts/jdk/jdk21/linux-x86
+    if [ -d "$PREBUILTS_DIR/jdk/jdk17/linux-x86" ]; then
+        export JAVA_HOME=$PREBUILTS_DIR/jdk/jdk17/linux-x86
+    elif [ -d "$PREBUILTS_DIR/jdk/jdk21/linux-x86" ]; then
+        export JAVA_HOME=$PREBUILTS_DIR/jdk/jdk21/linux-x86
+    fi
+    if [ -n "$JAVA_HOME" ]; then
+        export PATH="$JAVA_HOME/bin:$PATH"
     fi
 fi
 
-sdkmanager_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+if [ "$IS_AOSP_CHECKOUT" = "true" ]; then
+    if [ -f "$PREBUILTS_DIR/ndk/current/source.properties" ]; then
+        AGDK_NDK_VERSION=$(grep -E "^Pkg\.Revision" "$PREBUILTS_DIR/ndk/current/source.properties" | cut -d'=' -f2 | xargs)
+        export ANDROID_NDK_HOME="$PREBUILTS_DIR/ndk/current"
+        export ANDROID_NDK="$ANDROID_NDK_HOME"
+    fi
+fi
 
-if [ ! -f "$sdkmanager_path" ]; then
-    pushd $ANDROID_HOME
-    mkdir -p cmdline-tools/latest && \
-        curl -o cmdline-tools/latest/sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
-        unzip cmdline-tools/latest/sdk-tools.zip -d cmdline-tools/latest && \
-        mv cmdline-tools/latest/cmdline-tools/* cmdline-tools/latest/ && \
-        rm -rf cmdline-tools/latest/cmdline-tools && \
-        rm cmdline-tools/latest/sdk-tools.zip
-    popd
-fi
-echo yes | $sdkmanager_path "platform-tools"
-echo yes | $sdkmanager_path "platforms;android-35"
-echo yes | $sdkmanager_path "platforms;android-31"
-echo yes | $sdkmanager_path "build-tools;35.0.0"
-AGDK_NDK_VERSION=$(grep -E "ext\.agdkNdkVersion" ndk_version.gradle | sed -E "s/.*['\"]([^'\"]+)['\"].*/\1/")
 if [[ -z "$AGDK_NDK_VERSION" ]]; then
-  echo "Error: Could not parse NDK version from ndk_version.gradle"
-  exit 1
+    AGDK_NDK_VERSION=$(grep -E -o "[0-9]+\.[0-9]+\.[0-9]+" ndk_version.gradle | head -n 1)
 fi
-echo yes | $sdkmanager_path "ndk;$AGDK_NDK_VERSION"
+
+# Only invoke sdkmanager for the standalone checkout (not when in AOSP).
+if [ "$IS_AOSP_CHECKOUT" = "false" ]; then
+    sdkmanager_path="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+    if [ ! -f "$sdkmanager_path" ]; then
+        pushd $ANDROID_HOME
+        mkdir -p cmdline-tools/latest && \
+            curl -o cmdline-tools/latest/sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+            unzip cmdline-tools/latest/sdk-tools.zip -d cmdline-tools/latest && \
+            mv cmdline-tools/latest/cmdline-tools/* cmdline-tools/latest/ && \
+            rm -rf cmdline-tools/latest/cmdline-tools && \
+            rm cmdline-tools/latest/sdk-tools.zip
+        popd
+    fi
+    echo yes | $sdkmanager_path "platform-tools"
+    echo yes | $sdkmanager_path "platforms;android-35"
+    echo yes | $sdkmanager_path "platforms;android-31"
+    echo yes | $sdkmanager_path "build-tools;35.0.0"
+    echo yes | $sdkmanager_path "ndk;$AGDK_NDK_VERSION"
+else
+    echo "Skipping sdkmanager invocation (AOSP prebuilts detected at $PREBUILTS_DIR)."
+fi
 
 # Use the distribution path given to the script by the build bot in DIST_DIR. Otherwise,
 # build in the default location.
