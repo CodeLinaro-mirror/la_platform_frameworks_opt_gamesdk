@@ -1000,7 +1000,7 @@ TEST_F(AImageReaderEGLSwapchainTest, Initialization) {
     bool success = SwappyGL_init(gMockEnv, fakeActivity);
     EXPECT_TRUE(success);
 
-    SwappyGL_setWindow(mWindow);
+    EXPECT_TRUE(SwappyGL_setWindow(mWindow));
 
     SwappyGL_destroy();
 }
@@ -1017,13 +1017,14 @@ TEST_F(AImageReaderEGLSwapchainTest, RenderingLoop) {
     bool success = SwappyGL_init(gMockEnv, fakeActivity);
     EXPECT_TRUE(success);
 
-    SwappyGL_setWindow(mWindow);
-    SwappyGL_setSwapIntervalNS(16666666);
+    EXPECT_TRUE(SwappyGL_setWindow(mWindow));
+    SwappyGL_setSwapIntervalNS(SWAPPY_SWAP_60FPS);
 
     for (int i = 0; i < 10; ++i) {
         glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        SwappyGL_recordFrameStart(mDisplay, mSurface);
         EXPECT_TRUE(SwappyGL_swap(mDisplay, mSurface));
     }
 
@@ -1032,6 +1033,93 @@ TEST_F(AImageReaderEGLSwapchainTest, RenderingLoop) {
     // additional threads spawned during destruction.
     cleanupMockChoreographer();
 
+    SwappyGL_destroy();
+}
+
+TEST_F(AImageReaderEGLSwapchainTest, CApiAndStatsTest) {
+    setupMockJni(23);
+    setupMockChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+    buildEGLForTest();
+
+    EXPECT_TRUE(SwappyGL_init(gMockEnv, fakeActivity));
+    EXPECT_TRUE(SwappyGL_setWindow(mWindow));
+
+    SwappyGL_setSwapIntervalNS(SWAPPY_SWAP_60FPS);
+    EXPECT_EQ(SwappyGL_getSwapIntervalNS(), SWAPPY_SWAP_60FPS);
+    EXPECT_GT(SwappyGL_getRefreshPeriodNanos(), 0U);
+
+    SwappyGL_setUseAffinity(true);
+    EXPECT_TRUE(SwappyGL_getUseAffinity());
+    SwappyGL_setUseAffinity(false);
+    EXPECT_FALSE(SwappyGL_getUseAffinity());
+
+    SwappyGL_setAutoSwapInterval(true);
+    SwappyGL_setMaxAutoSwapIntervalNS(SWAPPY_SWAP_30FPS);
+    SwappyGL_setAutoPipelineMode(true);
+    SwappyGL_setAutoPipelineMode(false);
+
+    EXPECT_TRUE(SwappyGL_isEnabled());
+
+    SwappyGL_setFenceTimeoutNS(50000000);
+    EXPECT_EQ(SwappyGL_getFenceTimeoutNS(), 50000000U);
+
+    SwappyGL_setBufferStuffingFixWait(2);
+
+    uint64_t refreshRates[5];
+    int count = SwappyGL_getSupportedRefreshPeriodsNS(refreshRates, 5);
+    EXPECT_GE(count, 0);
+
+    SwappyGL_enableFramePacing(true);
+    SwappyGL_enableBlockingWait(true);
+    SwappyGL_resetFramePacing();
+
+    // These counter variables are static so that the lambdas below can remain
+    // non-capturing (and thus convertible to C-style function pointers).
+    static int tracerStartCount = 0;
+    static int tracerEndCount = 0;
+    static int tracerSwapStartCount = 0;
+    static int tracerSwapEndCount = 0;
+    tracerStartCount = 0;
+    tracerEndCount = 0;
+    tracerSwapStartCount = 0;
+    tracerSwapEndCount = 0;
+
+    SwappyTracer tracer{};
+    tracer.preWait = [](void*) { tracerStartCount++; };
+    tracer.postWait = [](void*, int64_t, int64_t) { tracerEndCount++; };
+    tracer.preSwapBuffers = [](void*) { tracerSwapStartCount++; };
+    tracer.postSwapBuffers = [](void*, int64_t) { tracerSwapEndCount++; };
+    tracer.startFrame = [](void*, int, int64_t) {};
+    tracer.swapIntervalChanged = [](void*) {};
+
+    SwappyGL_injectTracer(&tracer);
+
+    SwappyGL_enableStats(true);
+    SwappyGL_clearStats();
+
+    for (int i = 0; i < 5; ++i) {
+        SwappyGL_recordFrameStart(mDisplay, mSurface);
+        EXPECT_TRUE(SwappyGL_swap(mDisplay, mSurface));
+    }
+
+    SwappyStats stats{};
+    SwappyGL_getStats(&stats);
+    // For offscreen AImageReader surfaces, EGL presentation timestamps are either
+    // unsupported or remain pending, so totalFrames is expected to be 0.
+    EXPECT_EQ(stats.totalFrames, 0U);
+    EXPECT_EQ(tracerStartCount, 5);
+    EXPECT_EQ(tracerEndCount, 5);
+    EXPECT_EQ(tracerSwapStartCount, 5);
+    EXPECT_EQ(tracerSwapEndCount, 5);
+
+    SwappyGL_uninjectTracer(&tracer);
+
+    // Clean up existing mock threads before destroying Swappy to prevent them from
+    // calling into a destroyed Swappy instance. TearDown() will clean up any
+    // additional threads spawned during destruction.
+    cleanupMockChoreographer();
     SwappyGL_destroy();
 }
 
