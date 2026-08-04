@@ -27,13 +27,21 @@ unset  ANDROID_SDK_ROOT
 unset  ANDROID_NDK_HOME
 export BUILDBOT_SCRIPT=true
 export BUILDBOT_CMAKE=$PREBUILTS_DIR/cmake/linux-x86
-export PATH="$PATH:$PREBUILTS_DIR/ninja/linux-x86/:$PREBUILTS_DIR/build-tools/linux-x86/bin/:$PREBUILTS_DIR/cmake/linux-x86/bin/"
+# Prepend prebuilts to PATH so they override system host binaries
+export PATH="$PREBUILTS_DIR/ninja/linux-x86/:$PREBUILTS_DIR/build-tools/linux-x86/bin/:$PREBUILTS_DIR/cmake/linux-x86/bin/:$PATH"
 
-# Point to AOSP's internal host clang prebuilts
-CLANG_PREBUILTS_DIR=$PREBUILTS_DIR/clang/host/linux-x86/clang-r596125/bin
-if [ -d "$CLANG_PREBUILTS_DIR" ]; then
-    export CC="$CLANG_PREBUILTS_DIR/clang"
-    export CXX="$CLANG_PREBUILTS_DIR/clang++"
+# Dynamically find the most recent AOSP internal host clang prebuilt
+CLANG_BASE_DIR="$PREBUILTS_DIR/clang/host/linux-x86"
+if [ -d "$CLANG_BASE_DIR" ]; then
+    # Grab the latest clang-r* directory by sorting version numbers
+    LATEST_CLANG_DIR=$(ls -1d "$CLANG_BASE_DIR"/clang-r* 2>/dev/null | sort -V | tail -n 1)
+    if [ -n "$LATEST_CLANG_DIR" ]; then
+        CLANG_PREBUILTS_DIR="$LATEST_CLANG_DIR/bin"
+        if [ -d "$CLANG_PREBUILTS_DIR" ]; then
+            export CC="$CLANG_PREBUILTS_DIR/clang"
+            export CXX="$CLANG_PREBUILTS_DIR/clang++"
+        fi
+    fi
 fi
 
 echo "=== 🕵️ Advanced Compiler Diagnostics ==="
