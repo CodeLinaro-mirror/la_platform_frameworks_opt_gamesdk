@@ -251,12 +251,8 @@ std::chrono::nanoseconds SwappyGL::getFenceTimeout() {
 }
 
 EGL* SwappyGL::getEgl() {
-    static thread_local EGL* egl = nullptr;
-    if (!egl) {
-        std::lock_guard<std::mutex> lock(mEglMutex);
-        egl = mEgl.get();
-    }
-    return egl;
+    std::lock_guard<std::mutex> lock(mEglMutex);
+    return mEgl.get();
 }
 
 SwappyGL::SwappyGL(JNIEnv* env, jobject jactivity, ConstructorTag)
