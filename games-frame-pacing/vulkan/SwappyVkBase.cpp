@@ -200,7 +200,7 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue, uint32_t queueFami
         const VkCommandBufferBeginInfo cmd_buf_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                 .pNext = NULL,
-                .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+                .flags = 0,
                 .pInheritanceInfo = NULL,
         };
         res = vkBeginCommandBuffer(sync.command, &cmd_buf_info);

@@ -1513,6 +1513,121 @@ TEST_F(AImageReaderVulkanSwapchainTest, SetFunctionProvider_ResetsCachedVulkanFu
     EXPECT_EQ(swappy::vkCreateCommandPool, nullptr);
 }
 
+#include <dlfcn.h>
+
+static void* gVulkanLib = nullptr;
+static bool gCommandBufferBeginCalled = false;
+static VkCommandBufferBeginInfo gCapturedCommandBufferBeginInfo = {};
+
+static VkResult TestInterceptBeginCommandBuffer(VkCommandBuffer commandBuffer,
+                                                const VkCommandBufferBeginInfo* pBeginInfo) {
+    gCommandBufferBeginCalled = true;
+    gCapturedCommandBufferBeginInfo = *pBeginInfo;
+
+    __android_log_print(ANDROID_LOG_INFO, "swappy_test",
+                        "TestInterceptBeginCommandBuffer: captured flags=%d (simultaneous=%d)",
+                        pBeginInfo->flags,
+                        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT) != 0);
+
+    if (gVulkanLib == nullptr) {
+        gVulkanLib = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+    }
+    auto real_vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer>(
+            dlsym(gVulkanLib, "vkBeginCommandBuffer"));
+    return real_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+}
+
+static void* TestVkFunctionProvider_GetProcAddr(const char* name) {
+    if (strcmp(name, "vkBeginCommandBuffer") == 0) {
+        return reinterpret_cast<void*>(TestInterceptBeginCommandBuffer);
+    }
+    if (gVulkanLib == nullptr) {
+        gVulkanLib = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+    }
+    return dlsym(gVulkanLib, name);
+}
+
+static bool TestVkFunctionProvider_Init() {
+    return true;
+}
+
+static void TestVkFunctionProvider_Close() {
+    if (gVulkanLib != nullptr) {
+        dlclose(gVulkanLib);
+        gVulkanLib = nullptr;
+    }
+}
+
+static SwappyVkFunctionProvider gTestVkFunctionProvider = {
+    .init = TestVkFunctionProvider_Init,
+    .getProcAddr = TestVkFunctionProvider_GetProcAddr,
+    .close = TestVkFunctionProvider_Close
+};
+
+TEST_F(AImageReaderVulkanSwapchainTest, CommandBufferFlags_DoNotUseSimultaneousBit) {
+    setupMockJni(23);
+    setupMockChoreographer();
+
+    // 1. Inject custom interceptor provider
+    SwappyVk_setFunctionProvider(&gTestVkFunctionProvider);
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    std::vector<const char*> instanceLayers;
+    std::vector<const char*> deviceLayers;
+    buildSwapchainForTest(instanceLayers, deviceLayers);
+
+    gCommandBufferBeginCalled = false;
+    memset(&gCapturedCommandBufferBeginInfo, 0, sizeof(gCapturedCommandBufferBeginInfo));
+
+    uint64_t refreshDuration = 0;
+    // 2. Initialise Swappy Vk (allocates and records command buffers)
+    bool success = SwappyVk_initAndGetRefreshCycleDuration(gMockEnv, fakeActivity, mPhysicalDev,
+                                                           mDevice, mSwapchain, &refreshDuration);
+    ASSERT_TRUE(success);
+
+    // Trigger sync object creation (calls vkAllocateCommandBuffers and vkBeginCommandBuffer)
+    SwappyVk_setQueueFamilyIndex(mDevice, mPresentQueue, mPresentQueueFamily);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkSemaphore imageAvailableSemaphore;
+    VK_CHECK(vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
+
+    uint32_t imageIndex;
+    ASSERT_EQ(VK_SUCCESS,
+              vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, imageAvailableSemaphore,
+                                    VK_NULL_HANDLE, &imageIndex));
+
+    SwappyVk_recordFrameStart(mPresentQueue, mSwapchain, imageIndex);
+
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &imageAvailableSemaphore;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &mSwapchain;
+    presentInfo.pImageIndices = &imageIndex;
+
+    ASSERT_EQ(VK_SUCCESS, SwappyVk_queuePresent(mPresentQueue, &presentInfo));
+
+    vkDestroySemaphore(mDevice, imageAvailableSemaphore, nullptr);
+
+    // 3. Verify vkBeginCommandBuffer was intercepted
+    EXPECT_TRUE(gCommandBufferBeginCalled);
+
+    // 4. Assert that the SIMULTANEOUS_USE_BIT (0x00000004) is absent
+    EXPECT_EQ(
+            gCapturedCommandBufferBeginInfo.flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+            0U);
+
+    cleanupMockChoreographer();
+    cleanUpSwapchainForTest();
+
+    // 5. Restore default function provider
+    SwappyVk_setFunctionProvider(nullptr);
+}
+
 class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {
 public:
     EGLDisplay mDisplay = EGL_NO_DISPLAY;
