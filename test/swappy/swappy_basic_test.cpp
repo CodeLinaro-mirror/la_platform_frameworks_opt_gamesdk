@@ -3,6 +3,7 @@
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <android/log.h>
+#include <dlfcn.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <media/NdkImageReader.h>
@@ -17,14 +18,13 @@
 #include <thread>
 #include <vector>
 
+#include "ChoreographerShim.h"
+#include "SwappyDisplayManager.h"
 #include "swappy/swappyGL.h"
 #include "swappy/swappyGL_extra.h"
 #include "swappy/swappyVk.h"
 #include "vulkan/SwappyVk.h"
-#include "ChoreographerShim.h"
-#include "SwappyDisplayManager.h"
-#include <dlfcn.h>
-
+#include "vulkan/SwappyVkBase.h"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "swappy_test", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "swappy_test", __VA_ARGS__)
@@ -1397,6 +1397,120 @@ TEST_F(AImageReaderVulkanSwapchainTest, CApiAndStatsTest) {
     EXPECT_EQ(counters.swapEndCount, 5);
 
     SwappyVk_uninjectTracer(&tracer);
+}
+
+namespace {
+
+static bool sProvider1Closed = false;
+static bool sProvider2Closed = false;
+
+static void VKAPI_ATTR mockDummyFence1() {}
+static void VKAPI_ATTR mockDummyFence2() {}
+static void VKAPI_ATTR mockDummyCommandPool1() {}
+static void VKAPI_ATTR mockDummyCommandPool2() {}
+
+static void* mockGetProcAddr1(const char* name) {
+    if (strcmp(name, "vkCreateFence") == 0) {
+        return reinterpret_cast<void*>(mockDummyFence1);
+    }
+    if (strcmp(name, "vkCreateCommandPool") == 0) {
+        return reinterpret_cast<void*>(mockDummyCommandPool1);
+    }
+    return nullptr;
+}
+
+static void mockClose1() {
+    sProvider1Closed = true;
+}
+
+static void* mockGetProcAddr2(const char* name) {
+    if (strcmp(name, "vkCreateFence") == 0) {
+        return reinterpret_cast<void*>(mockDummyFence2);
+    }
+    if (strcmp(name, "vkCreateCommandPool") == 0) {
+        return reinterpret_cast<void*>(mockDummyCommandPool2);
+    }
+    return nullptr;
+}
+
+static void mockClose2() {
+    sProvider2Closed = true;
+}
+
+} // namespace
+
+TEST_F(AImageReaderVulkanSwapchainTest, SetFunctionProvider_ResetsCachedVulkanFunctions) {
+    sProvider1Closed = false;
+    sProvider2Closed = false;
+
+    const SwappyVkFunctionProvider provider1{
+            []() { return true; },
+            mockGetProcAddr1,
+            mockClose1,
+    };
+
+    const SwappyVkFunctionProvider provider2{
+            []() { return true; },
+            mockGetProcAddr2,
+            mockClose2,
+    };
+
+    // 1. Setting provider1 and loading functions resolves pointers from provider1.
+    SwappyVk_setFunctionProvider(&provider1);
+    swappy::LoadVulkanFunctions(&provider1);
+
+    EXPECT_EQ(reinterpret_cast<void*>(swappy::vkCreateFence),
+              reinterpret_cast<void*>(mockDummyFence1));
+    EXPECT_EQ(reinterpret_cast<void*>(swappy::vkCreateCommandPool),
+              reinterpret_cast<void*>(mockDummyCommandPool1));
+
+    // 2. Switching to provider2 must close provider1 and reset all cached Vulkan function pointers
+    // to nullptr.
+    SwappyVk_setFunctionProvider(&provider2);
+    EXPECT_TRUE(sProvider1Closed);
+
+    EXPECT_EQ(swappy::vkCreateCommandPool, nullptr);
+    EXPECT_EQ(swappy::vkDestroyCommandPool, nullptr);
+    EXPECT_EQ(swappy::vkCreateFence, nullptr);
+    EXPECT_EQ(swappy::vkDestroyFence, nullptr);
+    EXPECT_EQ(swappy::vkWaitForFences, nullptr);
+    EXPECT_EQ(swappy::vkResetFences, nullptr);
+    EXPECT_EQ(swappy::vkCreateSemaphore, nullptr);
+    EXPECT_EQ(swappy::vkDestroySemaphore, nullptr);
+    EXPECT_EQ(swappy::vkCreateEvent, nullptr);
+    EXPECT_EQ(swappy::vkDestroyEvent, nullptr);
+    EXPECT_EQ(swappy::vkCmdSetEvent, nullptr);
+    EXPECT_EQ(swappy::vkAllocateCommandBuffers, nullptr);
+    EXPECT_EQ(swappy::vkFreeCommandBuffers, nullptr);
+    EXPECT_EQ(swappy::vkBeginCommandBuffer, nullptr);
+    EXPECT_EQ(swappy::vkEndCommandBuffer, nullptr);
+    EXPECT_EQ(swappy::vkQueueSubmit, nullptr);
+
+    // 3. Loading functions with provider2 resolves pointers from the new provider instead of
+    // keeping stale ones.
+    swappy::LoadVulkanFunctions(&provider2);
+    EXPECT_EQ(reinterpret_cast<void*>(swappy::vkCreateFence),
+              reinterpret_cast<void*>(mockDummyFence2));
+    EXPECT_EQ(reinterpret_cast<void*>(swappy::vkCreateCommandPool),
+              reinterpret_cast<void*>(mockDummyCommandPool2));
+
+    // 4. Resetting provider to nullptr (default) closes provider2 and resets function pointers to
+    // nullptr.
+    SwappyVk_setFunctionProvider(nullptr);
+    EXPECT_TRUE(sProvider2Closed);
+    EXPECT_EQ(swappy::vkCreateFence, nullptr);
+    EXPECT_EQ(swappy::vkCreateCommandPool, nullptr);
+
+    // 5. Setting provider to nullptr again when already default is a safe no-op.
+    SwappyVk_setFunctionProvider(nullptr);
+    EXPECT_EQ(swappy::vkCreateFence, nullptr);
+
+    // 6. Direct invocation of ResetVulkanFunctions() clears any loaded pointers.
+    swappy::LoadVulkanFunctions(&provider1);
+    EXPECT_NE(swappy::vkCreateFence, nullptr);
+    swappy::ResetVulkanFunctions();
+    EXPECT_EQ(swappy::vkCreateFence, nullptr);
+    EXPECT_EQ(swappy::vkCreateCommandPool, nullptr);
 }
 
 class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {

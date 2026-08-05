@@ -80,6 +80,27 @@ void LoadVulkanFunctions(const SwappyVkFunctionProvider* pFunctionProvider) {
     }
 }
 
+void ResetVulkanFunctions() {
+    vkCreateCommandPool = nullptr;
+    vkDestroyCommandPool = nullptr;
+    vkCreateFence = nullptr;
+    vkDestroyFence = nullptr;
+    vkWaitForFences = nullptr;
+    vkGetFenceStatus = nullptr;
+    vkResetFences = nullptr;
+    vkCreateSemaphore = nullptr;
+    vkDestroySemaphore = nullptr;
+    vkCreateEvent = nullptr;
+    vkDestroyEvent = nullptr;
+    vkCmdSetEvent = nullptr;
+    vkAllocateCommandBuffers = nullptr;
+    vkFreeCommandBuffers = nullptr;
+    vkBeginCommandBuffer = nullptr;
+    vkEndCommandBuffer = nullptr;
+    vkQueueSubmit = nullptr;
+}
+
+
 SwappyVkBase::SwappyVkBase(JNIEnv* env, jobject jactivity, VkPhysicalDevice physicalDevice,
                            VkDevice device, const SwappyVkFunctionProvider* pFunctionProvider)
       : mCommonBase(env, jactivity),

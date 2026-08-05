@@ -99,8 +99,18 @@ bool SwappyVk::InitFunctions() {
     }
 }
 void SwappyVk::SetFunctionProvider(const SwappyVkFunctionProvider* functionProvider) {
+    bool currently_default =
+            (pFunctionProvider == nullptr) ||
+            (pFunctionProvider->getProcAddr == &DefaultSwappyVkFunctionProvider::GetProcAddr);
+    bool new_default = (functionProvider == nullptr);
+
+    if (currently_default && new_default) {
+        return;
+    }
+
     if (pFunctionProvider != nullptr) pFunctionProvider->close();
     pFunctionProvider = functionProvider;
+    ResetVulkanFunctions();
 }
 
 /**

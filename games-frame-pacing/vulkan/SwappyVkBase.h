@@ -104,6 +104,7 @@ extern PFN_vkEndCommandBuffer vkEndCommandBuffer;
 extern PFN_vkQueueSubmit vkQueueSubmit;
 
 void LoadVulkanFunctions(const SwappyVkFunctionProvider* pFunctionProvider);
+void ResetVulkanFunctions();
 
 class SwappyVkBase {
 public:
