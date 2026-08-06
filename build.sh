@@ -192,7 +192,7 @@ then
     exit
 elif [[ $1 == "hostUnitTests" ]]
 then
-    ./gradlew hostUnitTests -Pndk=$AGDK_NDK_VERSION
+    ./gradlew hostUnitTests -Pndk=$AGDK_NDK_VERSION --stacktrace
     exit
 else
     # The default is to build the express zip

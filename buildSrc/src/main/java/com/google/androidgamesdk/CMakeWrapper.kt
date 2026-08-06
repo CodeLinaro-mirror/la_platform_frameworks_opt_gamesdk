@@ -116,7 +116,8 @@ class CMakeWrapper {
             } catch (makeException: Throwable) {
                 throw Exception(
                     "Error when building with " +
-                        toolchain + " in " + workingFolder
+                        toolchain + " in " + workingFolder,
+                    makeException
                 )
             }
         }
