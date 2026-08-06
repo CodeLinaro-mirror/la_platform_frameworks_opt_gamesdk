@@ -24,7 +24,6 @@ import com.google.androidgamesdk.ExternalToolName;
 import static com.google.androidgamesdk.OsSpecificTools.osFolderName;
 import static com.google.androidgamesdk.OsSpecificTools.joinPath;
 import static com.google.androidgamesdk.CMakeWrapper.runAndroidCMake;
-import static com.google.androidgamesdk.CMakeWrapper.runHostCMake;
 import static com.google.androidgamesdk.CMakeWrapper.runNinja;
 import static com.google.androidgamesdk.ToolchainEnumerator.filterBuiltLibraries;
 
@@ -186,13 +185,14 @@ def getTempPath() {
 
 def buildHostModule(subdir, buildType) {
     def toolchain = getLocalToolchain()
+    def buildOptions = new BuildOptions(buildType, true, "c++_static", "x86_64")
     def buildKey = "host"
     def workingFolder = joinPath(getTempPath(), buildKey, '.cmake')
     def outputFolder = joinPath(getOutPath(), buildKey)
     def cmakeProjectFolder = joinPath("$projectDir", subdir)
     def buildFolders = new BuildFolders(cmakeProjectFolder, workingFolder, outputFolder)
 
-    runHostCMake(project, buildFolders, toolchain, buildType)
+    runAndroidCMake(project, buildFolders, toolchain, buildOptions, [], getGitCommit())
     runNinja(project, toolchain, workingFolder)
 
     return [buildKey: buildKey, outputFolder: outputFolder]

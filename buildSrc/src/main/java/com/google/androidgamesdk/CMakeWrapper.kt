@@ -29,8 +29,6 @@ class CMakeWrapper {
             libraries: Collection<NativeLibrary>,
             gitCommit: String
         ) {
-            if (libraries.isEmpty()) return
-
             ensureFoldersReady(project, buildFolders)
 
             val ndkPath = toolchain.getAndroidNDKPath()
@@ -63,15 +61,18 @@ class CMakeWrapper {
                 "-DCMAKE_ANDROID_STL_TYPE=" + buildOptions.stl,
                 "-DCMAKE_TOOLCHAIN_FILE=$toolchainFilePath",
                 "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
+                "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DGAMESDK_THREAD_CHECKS=" +
                     (if (buildOptions.threadChecks) "1" else "0"),
                 "-DCMAKE_MAKE_PROGRAM=" + toolchain.getNinjaPath(),
                 "-GNinja"
             )
 
-            cmdLine.add("-DGAMESDK_LIBRARIES=" + libraries.joinToString(";") {
-                nativeLibrary -> nativeLibrary.nativeLibraryName
-            })
+            if (!libraries.isEmpty()) {
+                cmdLine.add("-DGAMESDK_LIBRARIES=" + libraries.joinToString(";") {
+                    nativeLibrary -> nativeLibrary.nativeLibraryName
+                })
+            }
 
             try {
                 project.exec {
@@ -90,7 +91,7 @@ class CMakeWrapper {
                     .joinToString()
                 throw Exception(
                     "Error when running CMake for " +
-                        libraryNames + " with " +
+                        (if (libraryNames.isEmpty()) buildFolders.toString() else libraryNames) + " with " +
                         toolchain + " and " + buildOptions,
                     cmakeException
                 )
@@ -116,51 +117,6 @@ class CMakeWrapper {
                 throw Exception(
                     "Error when building with " +
                         toolchain + " in " + workingFolder
-                )
-            }
-        }
-
-        /**
-         * Run CMake on the specified folders.
-         *
-         * In case of error, a verbose exception is thrown to help pinpoint
-         * the configuration that led to the error.
-         */
-        @JvmStatic
-        fun runHostCMake(
-            project: Project,
-            buildFolders: BuildFolders,
-            toolchain: Toolchain,
-            buildType: String
-        ) {
-            ensureFoldersReady(project, buildFolders)
-
-            val cmdLine = mutableListOf(
-                toolchain.getCMakePath(),
-                buildFolders.projectFolder,
-                "-DCMAKE_BUILD_TYPE=$buildType",
-                "-DCMAKE_CXX_FLAGS=-std=c++17",
-                "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
-                "-DCMAKE_MAKE_PROGRAM=" + toolchain.getNinjaPath(),
-                "-GNinja"
-            )
-
-            val cc = System.getenv("CC")
-            val cxx = System.getenv("CXX")
-            if (!cc.isNullOrEmpty()) cmdLine.add("-DCMAKE_C_COMPILER=$cc")
-            if (!cxx.isNullOrEmpty()) cmdLine.add("-DCMAKE_CXX_COMPILER=$cxx")
-
-            try {
-                project.exec {
-                    workingDir(buildFolders.workingFolder)
-                    commandLine(cmdLine)
-                }
-            } catch (cmakeException: Throwable) {
-                throw Exception(
-                    "Error when running CMake for " +
-                        buildFolders + " (build type: " +
-                        buildType + ").",
-                    cmakeException
                 )
             }
         }

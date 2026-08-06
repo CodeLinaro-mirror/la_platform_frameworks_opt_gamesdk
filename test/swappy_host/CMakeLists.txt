@@ -20,7 +20,6 @@ project(swappy_host_test CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest")
   set(ANDROID_GTEST_DIR "../../../external/googletest")
