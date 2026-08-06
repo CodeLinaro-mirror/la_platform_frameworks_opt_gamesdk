@@ -30,7 +30,8 @@ else()
 endif()
 set(BUILD_GMOCK OFF)
 set(INSTALL_GTEST OFF)
-set(gtest_disable_pthreads ON CACHE BOOL "" FORCE)
+
+find_package(Threads REQUIRED)
 
 add_subdirectory("${ANDROID_GTEST_DIR}" googletest-build)
 
@@ -47,5 +48,5 @@ add_executable(swappy_host_test
 target_link_libraries(swappy_host_test
   gtest
   gtest_main
-  pthread
+  Threads::Threads
 )
