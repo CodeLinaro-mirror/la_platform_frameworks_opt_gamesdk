@@ -140,8 +140,6 @@ class CMakeWrapper {
                 buildFolders.projectFolder,
                 "-DCMAKE_BUILD_TYPE=$buildType",
                 "-DCMAKE_CXX_FLAGS=-std=c++17",
-                "-DCMAKE_C_COMPILER_WORKS=1",
-                "-DCMAKE_CXX_COMPILER_WORKS=1",
                 "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DCMAKE_MAKE_PROGRAM=" + toolchain.getNinjaPath(),
                 "-GNinja"
