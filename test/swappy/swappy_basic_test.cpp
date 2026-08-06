@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.h>
 
 #include <atomic>
+#include <cstdarg>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
@@ -19,6 +20,11 @@
 #include "swappy/swappyGL.h"
 #include "swappy/swappyGL_extra.h"
 #include "swappy/swappyVk.h"
+#include "vulkan/SwappyVk.h"
+#include "ChoreographerShim.h"
+#include "SwappyDisplayManager.h"
+#include <dlfcn.h>
+
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "swappy_test", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "swappy_test", __VA_ARGS__)
@@ -47,7 +53,242 @@ public:
 };
 static const ::testing::Environment* const coverage_env =
         ::testing::AddGlobalTestEnvironment(new CoverageEnvironment);
-#endif
+
+namespace swappy {
+class SwappyDisplayManagerJNI {
+public:
+    static void onSetSupportedRefreshPeriods(
+            jlong, std::shared_ptr<SwappyDisplayManager::RefreshPeriodMap>);
+    static void onRefreshPeriodChanged(jlong, long, long, long);
+};
+} // namespace swappy
+
+namespace {
+
+std::mutex g_refreshRateMutex;
+AChoreographer_refreshRateCallback g_refreshRateCallback = nullptr;
+void* g_refreshRateData = nullptr;
+std::atomic<bool> g_mockThreadRunning{false};
+std::atomic<int> g_mockRunningThreads{0};
+std::mutex g_mockThreadsMutex;
+std::vector<std::thread> g_mockThreads;
+std::condition_variable g_mockThreadsCv;
+
+struct MockFrameData {
+    int64_t expectedPresentationTimeNanos;
+    int64_t deadlineNanos;
+};
+
+} // namespace
+
+extern "C" {
+
+void setupMockNDKChoreographer() {
+    LOGI("[MockChoreographer] setupMockNDKChoreographer");
+    g_mockThreadRunning = true;
+}
+
+void cleanupMockNDKChoreographer() {
+    LOGI("[MockChoreographer] cleanupMockNDKChoreographer");
+    g_mockThreadRunning = false;
+    g_mockThreadsCv.notify_all();
+
+    {
+        std::lock_guard<std::mutex> lock(g_refreshRateMutex);
+        g_refreshRateCallback = nullptr;
+        g_refreshRateData = nullptr;
+    }
+
+    std::unique_lock<std::mutex> lock(g_mockThreadsMutex);
+    g_mockThreadsCv.wait(lock, [] { return g_mockRunningThreads.load() == 0; });
+    std::vector<std::thread> toJoin;
+    toJoin.swap(g_mockThreads);
+    lock.unlock();
+
+    for (auto& t : toJoin) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+}
+
+static int g_dummyChoreographer = 0;
+// Mock implementation of functions resolved via dlsym
+AChoreographer* Mock_AChoreographer_getInstance() {
+    return reinterpret_cast<AChoreographer*>(&g_dummyChoreographer);
+}
+
+void Mock_AChoreographer_postFrameCallbackDelayed(AChoreographer* choreographer,
+                                                  AChoreographer_frameCallback callback, void* data,
+                                                  long delay) {
+    LOGI("[MockChoreographer] Mock_AChoreographer_postFrameCallbackDelayed called");
+    std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
+    if (!g_mockThreadRunning.load()) {
+        return;
+    }
+    g_mockRunningThreads++;
+    g_mockThreads.emplace_back([callback, data, delay]() {
+        struct ThreadExit {
+            ~ThreadExit() {
+                std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
+                g_mockRunningThreads--;
+                g_mockThreadsCv.notify_all();
+            }
+        } onExit;
+
+        std::unique_lock<std::mutex> cvLock(g_mockThreadsMutex);
+        // Default to 16ms to simulate a 60Hz frame timeline if delay is 0
+        g_mockThreadsCv.wait_for(cvLock, std::chrono::milliseconds(delay > 0 ? delay : 16),
+                                 [] { return !g_mockThreadRunning.load(); });
+        cvLock.unlock();
+
+        if (g_mockThreadRunning) {
+            auto now = std::chrono::steady_clock::now().time_since_epoch();
+            long timeNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+            callback(timeNanos, data);
+        }
+    });
+}
+
+void Mock_AChoreographer_registerRefreshRateCallback(AChoreographer* choreographer,
+                                                     AChoreographer_refreshRateCallback callback,
+                                                     void* data) {
+    LOGI("[MockChoreographer] Mock_AChoreographer_registerRefreshRateCallback called");
+    std::lock_guard<std::mutex> lock(g_refreshRateMutex);
+    g_refreshRateCallback = callback;
+    g_refreshRateData = data;
+}
+
+void Mock_AChoreographer_unregisterRefreshRateCallback(AChoreographer* choreographer,
+                                                       AChoreographer_refreshRateCallback callback,
+                                                       void* data) {
+    LOGI("[MockChoreographer] Mock_AChoreographer_unregisterRefreshRateCallback called");
+    std::lock_guard<std::mutex> lock(g_refreshRateMutex);
+    if (g_refreshRateCallback == callback && g_refreshRateData == data) {
+        g_refreshRateCallback = nullptr;
+        g_refreshRateData = nullptr;
+    }
+}
+
+void Mock_AChoreographer_postVsyncCallback(AChoreographer* choreographer,
+                                           AChoreographer_vsyncCallback callback, void* data) {
+    LOGI("[MockChoreographer] Mock_AChoreographer_postVsyncCallback called");
+    std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
+    if (!g_mockThreadRunning.load()) {
+        return;
+    }
+    g_mockRunningThreads++;
+    g_mockThreads.emplace_back([callback, data]() {
+        struct ThreadExit {
+            ~ThreadExit() {
+                std::lock_guard<std::mutex> lock(g_mockThreadsMutex);
+                g_mockRunningThreads--;
+                g_mockThreadsCv.notify_all();
+            }
+        } onExit;
+
+        std::unique_lock<std::mutex> cvLock(g_mockThreadsMutex);
+        // Default to 16ms to simulate a 60Hz frame timeline
+        g_mockThreadsCv.wait_for(cvLock, std::chrono::milliseconds(16),
+                                 [] { return !g_mockThreadRunning.load(); });
+        cvLock.unlock();
+
+        if (g_mockThreadRunning) {
+            auto now = std::chrono::steady_clock::now().time_since_epoch();
+            int64_t timeNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+            MockFrameData frameData;
+            frameData.expectedPresentationTimeNanos = timeNanos + 16666666;
+            frameData.deadlineNanos = timeNanos + 8333333;
+            callback(reinterpret_cast<const AChoreographerFrameCallbackData*>(&frameData), data);
+        }
+    });
+}
+
+size_t Mock_AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex(
+        const AChoreographerFrameCallbackData* /* data */) {
+    return 0;
+}
+
+int64_t Mock_AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos(
+        const AChoreographerFrameCallbackData* data, size_t /* index */) {
+    return reinterpret_cast<const MockFrameData*>(data)->expectedPresentationTimeNanos;
+}
+
+int64_t Mock_AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos(
+        const AChoreographerFrameCallbackData* data, size_t /* index */) {
+    return reinterpret_cast<const MockFrameData*>(data)->deadlineNanos;
+}
+
+} // extern "C"
+
+#ifdef __ANDROID__
+// Forward declarations for real functions
+extern "C" {
+void* __real_dlopen(const char* filename, int flag);
+void* __real_dlsym(void* handle, const char* symbol);
+int __real_dlclose(void* handle);
+}
+
+namespace {
+void* g_realLibAndroid = nullptr;
+std::once_flag g_realLibAndroidOnce;
+
+void* getRealLibAndroid() {
+    std::call_once(g_realLibAndroidOnce, []() {
+        g_realLibAndroid = __real_dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+    });
+    return g_realLibAndroid;
+}
+} // namespace
+
+extern "C" {
+
+// Intercepts dlopen calls via the -Wl,--wrap=dlopen linker flag defined in CMakeLists.txt.
+// This allows us to inject mocked AChoreographer symbols for libandroid.so on SDK 37+.
+void* __wrap_dlopen(const char* filename, int flag) {
+    LOGI("[__wrap_dlopen] dlopen called for: %s", filename ? filename : "nullptr");
+    if (filename && strcmp(filename, "libandroid.so") == 0) {
+        LOGI("[__wrap_dlopen] Intercepted libandroid.so");
+        return reinterpret_cast<void*>(0x1234abcd);
+    }
+    return __real_dlopen(filename, flag);
+}
+
+void* __wrap_dlsym(void* handle, const char* symbol) {
+    LOGI("[__wrap_dlsym] dlsym called for symbol: %s", symbol);
+    if (handle == reinterpret_cast<void*>(0x1234abcd)) {
+        LOGI("[__wrap_dlsym] Resolving mock symbol: %s", symbol);
+#define MOCK_SYM(name) \
+    if (strcmp(symbol, #name) == 0) return reinterpret_cast<void*>(Mock_##name)
+        MOCK_SYM(AChoreographer_getInstance);
+        MOCK_SYM(AChoreographer_postFrameCallbackDelayed);
+        MOCK_SYM(AChoreographer_registerRefreshRateCallback);
+        MOCK_SYM(AChoreographer_unregisterRefreshRateCallback);
+        MOCK_SYM(AChoreographer_postVsyncCallback);
+        MOCK_SYM(AChoreographerFrameCallbackData_getPreferredFrameTimelineIndex);
+        MOCK_SYM(AChoreographerFrameCallbackData_getFrameTimelineExpectedPresentationTimeNanos);
+        MOCK_SYM(AChoreographerFrameCallbackData_getFrameTimelineDeadlineNanos);
+#undef MOCK_SYM
+
+        void* realLib = getRealLibAndroid();
+        if (!realLib) {
+            LOGI("[__wrap_dlsym] Failed to load real libandroid.so for symbol resolution");
+            return nullptr;
+        }
+        return __real_dlsym(realLib, symbol);
+    }
+    return __real_dlsym(handle, symbol);
+}
+
+int __wrap_dlclose(void* handle) {
+    if (handle == reinterpret_cast<void*>(0x1234abcd)) {
+        return 0;
+    }
+    return __real_dlclose(handle);
+}
+
+} // extern "C"
+#endif // __ANDROID__
 
 namespace android {
 
@@ -264,7 +505,7 @@ public:
             std::vector<std::thread> toJoin;
             {
                 std::lock_guard<std::mutex> lock(mMockThreadsMutex);
-                toJoin = std::move(mMockThreads);
+                toJoin.swap(mMockThreads);
             }
             if (toJoin.empty() && mRunningThreads.load() == 0) {
                 break;
@@ -278,6 +519,14 @@ public:
         }
     }
 
+    void setupMockNDKChoreographer() {
+        ::setupMockNDKChoreographer();
+    }
+
+    void cleanupMockNDKChoreographer() {
+        ::cleanupMockNDKChoreographer();
+    }
+
     void TearDown() override {
         if (mReader) {
             AImageReader_delete(mReader);
@@ -285,6 +534,7 @@ public:
         }
         mWindow = nullptr;
         cleanupMockChoreographer();
+        cleanupMockNDKChoreographer();
         teardownMockJni();
     }
 
@@ -363,7 +613,32 @@ public:
                 .WillByDefault(testing::Return(reinterpret_cast<jclass>(0x6)));
         ON_CALL(mMockJni, NewStringUTF(testing::_, testing::_))
                 .WillByDefault(testing::Return(reinterpret_cast<jstring>(0x7)));
-        ON_CALL(mMockJni, NewObjectV(testing::_, testing::_, testing::_, testing::_))
+        const jmethodID kSwappyDisplayManagerConstructor = reinterpret_cast<jmethodID>(0x21);
+
+        ON_CALL(mMockJni,
+                GetMethodID(testing::_, testing::_, testing::StrEq("<init>"),
+                            testing::StrEq("(JLandroid/app/Activity;)V")))
+                .WillByDefault(testing::Return(kSwappyDisplayManagerConstructor));
+
+        ON_CALL(mMockJni,
+                NewObjectV(testing::_, testing::_, kSwappyDisplayManagerConstructor, testing::_))
+                .WillByDefault(testing::Invoke([](JNIEnv*, jclass, jmethodID, va_list args) {
+                    va_list args_copy;
+                    va_copy(args_copy, args);
+                    jlong cookie = va_arg(args_copy, jlong);
+                    va_end(args_copy);
+                    if (cookie != 0) {
+                        auto refreshPeriodsMap =
+                                std::make_shared<swappy::SwappyDisplayManager::RefreshPeriodMap>();
+                        (*refreshPeriodsMap)[std::chrono::nanoseconds(16666666)] = 0;
+                        swappy::SwappyDisplayManagerJNI::
+                                onSetSupportedRefreshPeriods(cookie, refreshPeriodsMap);
+                    }
+                    return reinterpret_cast<jobject>(0x8);
+                }));
+        ON_CALL(mMockJni,
+                NewObjectV(testing::_, testing::_, testing::Ne(kSwappyDisplayManagerConstructor),
+                           testing::_))
                 .WillByDefault(testing::Return(reinterpret_cast<jobject>(0x8)));
         ON_CALL(mMockJni, CallVoidMethodV(testing::_, testing::_, testing::_, testing::_))
                 .WillByDefault(testing::Invoke([](JNIEnv*, jobject, jmethodID, va_list) {}));
@@ -671,9 +946,13 @@ public:
 
     void TearDown() override {
         cleanupMockChoreographer();
+        // Must clean up mock threads before destroying the swapchain (which destroys Swappy
+
+        cleanupMockNDKChoreographer();
         cleanUpSwapchainForTest();
         unsetenv("MOCK_VK_GOOGLE_DISPLAY_TIMING");
         AImageReaderSwapchainTestBase::TearDown();
+        swappy::SwappyVk::getInstance().clearState();
     }
 
     void buildSwapchainForTest(std::vector<const char*>& instanceLayers,
@@ -1328,6 +1607,88 @@ TEST_F(AImageReaderEGLSwapchainTest, CApiAndStatsTest) {
     // calling into a destroyed Swappy instance. TearDown() will clean up any
     // additional threads spawned during destruction.
     cleanupMockChoreographer();
+    SwappyGL_destroy();
+}
+
+TEST_F(AImageReaderVulkanSwapchainTest, RenderingLoopSDK37) {
+    // Set up the mocked JNI environment with an SDK version of 37 (Android U+).
+    // This will force Swappy to use NDKChoreographerThread instead of JavaChoreographerThread.
+    setupMockJni(37);
+    setupMockNDKChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+
+    // Build swapchain to provide a valid device and swapchain to Swappy
+    std::vector<const char*> instanceLayers;
+    std::vector<const char*> deviceLayers;
+    buildSwapchainForTest(instanceLayers, deviceLayers);
+
+    uint64_t refreshDuration = 0;
+    bool success = SwappyVk_initAndGetRefreshCycleDuration(gMockEnv, fakeActivity, mPhysicalDev,
+                                                           mDevice, mSwapchain, &refreshDuration);
+
+    EXPECT_TRUE(success);
+
+    SwappyVk_setQueueFamilyIndex(mDevice, mPresentQueue, mPresentQueueFamily);
+    SwappyVk_setSwapIntervalNS(mDevice, mSwapchain, 16666666);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkSemaphore imageAvailableSemaphore;
+    VK_CHECK(vkCreateSemaphore(mDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
+
+    // Spin for 10 frames, acquiring and presenting to verify the rendering loop
+    // correctly interacts with our mocked NDK choreographer.
+    for (int i = 0; i < 10; ++i) {
+        LOGI("[Test] Frame %d starting", i);
+        uint32_t imageIndex;
+        VkResult res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX,
+                                             imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+        ASSERT_EQ(res, VK_SUCCESS);
+        SwappyVk_recordFrameStart(mPresentQueue, mSwapchain, imageIndex);
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &imageAvailableSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &mSwapchain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        // Use Swappy to present
+        res = SwappyVk_queuePresent(mPresentQueue, &presentInfo);
+        EXPECT_EQ(res, VK_SUCCESS);
+        LOGI("[Test] Frame %d presented, res = %d", i, res);
+    }
+
+    vkDestroySemaphore(mDevice, imageAvailableSemaphore, nullptr);
+}
+
+TEST_F(AImageReaderEGLSwapchainTest, RenderingLoopSDK37) {
+    // Set up the mocked JNI environment with an SDK version of 37 (Android U+).
+    // This will force Swappy to use NDKChoreographerThread instead of JavaChoreographerThread.
+    setupMockJni(37);
+    setupMockNDKChoreographer();
+
+    jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+    buildEGLForTest();
+
+    EXPECT_TRUE(SwappyGL_init(gMockEnv, fakeActivity));
+    EXPECT_TRUE(SwappyGL_setWindow(mWindow));
+
+    SwappyGL_setSwapIntervalNS(SWAPPY_SWAP_60FPS);
+
+    for (int i = 0; i < 10; ++i) {
+        LOGI("[Test] Frame %d starting", i);
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        SwappyGL_recordFrameStart(mDisplay, mSurface);
+        bool res = SwappyGL_swap(mDisplay, mSurface);
+        EXPECT_TRUE(res);
+        LOGI("[Test] Frame %d swapped, res = %d", i, res);
+    }
+    cleanupMockNDKChoreographer();
     SwappyGL_destroy();
 }
 

@@ -48,7 +48,7 @@ add_library(swappy_instrumented_test SHARED
 )
 target_link_libraries(swappy_instrumented_test
   PRIVATE
-    games-frame-pacing::swappy
+    games-frame-pacing::swappy_static
     android
     atomic
     log
@@ -61,3 +61,4 @@ target_link_libraries(swappy_instrumented_test
     junit-gtest::junit-gtest
     VkLayer_swappy_mock
 )
+target_link_options(swappy_instrumented_test PRIVATE "-Wl,--wrap=dlopen" "-Wl,--wrap=dlsym" "-Wl,--wrap=dlclose")

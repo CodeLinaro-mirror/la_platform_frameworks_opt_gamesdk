@@ -87,6 +87,8 @@ public:
 
     bool IsEnabled(VkSwapchainKHR swapchain, bool* isEnabled);
 
+    void clearState();
+
     // Frame statistics.
     void enableStats(VkSwapchainKHR swapchain, bool enabled);
     void getStats(VkSwapchainKHR swapchain, SwappyStats* swappyStats);

@@ -79,6 +79,7 @@ target_link_libraries(swappy_test
   mediandk
   games-frame-pacing::swappy_static
 )
+target_link_options(swappy_test PRIVATE "-Wl,--wrap=dlopen" "-Wl,--wrap=dlsym" "-Wl,--wrap=dlclose")
 
 target_link_libraries(swappy_test_lib
   android
@@ -91,6 +92,7 @@ target_link_libraries(swappy_test_lib
   mediandk
   games-frame-pacing::swappy_static
 )
+target_link_options(swappy_test_lib PRIVATE "-Wl,--wrap=dlopen" "-Wl,--wrap=dlsym" "-Wl,--wrap=dlclose")
 
 target_link_libraries(VkLayer_swappy_mock
   android
