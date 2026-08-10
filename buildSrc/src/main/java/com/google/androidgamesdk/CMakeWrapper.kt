@@ -49,8 +49,6 @@ class CMakeWrapper {
                 buildFolders.projectFolder,
                 "-DCMAKE_BUILD_TYPE=" + buildOptions.buildType,
                 "-DCMAKE_CXX_FLAGS=$cxx_flags",
-                "-DCMAKE_C_COMPILER_WORKS=1",
-                "-DCMAKE_CXX_COMPILER_WORKS=1",
                 "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DGAMESDK_THREAD_CHECKS=" +
@@ -66,11 +64,20 @@ class CMakeWrapper {
                     "-DANDROID_STL=" + buildOptions.stl,
                     "-DANDROID_ABI=" + buildOptions.arch,
                     "-DANDROID_UNIFIED_HEADERS=1",
+                    "-DCMAKE_C_COMPILER_WORKS=1",
+                    "-DCMAKE_CXX_COMPILER_WORKS=1",
                     "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
                     "-DCMAKE_ANDROID_NDK_TOOLCHAIN_VERSION=clang",
                     "-DCMAKE_ANDROID_STL_TYPE=" + buildOptions.stl,
                     "-DCMAKE_TOOLCHAIN_FILE=$toolchainFilePath"
                 ))
+            } else {
+                val sysCc = System.getenv("CC")
+                val sysCxx = System.getenv("CXX")
+                if (sysCc.isNullOrEmpty() || sysCxx.isNullOrEmpty()) {
+                    cmdLine.add("-DCMAKE_C_COMPILER=${toolchain.findNDKTool("clang")}")
+                    cmdLine.add("-DCMAKE_CXX_COMPILER=${toolchain.findNDKTool("clang++")}")
+                }
             }
 
             if (!libraries.isEmpty()) {
