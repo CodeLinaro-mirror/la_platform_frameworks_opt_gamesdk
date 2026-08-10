@@ -185,7 +185,7 @@ def getTempPath() {
 
 def buildHostModule(subdir, buildType) {
     def toolchain = getLocalToolchain()
-    def buildOptions = new BuildOptions(buildType, true, "c++_static", "x86_64")
+    def buildOptions = new BuildOptions(buildType, true, "c++_static", "host")
     def buildKey = "host"
     def workingFolder = joinPath(getTempPath(), buildKey, '.cmake')
     def outputFolder = joinPath(getOutPath(), buildKey)
