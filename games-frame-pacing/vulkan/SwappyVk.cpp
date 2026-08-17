@@ -384,4 +384,16 @@ void SwappyVk::enableBlockingWait(VkSwapchainKHR swapchain, bool enable) {
     if (it != perSwapchainImplementation.end()) it->second->enableBlockingWait(enable);
 }
 
+void SwappyVk::clearState() {
+    doesPhysicalDeviceHaveGoogleDisplayTiming.clear();
+    perSwapchainImplementation.clear();
+    perQueueFamilyIndex.clear();
+    if (pFunctionProvider) {
+        pFunctionProvider->close();
+    }
+    pFunctionProvider = nullptr;
+    std::lock_guard<std::mutex> lock(tracer_list_lock);
+    tracer_list.clear();
+}
+
 } // namespace swappy
