@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C++ Code Coverage Report - games-frame-pacing</title>
+  <style>
+    :root {
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-yellow: #eab308;
+      --bg-color: #0f172a;
+      --border-color: #334155;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      margin: 0 auto;
+      max-width: 1200px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      color: var(--text-main);
+      font-size: 28px;
+      margin: 0 0 10px;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 0 0 16px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin: 0 0 30px;
+      padding: 0;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .stat-subtext {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin: 5px 0 0;
+    }
+
+    .text-green {
+      color: var(--accent-green);
+    }
+
+    .text-blue {
+      color: var(--accent-blue);
+    }
+
+    .text-yellow {
+      color: var(--accent-yellow);
+    }
+
+    table {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-collapse: collapse;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 18px;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--card-bg);
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .progress-bar {
+      background-color: var(--border-color);
+      border-radius: 4px;
+      display: inline-block;
+      height: 8px;
+      margin-right: 10px;
+      overflow: hidden;
+      vertical-align: middle;
+      width: 120px;
+    }
+
+    .progress-fill {
+      border-radius: 4px;
+      height: 100%;
+    }
+
+    .fill-green {
+      background-color: var(--accent-green);
+    }
+
+    .fill-yellow {
+      background-color: var(--accent-yellow);
+    }
+
+    .fill-red {
+      background-color: var(--accent-red);
+    }
+
+    .badge {
+      border-radius: 4px;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+    }
+
+    .badge-success {
+      background-color: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+    }
+
+    .badge-warning {
+      background-color: rgba(234, 179, 8, 0.15);
+      color: var(--accent-yellow);
+    }
+
+    .badge-danger {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    .file-path {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .sr-only {
+      border: 0;
+      clip: rect(0, 0, 0, 0);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>C++ Code Coverage Report - games-frame-pacing</h1>
+      <p class="subtitle">
+        Module: <code>games-frame-pacing</code> <span aria-hidden="true">|</span> Test Framework: GTest / AndroidJUnitRunner
+      </p>
+    </header>
+
+    <main>
+      <section aria-labelledby="summary-heading">
+        <h2 id="summary-heading" class="sr-only">Coverage Summary</h2>
+        <dl class="stats-grid">
+          <div class="stat-card">
+            <dt class="stat-label">Overall C++ LOC Coverage</dt>
+            <dd class="stat-value text-green">{{OVERALL_PCT}}%</dd>
+            <dd class="stat-subtext">{{EXEC_LOC}} / {{TOTAL_LOC}} lines executed</dd>
+          </div>
+          <div class="stat-card">
+            <dt class="stat-label">Discovered Sources</dt>
+            <dd class="stat-value text-blue">{{NUM_FILES}}</dd>
+            <dd class="stat-subtext">Source and Header Files</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="breakdown-heading">
+        <h2 id="breakdown-heading">Per-File Code Coverage Breakdown</h2>
+        <table>
+          <caption class="sr-only">Per-File Code Coverage Breakdown</caption>
+          <thead>
+            <tr>
+              <th scope="col">Component / C++ Source File</th>
+              <th scope="col">Total Lines</th>
+              <th scope="col">Executed Lines</th>
+              <th scope="col">Coverage %</th>
+              <th scope="col">Visual Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+{{TABLE_ROWS}}          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+
+<!-- TABLE_ROW_TEMPLATE_START
+        <tr>
+          <td class="file-path">{{ITEM_NAME_HTML}}</td>
+          <td>{{TOTAL_LOC}}</td>
+          <td>{{EXEC_LOC}}</td>
+          <td style="font-weight: 700;">{{COVERAGE_PCT}}%</td>
+          <td>
+            <div class="progress-bar" role="progressbar" aria-valuenow="{{COVERAGE_PCT}}" aria-valuemin="0" aria-valuemax="100" aria-label="Coverage: {{COVERAGE_PCT}}%">
+              <div class="progress-fill {{FILL_CLASS}}" style="width: {{COVERAGE_PCT}}%;"></div>
+            </div>
+            <span class="badge {{BADGE_CLASS}}">{{BADGE_LABEL}}</span>
+          </td>
+        </tr>
+TABLE_ROW_TEMPLATE_END -->
