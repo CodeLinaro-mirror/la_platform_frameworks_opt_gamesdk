@@ -86,6 +86,7 @@ class CMakeWrapper {
                 })
             }
 
+            val out = java.io.ByteArrayOutputStream()
             try {
                 project.exec {
                     val protocBinDir = toolchain.getProtobufInstallPath() +
@@ -97,6 +98,8 @@ class CMakeWrapper {
                     )
                     workingDir(buildFolders.workingFolder)
                     commandLine(cmdLine)
+                    standardOutput = out
+                    errorOutput = out
                 }
             } catch (cmakeException: Throwable) {
                 val libraryNames = libraries.map { it.nativeLibraryName }
@@ -104,7 +107,7 @@ class CMakeWrapper {
                 throw Exception(
                     "Error when running CMake for " +
                         (if (libraryNames.isEmpty()) buildFolders.toString() else libraryNames) + " with " +
-                        toolchain + " and " + buildOptions,
+                        toolchain + " and " + buildOptions + "\nCMake output:\n" + out.toString(),
                     cmakeException
                 )
             }
@@ -120,15 +123,18 @@ class CMakeWrapper {
             toolchain: Toolchain,
             workingFolder: String
         ) {
+            val out = java.io.ByteArrayOutputStream()
             try {
                 project.exec {
                     workingDir(workingFolder)
                     commandLine(mutableListOf(toolchain.getNinjaPath()))
+                    standardOutput = out
+                    errorOutput = out
                 }
             } catch (makeException: Throwable) {
                 throw Exception(
                     "Error when building with " +
-                        toolchain + " in " + workingFolder,
+                        toolchain + " in " + workingFolder + "\nNinja output:\n" + out.toString(),
                     makeException
                 )
             }
