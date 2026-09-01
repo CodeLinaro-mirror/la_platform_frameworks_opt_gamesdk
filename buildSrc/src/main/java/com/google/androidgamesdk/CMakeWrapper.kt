@@ -77,6 +77,13 @@ class CMakeWrapper {
                 if (sysCc.isNullOrEmpty() || sysCxx.isNullOrEmpty()) {
                     cmdLine.add("-DCMAKE_C_COMPILER=${toolchain.findNDKTool("clang")}")
                     cmdLine.add("-DCMAKE_CXX_COMPILER=${toolchain.findNDKTool("clang++")}")
+                } else {
+                    cmdLine.add("-DCMAKE_C_COMPILER=$sysCc")
+                    cmdLine.add("-DCMAKE_CXX_COMPILER=$sysCxx")
+                    // Force the host compiler to use libc++ to avoid missing modern C++ features
+                    // in older system libstdc++ implementations (like in the Busytown Docker).
+                    cmdLine.add("-DCMAKE_CXX_FLAGS=$cxx_flags -stdlib=libc++ -static-libstdc++")
+                    cmdLine.add("-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++")
                 }
             }
 
