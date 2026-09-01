@@ -53,6 +53,7 @@ public:
 };
 static const ::testing::Environment* const coverage_env =
         ::testing::AddGlobalTestEnvironment(new CoverageEnvironment);
+#endif
 
 namespace swappy {
 class SwappyDisplayManagerJNI {
