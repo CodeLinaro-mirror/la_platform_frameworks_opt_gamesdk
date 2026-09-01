@@ -210,6 +210,8 @@ fi
 
 if [[ $1 != "maven-only" ]]
 then
+    export GRADLE_OPTS="-Dorg.gradle.jvmargs=\"-XX:-UseContainerSupport\" $GRADLE_OPTS"
+
     mkdir -p "$dist_dir/$package_name/apks/samples"
     mkdir -p "$dist_dir/$package_name/apks/test"
     mkdir -p "$dist_dir/$package_name/apks/tools"
