@@ -502,7 +502,25 @@ public class InputTest {
 
     private ViewAction key(int keyCode) {
         if (pressKeyImplementation == PressKeyImplementation.PRESS_KEY) {
-            return pressKey(keyCode);
+            return new ViewAction() {
+                private final ViewAction delegate = pressKey(keyCode);
+
+                @Override
+                public Matcher<View> getConstraints() {
+                    return delegate.getConstraints();
+                }
+
+                @Override
+                public String getDescription() {
+                    return delegate.getDescription();
+                }
+
+                @Override
+                public void perform(UiController uiController, View view) {
+                    delegate.perform(uiController, view);
+                    uiController.loopMainThreadForAtLeast(100);
+                }
+            };
         }
         if (pressKeyImplementation == PressKeyImplementation.ON_KEY_LISTENER) {
             return passKeyToOnKeyListener(keyCode);
@@ -654,7 +672,7 @@ public class InputTest {
 
             @Override
             public String getDescription() {
-                return "Select text";
+                return "passKeyToOnKeyListener: " + keyCode;
             }
 
             @Override
@@ -668,6 +686,7 @@ public class InputTest {
                 KeyEvent upEvent =
                         new KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0, 0);
                 ic.onKey(view, keyCode, upEvent);
+                uiController.loopMainThreadForAtLeast(100);
             }
         };
     }
