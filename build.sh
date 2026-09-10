@@ -201,7 +201,7 @@ then
     package_name=gamesdk-tests
     mkdir -p "$dist_dir/$package_name/apks/test"
 
-    ./gradlew :game-controller:assembleAndroidTest :game-controller:assembleDebug \
+    ./gradlew :games-controller:assembleAndroidTest :games-controller:assembleDebug \
               :game-activity:assembleAndroidTest :game-activity:assembleDebug \
               :game-text-input:assembleAndroidTest :game-text-input:assembleDebug \
               -Plibraries=paddleboat,game_activity,game_text_input \
@@ -209,6 +209,9 @@ then
               -PdistPath="$dist_dir" -PpackageName=$package_name
 
     find ../out_* -path "*/outputs/apk/*/*.apk" -exec cp -v {} "$dist_dir/$package_name/apks/test/" \;
+    cp -v test/tradefed/*.config "$dist_dir/$package_name/apks/test/"
+    (cd "$dist_dir/$package_name/apks/test" && zip -j "$dist_dir/androidTest.zip" *.apk *.config)
+    cp -v "$dist_dir/androidTest.zip" "$dist_dir/$package_name/androidTest.zip"
     exit
 elif [[ $1 == "hostUnitTests" ]]
 then
