@@ -38,6 +38,7 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
 import android.util.Log;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
