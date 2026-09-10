@@ -1,5 +1,6 @@
 package com.google.androidgamesdk
 
+import java.io.File
 import org.gradle.api.Project
 
 class CMakeWrapper {
@@ -48,7 +49,6 @@ class CMakeWrapper {
                 toolchain.getCMakePath(),
                 buildFolders.projectFolder,
                 "-DCMAKE_BUILD_TYPE=" + buildOptions.buildType,
-                "-DCMAKE_CXX_FLAGS=$cxx_flags",
                 "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=" + buildFolders.outputFolder,
                 "-DGAMESDK_THREAD_CHECKS=" +
@@ -58,6 +58,7 @@ class CMakeWrapper {
             )
 
             if (buildOptions.arch != "host") {
+                cmdLine.add("-DCMAKE_CXX_FLAGS=$cxx_flags")
                 cmdLine.addAll(listOf(
                     "-DANDROID_PLATFORM=android-$androidVersion",
                     "-DCMAKE_ANDROID_NDK=$ndkPath",
@@ -75,8 +76,34 @@ class CMakeWrapper {
                 val sysCc = System.getenv("CC")
                 val sysCxx = System.getenv("CXX")
                 if (sysCc.isNullOrEmpty() || sysCxx.isNullOrEmpty()) {
-                    cmdLine.add("-DCMAKE_C_COMPILER=${toolchain.findNDKTool("clang")}")
-                    cmdLine.add("-DCMAKE_CXX_COMPILER=${toolchain.findNDKTool("clang++")}")
+                    val clangC = toolchain.findNDKTool("clang")
+                    val clangCxx = toolchain.findNDKTool("clang++")
+                    cmdLine.add("-DCMAKE_C_COMPILER=$clangC")
+                    cmdLine.add("-DCMAKE_CXX_COMPILER=$clangCxx")
+
+                    val llvmRoot = File(clangCxx).parentFile?.parentFile
+                    val hostInclude = File(llvmRoot, "sysroot/usr/include/c++/v1")
+                    val hostLib = File(llvmRoot, "lib/x86_64-unknown-linux-gnu")
+
+                    var hostCxxFlags = "$cxx_flags -stdlib=libc++"
+                    var hostLinkerFlags = "-stdlib=libc++ -static-libstdc++"
+                    if (hostInclude.exists() && hostLib.exists()) {
+                        // When compiling for host GNU/Linux using NDK Clang, headers default to
+                        // the host system GCC/libstdc++ headers. Provide the NDK LLVM libc++
+                        // headers directly via -isystem.
+                        // Suppress __config_site to override _LIBCPP_ABI_NAMESPACE from __ndk1
+                        // back to __1, matching the host static library libc++.a symbols.
+                        hostCxxFlags += " -isystem ${hostInclude.path} " +
+                            "-D_LIBCPP___CONFIG_SITE " +
+                            "-D_LIBCPP_ABI_VERSION=1 " +
+                            "-D_LIBCPP_ABI_NAMESPACE=__1 " +
+                            "-D_LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS " +
+                            "-D_LIBCPP_HARDENING_MODE_DEFAULT=2 " +
+                            "-D_LIBCPP_PSTL_CPU_BACKEND_THREAD"
+                        hostLinkerFlags += " -L${hostLib.path}"
+                    }
+                    cmdLine.add("-DCMAKE_CXX_FLAGS=$hostCxxFlags")
+                    cmdLine.add("-DCMAKE_EXE_LINKER_FLAGS=$hostLinkerFlags")
                 } else {
                     cmdLine.add("-DCMAKE_C_COMPILER=$sysCc")
                     cmdLine.add("-DCMAKE_CXX_COMPILER=$sysCxx")
