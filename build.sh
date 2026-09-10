@@ -7,6 +7,10 @@
 #   Builds the gamesdk with Swappy and the Swappy samples
 # ./build.sh full
 #   Builds the gamesdk with Swappy, Tuning Fork, Oboe and all samples
+# ./build.sh tests
+#   Runs connected instrumentation tests on attached device
+# ./build.sh testApks
+#   Assembles instrumentation and debug test APKs and exports to dist directory
 # ./build.sh hostUnitTests
 #   Runs the host C++ unit tests (swappy_host_test) with prebuilt JDK environment
 
@@ -185,10 +189,26 @@ then
     ./gradlew spdxSbom generateAttestationManifest -PpackageName=$package_name -PdistPath="$dist_dir" -Plibraries=swappy,tuningfork,game_activity,game_text_input,paddleboat,memory_advice
 elif [[ $1 == "tests" ]]
 then
+    export GRADLE_OPTS="-Dorg.gradle.jvmargs=\"-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:-UseContainerSupport\" $GRADLE_OPTS"
     package_name=gamesdk-tests
     ./gradlew :game-controller:connectedAndroidTest -Plibraries=paddleboat -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
-    # ./gradlew :game-frame-pacing:connectedAndroidTest -Plibraries=swappy -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
+    ./gradlew :game-activity:connectedAndroidTest -Plibraries=game_activity -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
     ./gradlew :game-text-input:connectedAndroidTest -Plibraries=game_text_input,game_activity -PincludeSampleSources -PincludeSampleArtifacts -PdistPath="$dist_dir" -PpackageName=$package_name
+    exit
+elif [[ $1 == "testApks" ]]
+then
+    export GRADLE_OPTS="-Dorg.gradle.jvmargs=\"-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:-UseContainerSupport\" $GRADLE_OPTS"
+    package_name=gamesdk-tests
+    mkdir -p "$dist_dir/$package_name/apks/test"
+
+    ./gradlew :game-controller:assembleAndroidTest :game-controller:assembleDebug \
+              :game-activity:assembleAndroidTest :game-activity:assembleDebug \
+              :game-text-input:assembleAndroidTest :game-text-input:assembleDebug \
+              -Plibraries=paddleboat,game_activity,game_text_input \
+              -PincludeSampleSources -PincludeSampleArtifacts \
+              -PdistPath="$dist_dir" -PpackageName=$package_name
+
+    find ../out_* -path "*/outputs/apk/*/*.apk" -exec cp -v {} "$dist_dir/$package_name/apks/test/" \;
     exit
 elif [[ $1 == "hostUnitTests" ]]
 then
