@@ -19,7 +19,7 @@ plugins {
     id 'com.android.library'
 }
 
-def buildTest =  gradle.startParameter.taskNames.join(' ').contains('connectedAndroidTest')
+def buildTest =  gradle.startParameter.taskNames.join(' ').contains('AndroidTest')
         || gradle.startParameter.taskNames.join(' ').contains('createDebugCoverageReport')
 
 buildDir="../../out_paddleboat"
