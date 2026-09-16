@@ -208,7 +208,15 @@ then
               -PincludeSampleSources -PincludeSampleArtifacts \
               -PdistPath="$dist_dir" -PpackageName=$package_name
 
+    pushd test/swappy/testapp
+    ../../../gradlew :app:assembleDebug :app:assembleAndroidTest
+    popd
+
     find ../out_* -path "*/outputs/apk/*/*.apk" -exec cp -v {} "$dist_dir/$package_name/apks/test/" \;
+    cp -v test/swappy/testapp/app/build/outputs/apk/debug/app-debug.apk \
+        "$dist_dir/$package_name/apks/test/swappy-debug.apk"
+    cp -v test/swappy/testapp/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+        "$dist_dir/$package_name/apks/test/swappy-debug-androidTest.apk"
     cp -v test/tradefed/*.config "$dist_dir/$package_name/apks/test/"
     (cd "$dist_dir/$package_name/apks/test" && zip -j "$dist_dir/androidTest.zip" *.apk *.config)
     cp -v "$dist_dir/androidTest.zip" "$dist_dir/$package_name/androidTest.zip"

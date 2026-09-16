@@ -29,7 +29,13 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions" )
 
 set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384" )
 
-set(ANDROID_GTEST_DIR "../../../external/googletest")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest")
+  set(ANDROID_GTEST_DIR "../../../external/googletest")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../external/googletest")
+  set(ANDROID_GTEST_DIR "../../../../../external/googletest")
+else()
+  message(FATAL_ERROR "googletest directory not found")
+endif()
 set(BUILD_GMOCK ON)
 set(INSTALL_GTEST OFF)
 add_subdirectory("${ANDROID_GTEST_DIR}"
