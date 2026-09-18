@@ -29,16 +29,25 @@ public:
     using ATrace_beginSection_type = void (*)(const char* sectionName);
     using ATrace_endSection_type = void (*)();
     using ATrace_isEnabled_type = bool (*)();
+    using ATrace_beginAsyncSection_type = void (*)(const char* sectionName, int32_t cookie);
+    using ATrace_endAsyncSection_type = void (*)(const char* sectionName, int32_t cookie);
+    using ATrace_setCounter_type = void (*)(const char* counterName, int64_t counterValue);
 
     Trace() {
         __android_log_print(ANDROID_LOG_INFO, "Trace", "Unable to load NDK tracing APIs");
     }
 
     Trace(ATrace_beginSection_type beginSection, ATrace_endSection_type endSection,
-          ATrace_isEnabled_type isEnabled)
+          ATrace_isEnabled_type isEnabled,
+          ATrace_beginAsyncSection_type beginAsyncSection = nullptr,
+          ATrace_endAsyncSection_type endAsyncSection = nullptr,
+          ATrace_setCounter_type setCounter = nullptr)
           : ATrace_beginSection(beginSection),
             ATrace_endSection(endSection),
-            ATrace_isEnabled(isEnabled) {}
+            ATrace_isEnabled(isEnabled),
+            ATrace_beginAsyncSection(beginAsyncSection),
+            ATrace_endAsyncSection(endAsyncSection),
+            ATrace_setCounter(setCounter) {}
 
     static std::unique_ptr<Trace> create() {
         void* libandroid = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
@@ -64,7 +73,15 @@ public:
             return std::make_unique<Trace>();
         }
 
-        return std::make_unique<Trace>(beginSection, endSection, isEnabled);
+        auto beginAsyncSection = reinterpret_cast<ATrace_beginAsyncSection_type>(
+                dlsym(libandroid, "ATrace_beginAsyncSection"));
+        auto endAsyncSection = reinterpret_cast<ATrace_endAsyncSection_type>(
+                dlsym(libandroid, "ATrace_endAsyncSection"));
+        auto setCounter =
+                reinterpret_cast<ATrace_setCounter_type>(dlsym(libandroid, "ATrace_setCounter"));
+
+        return std::make_unique<Trace>(beginSection, endSection, isEnabled, beginAsyncSection,
+                                       endAsyncSection, setCounter);
     }
 
     bool isAvailable() const {
@@ -91,6 +108,24 @@ public:
         ATrace_endSection();
     }
 
+    void beginAsyncSection(const char* name, int32_t cookie) const {
+        if (ATrace_beginAsyncSection) {
+            ATrace_beginAsyncSection(name, cookie);
+        }
+    }
+
+    void endAsyncSection(const char* name, int32_t cookie) const {
+        if (ATrace_endAsyncSection) {
+            ATrace_endAsyncSection(name, cookie);
+        }
+    }
+
+    void setCounter(const char* name, int64_t value) const {
+        if (ATrace_setCounter) {
+            ATrace_setCounter(name, value);
+        }
+    }
+
     static Trace* getInstance() {
         static std::unique_ptr<Trace> trace = Trace::create();
         return trace.get();
@@ -100,6 +135,9 @@ private:
     const ATrace_beginSection_type ATrace_beginSection = nullptr;
     const ATrace_endSection_type ATrace_endSection = nullptr;
     const ATrace_isEnabled_type ATrace_isEnabled = nullptr;
+    const ATrace_beginAsyncSection_type ATrace_beginAsyncSection = nullptr;
+    const ATrace_endAsyncSection_type ATrace_endAsyncSection = nullptr;
+    const ATrace_setCounter_type ATrace_setCounter = nullptr;
 };
 
 struct ScopedTrace {

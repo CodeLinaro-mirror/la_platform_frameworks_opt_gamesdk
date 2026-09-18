@@ -267,6 +267,9 @@ then
     pushd third_party/cube
     ./gradlew ":app:assembleDebug"
     popd
+    pushd samples/SwappyTest
+    ./gradlew ":app:assembleDebug"
+    popd
 
     # Add the memory_advice samples
     pushd samples/memory_advice/hogger/

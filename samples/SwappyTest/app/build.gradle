@@ -1,0 +1,99 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+apply from: '../../../ndk_version.gradle'
+
+android {
+    namespace "com.samples.swappytest"
+    compileSdk 35
+    ndkVersion agdkNdkVersion
+
+    defaultConfig {
+        applicationId "com.samples.swappytest"
+        minSdk      24
+        targetSdk   35
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
+    }
+    buildTypes {
+        debug {
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+    lintOptions {
+        abortOnError false
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+    buildFeatures {
+        prefab true
+        buildConfig true
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation project(':games-frame-pacing')
+}
+
+abstract class HostUnitTestsTask extends DefaultTask {
+    @javax.inject.Inject
+    abstract org.gradle.process.ExecOperations getExecOperations()
+
+    @InputDirectory
+    final DirectoryProperty mainSourceDir = project.objects.directoryProperty()
+
+    @InputDirectory
+    final DirectoryProperty testSourceDir = project.objects.directoryProperty()
+
+    @OutputDirectory
+    final DirectoryProperty hostBuildDir = project.objects.directoryProperty()
+
+    @TaskAction
+    void runTests() {
+        File buildDirFile = hostBuildDir.get().asFile
+        buildDirFile.mkdirs()
+        execOperations.exec {
+            commandLine 'cmake', '-S', testSourceDir.get().asFile.absolutePath, '-B', buildDirFile.absolutePath
+        }
+        execOperations.exec {
+            commandLine 'cmake', '--build', buildDirFile.absolutePath
+        }
+        execOperations.exec {
+            commandLine 'ctest', '--test-dir', buildDirFile.absolutePath, '--output-on-failure'
+        }
+    }
+}
+
+tasks.register('hostUnitTests', HostUnitTestsTask) {
+    description = 'Builds and runs the SwappyTest host C++ unit tests.'
+    group = 'verification'
+    mainSourceDir.set(layout.projectDirectory.dir('src/main/cpp'))
+    testSourceDir.set(layout.projectDirectory.dir('src/test/cpp'))
+    hostBuildDir.set(layout.buildDirectory.dir('host_test'))
+}
+
