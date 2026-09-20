@@ -106,8 +106,14 @@ class FrameDurations {
 public:
     using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
-    void add(FrameDuration frameDuration) {
-        const auto now = std::chrono::steady_clock::now();
+    // The caller supplies the sample timestamp rather than add() reading
+    // steady_clock::now() itself, so host tests can drive a multi-minute
+    // timeline in microseconds. Timestamps must be non-decreasing across
+    // calls: the eviction loop below and hasEnoughSamples() both measure
+    // spans between stored samples and will under-report the window if time
+    // goes backwards. SwappyCommon reads the clock under mMutex, which gives
+    // this ordering for free on the production path.
+    void add(FrameDuration frameDuration, TimePoint now) {
         mFrames.push_back({now, frameDuration});
         mFrameDurationsSum += frameDuration;
         if (frameDuration.frameMiss()) {

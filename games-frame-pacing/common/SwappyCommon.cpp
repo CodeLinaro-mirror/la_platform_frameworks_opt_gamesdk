@@ -475,7 +475,7 @@ void SwappyCommon::addFrameDuration(FrameDuration duration) {
     SWAPPY_LOGV("frame %s", duration.frameMiss() ? "MISS" : "on time");
 
     std::lock_guard<std::mutex> lock(mMutex);
-    mFrameDurations.add(duration);
+    mFrameDurations.add(duration, std::chrono::steady_clock::now());
 }
 
 bool SwappyCommon::swapSlower(const FrameDuration& averageFrameTime, const nanoseconds& upperBound,
