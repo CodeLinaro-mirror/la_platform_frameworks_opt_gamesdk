@@ -153,11 +153,8 @@ private:
     void addFrameDuration(FrameDuration duration);
     std::chrono::nanoseconds wakeClient(std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
 
-    bool swapFaster(int newSwapInterval) REQUIRES(mMutex);
-
-    bool swapSlower(const FrameDuration& averageFrameTime,
-                    const std::chrono::nanoseconds& upperBound, int newSwapInterval)
-            REQUIRES(mMutex);
+    // The swap interval ladder itself is in SwapIntervalLadder.h; this is the
+    // glue that holds the lock, feeds it state and applies its decision.
     bool updateSwapInterval();
     void preSwapBuffersCallbacks();
     void postSwapBuffersCallbacks();
@@ -173,8 +170,6 @@ private:
     void waitOneFrame();
     void setPreferredDisplayModeId(int index);
     void setPreferredRefreshPeriod(std::chrono::nanoseconds frameTime) REQUIRES(mMutex);
-    int calculateSwapInterval(std::chrono::nanoseconds frameTime,
-                              std::chrono::nanoseconds refreshPeriod);
     void updateDisplayTimings();
 
     // Waits for the next frame, considering both Choreographer and the prior
@@ -182,11 +177,6 @@ private:
     bool waitForNextFrame(const SwapHandlers& h);
 
     void onRefreshRateChanged();
-
-    inline bool swapFasterCondition() {
-        return mSwapDuration <=
-                mCommonSettings.refreshPeriod * (mAutoSwapInterval - 1) + DURATION_ROUNDING_MARGIN;
-    }
 
     const jobject mJactivity;
     void* mLibAndroid = nullptr;
@@ -217,14 +207,9 @@ private:
     bool mAutoSwapIntervalEnabled GUARDED_BY(mMutex) = true;
     bool mPipelineModeAutoMode GUARDED_BY(mMutex) = true;
 
-    static constexpr std::chrono::nanoseconds DURATION_ROUNDING_MARGIN = 1us;
-    static constexpr int NON_PIPELINE_PERCENT = 50; // 50%
-    static constexpr int FRAME_DROP_THRESHOLD = 10; // 10%
-
     std::chrono::nanoseconds mSwapDuration = 0ns;
     int32_t mAutoSwapInterval;
     std::atomic<std::chrono::nanoseconds> mAutoSwapIntervalThreshold = {50ms}; // 20FPS
-    static constexpr std::chrono::nanoseconds REFRESH_RATE_MARGIN = 500ns;
 
     std::chrono::steady_clock::time_point mStartFrameTime;
 

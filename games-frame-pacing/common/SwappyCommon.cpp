@@ -17,10 +17,10 @@
 #include "SwappyCommon.h"
 
 #include <cmath>
-#include <cstdlib>
 #include <cstring>
 
 #include "Settings.h"
+#include "SwapIntervalLadder.h"
 #include "Thread.h"
 #include "Trace.h"
 
@@ -31,12 +31,6 @@ namespace swappy {
 
 using std::chrono::milliseconds;
 using std::chrono::nanoseconds;
-
-// NB These are only needed for C++14
-constexpr nanoseconds SwappyCommon::DURATION_ROUNDING_MARGIN;
-constexpr nanoseconds SwappyCommon::REFRESH_RATE_MARGIN;
-constexpr int SwappyCommon::NON_PIPELINE_PERCENT;
-constexpr int SwappyCommon::FRAME_DROP_THRESHOLD;
 
 #if __ANDROID_API__ < 30
 // Define ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_* to allow compilation on older
@@ -478,60 +472,6 @@ void SwappyCommon::addFrameDuration(FrameDuration duration) {
     mFrameDurations.add(duration, std::chrono::steady_clock::now());
 }
 
-bool SwappyCommon::swapSlower(const FrameDuration& averageFrameTime, const nanoseconds& upperBound,
-                              int newSwapInterval) {
-    bool swappedSlower = false;
-    SWAPPY_LOGV("Rendering takes too much time for the given config");
-
-    const auto frameFitsUpperBound = averageFrameTime.getTime(PipelineMode::On) <= upperBound;
-    const auto swapDurationWithinThreshold = mCommonSettings.refreshPeriod * mAutoSwapInterval <=
-            mAutoSwapIntervalThreshold.load() + FRAME_MARGIN;
-
-    // Check if turning on pipeline is not enough
-    if ((mPipelineMode == PipelineMode::On || !frameFitsUpperBound) &&
-        swapDurationWithinThreshold) {
-        int originalAutoSwapInterval = mAutoSwapInterval;
-        if (newSwapInterval > mAutoSwapInterval) {
-            mAutoSwapInterval = newSwapInterval;
-        } else {
-            mAutoSwapInterval++;
-        }
-        if (mAutoSwapInterval != originalAutoSwapInterval) {
-            SWAPPY_LOGV("Changing Swap interval to %d from %d", mAutoSwapInterval,
-                        originalAutoSwapInterval);
-            swappedSlower = true;
-        }
-    }
-
-    if (mPipelineMode == PipelineMode::Off) {
-        SWAPPY_LOGV("turning on pipelining");
-        mPipelineMode = PipelineMode::On;
-    }
-
-    return swappedSlower;
-}
-
-bool SwappyCommon::swapFaster(int newSwapInterval) {
-    bool swappedFaster = false;
-    int originalAutoSwapInterval = mAutoSwapInterval;
-    while (newSwapInterval < mAutoSwapInterval && swapFasterCondition()) {
-        mAutoSwapInterval--;
-    }
-
-    if (mAutoSwapInterval != originalAutoSwapInterval) {
-        SWAPPY_LOGV("Rendering is much shorter for the given config");
-        SWAPPY_LOGV("Changing Swap interval to %d from %d", mAutoSwapInterval,
-                    originalAutoSwapInterval);
-        // since we changed the swap interval, we may need to turn on pipeline
-        // mode
-        SWAPPY_LOGV("Turning on pipelining");
-        mPipelineMode = PipelineMode::On;
-        swappedFaster = true;
-    }
-
-    return swappedFaster;
-}
-
 bool SwappyCommon::updateSwapInterval() {
     std::lock_guard<std::mutex> lock(mMutex);
 
@@ -547,69 +487,58 @@ bool SwappyCommon::updateSwapInterval() {
     }
     if (!mAutoSwapIntervalEnabled) return false;
 
-    if (!mFrameDurations.hasEnoughSamples()) return false;
+    const auto input =
+            makeLadderInput(mFrameDurations, mCommonSettings.refreshPeriod, mSwapDuration,
+                            mAutoSwapIntervalThreshold.load(), mPipelineModeAutoMode);
+    if (!input) return false;
 
-    const auto averageFrameTime = mFrameDurations.getAverageFrameTime();
-    const auto pipelineFrameTime = averageFrameTime.getTime(PipelineMode::On);
-    const auto nonPipelineFrameTime = averageFrameTime.getTime(PipelineMode::Off);
-
-    // calculate the new swap interval based on average frame time assume we are
-    // in pipeline mode (prefer higher swap interval rather than turning off
-    // pipeline mode)
-    const int newSwapInterval =
-            calculateSwapInterval(pipelineFrameTime, mCommonSettings.refreshPeriod);
-
-    // Define upper and lower bounds based on the swap duration
-    const nanoseconds upperBoundForThisRefresh = mCommonSettings.refreshPeriod * mAutoSwapInterval;
-    const nanoseconds lowerBoundForThisRefresh =
-            mCommonSettings.refreshPeriod * (mAutoSwapInterval - 1) - FRAME_MARGIN;
-
-    const int missedFramesPercent = mFrameDurations.getMissedFramePercent();
+    const LadderState current = {mAutoSwapInterval, mPipelineMode};
+    const LadderDecision decision = decideSwapInterval(current, *input);
 
     SWAPPY_LOGV("mPipelineMode = %d", static_cast<int>(mPipelineMode));
-    SWAPPY_LOGV("Average cpu frame time = %.2f", (averageFrameTime.getCpuTime().count()) / 1e6f);
-    SWAPPY_LOGV("Average gpu frame time = %.2f", (averageFrameTime.getGpuTime().count()) / 1e6f);
-    SWAPPY_LOGV("upperBound = %.2f", upperBoundForThisRefresh.count() / 1e6f);
-    SWAPPY_LOGV("lowerBound = %.2f", lowerBoundForThisRefresh.count() / 1e6f);
-    SWAPPY_LOGV("frame missed = %d%%", missedFramesPercent);
+    SWAPPY_LOGV("Average cpu frame time = %.2f",
+                (input->averageFrameTime.getCpuTime().count()) / 1e6f);
+    SWAPPY_LOGV("Average gpu frame time = %.2f",
+                (input->averageFrameTime.getGpuTime().count()) / 1e6f);
+    SWAPPY_LOGV("upperBound = %.2f", decision.upperBound.count() / 1e6f);
+    SWAPPY_LOGV("lowerBound = %.2f", decision.lowerBound.count() / 1e6f);
+    SWAPPY_LOGV("frame missed = %d%%", input->missedFramesPercent);
+    SWAPPY_LOGV("pipelineFrameTime = %.2f", decision.preferredRefreshPeriodHint.count() / 1e6f);
 
-    bool configChanged = false;
-    SWAPPY_LOGV("pipelineFrameTime = %.2f", pipelineFrameTime.count() / 1e6f);
-    const auto nonPipelinePercent = (100.f + NON_PIPELINE_PERCENT) / 100.f;
-
-    // Make sure the frame time fits in the current config to avoid missing
-    // frames
-    if (missedFramesPercent > FRAME_DROP_THRESHOLD) {
-        if (swapSlower(averageFrameTime, upperBoundForThisRefresh, newSwapInterval))
-            configChanged = true;
+    switch (decision.action) {
+        case LadderAction::SwapSlower:
+            SWAPPY_LOGV("Rendering takes too much time for the given config");
+            break;
+        case LadderAction::SwapFaster:
+            SWAPPY_LOGV("Rendering is much shorter for the given config");
+            break;
+        case LadderAction::PipelineOff:
+            SWAPPY_LOGV("Rendering time fits the current swap interval without pipelining");
+            break;
+        case LadderAction::None:
+            break;
+    }
+    if (decision.next.autoSwapInterval != mAutoSwapInterval) {
+        SWAPPY_LOGV("Changing Swap interval to %d from %d", decision.next.autoSwapInterval,
+                    mAutoSwapInterval);
+    }
+    if (decision.next.pipelineMode != mPipelineMode) {
+        SWAPPY_LOGV("Turning %s pipelining",
+                    decision.next.pipelineMode == PipelineMode::On ? "on" : "off");
     }
 
-    // So we shouldn't miss any frames with this config but maybe we can go
-    // faster ? we check the pipeline frame time here as we prefer lower swap
-    // interval than no pipelining
-    else if (missedFramesPercent == 0 && swapFasterCondition() &&
-             pipelineFrameTime < lowerBoundForThisRefresh) {
-        if (swapFaster(newSwapInterval)) configChanged = true;
-    }
+    // Applied unconditionally: swapSlower() can restore pipelining without
+    // reporting a config change.
+    mAutoSwapInterval = decision.next.autoSwapInterval;
+    mPipelineMode = decision.next.pipelineMode;
 
-    // If we reached to this condition it means that we fit into the boundaries.
-    // However we might be in pipeline mode and we could turn it off if we still
-    // fit. To be very conservative, switch to non-pipeline if frame time * 50%
-    // fits
-    else if (mPipelineModeAutoMode && mPipelineMode == PipelineMode::On &&
-             nonPipelineFrameTime * nonPipelinePercent < upperBoundForThisRefresh) {
-        SWAPPY_LOGV("Rendering time fits the current swap interval without pipelining");
-        mPipelineMode = PipelineMode::Off;
-        configChanged = true;
-    }
-
-    if (configChanged) {
+    if (decision.configChanged) {
         mFrameDurations.clear();
     }
 
-    setPreferredRefreshPeriod(pipelineFrameTime);
+    setPreferredRefreshPeriod(decision.preferredRefreshPeriodHint);
 
-    return configChanged;
+    return decision.configChanged;
 }
 
 template <typename Tracers, typename Func>
@@ -712,18 +641,6 @@ void SwappyCommon::setPreferredDisplayModeId(int modeId) {
     mNextModeId = modeId;
     mDisplayManager->setPreferredDisplayModeId(modeId);
     SWAPPY_LOGV("setPreferredDisplayModeId set to %d", modeId);
-}
-
-int SwappyCommon::calculateSwapInterval(nanoseconds frameTime, nanoseconds refreshPeriod) {
-    if (frameTime < refreshPeriod) {
-        return 1;
-    }
-
-    auto div_result = div(frameTime.count(), refreshPeriod.count());
-    auto framesPerRefresh = div_result.quot;
-    auto framesPerRefreshRemainder = div_result.rem;
-
-    return (framesPerRefresh + (framesPerRefreshRemainder > REFRESH_RATE_MARGIN.count() ? 1 : 0));
 }
 
 void SwappyCommon::setPreferredRefreshPeriod(nanoseconds frameTime) {
