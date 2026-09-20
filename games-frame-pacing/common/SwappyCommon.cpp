@@ -33,13 +33,10 @@ using std::chrono::milliseconds;
 using std::chrono::nanoseconds;
 
 // NB These are only needed for C++14
-constexpr nanoseconds SwappyCommon::FrameDuration::MAX_DURATION;
-constexpr nanoseconds SwappyCommon::FRAME_MARGIN;
 constexpr nanoseconds SwappyCommon::DURATION_ROUNDING_MARGIN;
 constexpr nanoseconds SwappyCommon::REFRESH_RATE_MARGIN;
 constexpr int SwappyCommon::NON_PIPELINE_PERCENT;
 constexpr int SwappyCommon::FRAME_DROP_THRESHOLD;
-constexpr std::chrono::nanoseconds SwappyCommon::FrameDurations::FRAME_DURATION_SAMPLE_SECONDS;
 
 #if __ANDROID_API__ < 30
 // Define ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_* to allow compilation on older
@@ -471,47 +468,6 @@ nanoseconds SwappyCommon::getSwapDuration() {
     std::lock_guard<std::mutex> lock(mMutex);
     return mAutoSwapInterval * mCommonSettings.refreshPeriod;
 };
-
-void SwappyCommon::FrameDurations::add(FrameDuration frameDuration) {
-    const auto now = std::chrono::steady_clock::now();
-    mFrames.push_back({now, frameDuration});
-    mFrameDurationsSum += frameDuration;
-    if (frameDuration.frameMiss()) {
-        mMissedFrameCount++;
-    }
-
-    while (mFrames.size() >= 2 &&
-           now - (mFrames.begin() + 1)->first > FRAME_DURATION_SAMPLE_SECONDS) {
-        mFrameDurationsSum -= mFrames.front().second;
-        if (mFrames.front().second.frameMiss()) {
-            mMissedFrameCount--;
-        }
-        mFrames.pop_front();
-    }
-}
-
-bool SwappyCommon::FrameDurations::hasEnoughSamples() const {
-    return (!mFrames.empty()) &&
-            (mFrames.back().first - mFrames.front().first > FRAME_DURATION_SAMPLE_SECONDS);
-}
-
-SwappyCommon::FrameDuration SwappyCommon::FrameDurations::getAverageFrameTime() const {
-    if (hasEnoughSamples()) {
-        return mFrameDurationsSum / mFrames.size();
-    }
-
-    return {};
-}
-
-int SwappyCommon::FrameDurations::getMissedFramePercent() const {
-    return round(mMissedFrameCount * 100.0f / mFrames.size());
-}
-
-void SwappyCommon::FrameDurations::clear() {
-    mFrames.clear();
-    mFrameDurationsSum = {};
-    mMissedFrameCount = 0;
-}
 
 void SwappyCommon::addFrameDuration(FrameDuration duration) {
     SWAPPY_LOGV("cpuTime = %.2f", duration.getCpuTime().count() / 1e6f);
