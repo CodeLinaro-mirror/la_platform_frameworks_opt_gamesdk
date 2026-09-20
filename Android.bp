@@ -21,6 +21,7 @@ cc_test_host {
     srcs: [
         "test/swappy_host/swappy_host_test.cpp",
         "test/swappy_host/framedurations_test.cpp",
+        "test/swappy_host/swapintervalladder_test.cpp",
         "games-frame-pacing/common/Settings.cpp",
     ],
     include_dirs: [
