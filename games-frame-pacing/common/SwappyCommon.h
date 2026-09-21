@@ -20,7 +20,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <deque>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -28,6 +27,7 @@
 #include "CPUTracer.h"
 #include "ChoreographerFilter.h"
 #include "ChoreographerThread.h"
+#include "FrameDurations.h"
 #include "SwappyDisplayManager.h"
 #include "Thread.h"
 #include "swappy/swappyGL.h"
@@ -57,7 +57,9 @@ struct SwappyCommonSettings {
 // Common part between OpenGL and Vulkan implementations.
 class SwappyCommon {
 public:
-    enum class PipelineMode { Off, On };
+    // Aliased at class scope because SwappyGL.cpp and SwappyVkBase.cpp
+    // reference SwappyCommon::PipelineMode.
+    using PipelineMode = ::swappy::PipelineMode;
 
     // callbacks to be called during pre/post swap
     struct SwapHandlers {
@@ -144,74 +146,15 @@ protected:
     SwappyCommon(const SwappyCommonSettings& settings);
 
 private:
-    class FrameDuration {
-    public:
-        FrameDuration() = default;
-
-        FrameDuration(std::chrono::nanoseconds cpuTime, std::chrono::nanoseconds gpuTime,
-                      bool frameMissedDeadline)
-              : mCpuTime(cpuTime), mGpuTime(gpuTime), mFrameMissedDeadline(frameMissedDeadline) {
-            mCpuTime = std::min(mCpuTime, MAX_DURATION);
-            mGpuTime = std::min(mGpuTime, MAX_DURATION);
-        }
-
-        std::chrono::nanoseconds getCpuTime() const {
-            return mCpuTime;
-        }
-        std::chrono::nanoseconds getGpuTime() const {
-            return mGpuTime;
-        }
-
-        bool frameMiss() const {
-            return mFrameMissedDeadline;
-        }
-
-        std::chrono::nanoseconds getTime(PipelineMode pipeline) const {
-            if (mCpuTime == 0ns && mGpuTime == 0ns) {
-                return 0ns;
-            }
-
-            if (pipeline == PipelineMode::On) {
-                return std::max(mCpuTime, mGpuTime) + FRAME_MARGIN;
-            }
-
-            return mCpuTime + mGpuTime + FRAME_MARGIN;
-        }
-
-        FrameDuration& operator+=(const FrameDuration& other) {
-            mCpuTime += other.mCpuTime;
-            mGpuTime += other.mGpuTime;
-            return *this;
-        }
-
-        FrameDuration& operator-=(const FrameDuration& other) {
-            mCpuTime -= other.mCpuTime;
-            mGpuTime -= other.mGpuTime;
-            return *this;
-        }
-
-        friend FrameDuration operator/(FrameDuration lhs, int rhs) {
-            lhs.mCpuTime /= rhs;
-            lhs.mGpuTime /= rhs;
-            return lhs;
-        }
-
-    private:
-        std::chrono::nanoseconds mCpuTime = std::chrono::nanoseconds(0);
-        std::chrono::nanoseconds mGpuTime = std::chrono::nanoseconds(0);
-        bool mFrameMissedDeadline = false;
-
-        static constexpr std::chrono::nanoseconds MAX_DURATION = std::chrono::milliseconds(100);
-    };
+    // Aliased so the member declarations below can reference them unqualified.
+    using FrameDuration = ::swappy::FrameDuration;
+    using FrameDurations = ::swappy::FrameDurations;
 
     void addFrameDuration(FrameDuration duration);
     std::chrono::nanoseconds wakeClient(std::optional<std::chrono::nanoseconds> sfToVsyncDelay);
 
-    bool swapFaster(int newSwapInterval) REQUIRES(mMutex);
-
-    bool swapSlower(const FrameDuration& averageFrameTime,
-                    const std::chrono::nanoseconds& upperBound, int newSwapInterval)
-            REQUIRES(mMutex);
+    // The swap interval ladder itself is in SwapIntervalLadder.h; this is the
+    // glue that holds the lock, feeds it state and applies its decision.
     bool updateSwapInterval();
     void preSwapBuffersCallbacks();
     void postSwapBuffersCallbacks();
@@ -227,8 +170,6 @@ private:
     void waitOneFrame();
     void setPreferredDisplayModeId(int index);
     void setPreferredRefreshPeriod(std::chrono::nanoseconds frameTime) REQUIRES(mMutex);
-    int calculateSwapInterval(std::chrono::nanoseconds frameTime,
-                              std::chrono::nanoseconds refreshPeriod);
     void updateDisplayTimings();
 
     // Waits for the next frame, considering both Choreographer and the prior
@@ -236,11 +177,6 @@ private:
     bool waitForNextFrame(const SwapHandlers& h);
 
     void onRefreshRateChanged();
-
-    inline bool swapFasterCondition() {
-        return mSwapDuration <=
-                mCommonSettings.refreshPeriod * (mAutoSwapInterval - 1) + DURATION_ROUNDING_MARGIN;
-    }
 
     const jobject mJactivity;
     void* mLibAndroid = nullptr;
@@ -265,37 +201,15 @@ private:
     std::chrono::steady_clock::time_point mSwapTime;
 
     std::mutex mMutex;
-    class FrameDurations {
-    public:
-        void add(FrameDuration frameDuration);
-        bool hasEnoughSamples() const;
-        FrameDuration getAverageFrameTime() const;
-        int getMissedFramePercent() const;
-        void clear();
-
-    private:
-        static constexpr std::chrono::nanoseconds FRAME_DURATION_SAMPLE_SECONDS = 2s;
-
-        std::deque<std::pair<std::chrono::time_point<std::chrono::steady_clock>, FrameDuration>>
-                mFrames;
-        FrameDuration mFrameDurationsSum = {};
-        int mMissedFrameCount = 0;
-    };
 
     FrameDurations mFrameDurations GUARDED_BY(mMutex);
 
     bool mAutoSwapIntervalEnabled GUARDED_BY(mMutex) = true;
     bool mPipelineModeAutoMode GUARDED_BY(mMutex) = true;
 
-    static constexpr std::chrono::nanoseconds FRAME_MARGIN = 1ms;
-    static constexpr std::chrono::nanoseconds DURATION_ROUNDING_MARGIN = 1us;
-    static constexpr int NON_PIPELINE_PERCENT = 50; // 50%
-    static constexpr int FRAME_DROP_THRESHOLD = 10; // 10%
-
     std::chrono::nanoseconds mSwapDuration = 0ns;
     int32_t mAutoSwapInterval;
     std::atomic<std::chrono::nanoseconds> mAutoSwapIntervalThreshold = {50ms}; // 20FPS
-    static constexpr std::chrono::nanoseconds REFRESH_RATE_MARGIN = 500ns;
 
     std::chrono::steady_clock::time_point mStartFrameTime;
 
