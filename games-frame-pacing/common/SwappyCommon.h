@@ -28,6 +28,7 @@
 #include "ChoreographerFilter.h"
 #include "ChoreographerThread.h"
 #include "FrameDurations.h"
+#include "PacingImplementation.h"
 #include "SwappyDisplayManager.h"
 #include "Thread.h"
 #include "swappy/swappyGL.h"
@@ -291,6 +292,8 @@ private:
     bool mFramePacingToggleRequested GUARDED_BY(mMutex) = false;
     bool mFramePacingEnabled GUARDED_BY(mMutex) = true;
     bool mBlockingWaitEnabled GUARDED_BY(mMutex) = true;
+
+    std::unique_ptr<PacingImplementation> mPacingImpl = PacingImplementation::create();
 };
 
 } // namespace swappy

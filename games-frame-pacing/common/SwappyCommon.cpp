@@ -25,6 +25,7 @@
 #include "Trace.h"
 
 #define LOG_TAG "SwappyCommon"
+#include "ClassicPacingImpl.h"
 #include "SwappyLog.h"
 
 namespace swappy {
@@ -113,6 +114,10 @@ bool SwappyCommonSettings::getFromApp(JNIEnv* env, jobject jactivity, SwappyComm
     out->sfVsyncOffset = nanoseconds(sfVsyncOffsetNanos);
 
     return true;
+}
+
+std::unique_ptr<PacingImplementation> PacingImplementation::create() {
+    return std::make_unique<ClassicPacingImplementation>();
 }
 
 SwappyCommon::SwappyCommon(JNIEnv* env, jobject jactivity)
@@ -374,13 +379,18 @@ void SwappyCommon::updateDisplayTimings() {
         return;
     }
 
+    const TimingChange change{
+            .newRefreshPeriod = mNextTimingSettings.refreshPeriod,
+            .swapDuration = mSwapDuration,
+    };
     mWindowChanged = false;
     mCommonSettings.refreshPeriod = mNextTimingSettings.refreshPeriod;
 
-    const auto pipelineFrameTime = mFrameDurations.getAverageFrameTime().getTime(PipelineMode::On);
-    const auto swapDuration = pipelineFrameTime != 0ns ? pipelineFrameTime : mSwapDuration;
-    mAutoSwapInterval = calculateSwapInterval(swapDuration, mCommonSettings.refreshPeriod);
-    mPipelineMode = PipelineMode::On;
+    const PacingResult timingResult =
+            mPacingImpl->onDisplayTimingsChanged(mAutoSwapInterval, mPipelineMode, mFrameDurations,
+                                                 change);
+    mAutoSwapInterval = timingResult.autoSwapInterval;
+    mPipelineMode = timingResult.pipelineMode;
 
     const bool swapIntervalValid = mNextTimingSettings.refreshPeriod * mAutoSwapInterval >=
             mNextTimingSettings.swapDuration;
@@ -487,58 +497,21 @@ bool SwappyCommon::updateSwapInterval() {
     }
     if (!mAutoSwapIntervalEnabled) return false;
 
-    const auto input =
-            makeLadderInput(mFrameDurations, mCommonSettings.refreshPeriod, mSwapDuration,
-                            mAutoSwapIntervalThreshold.load(), mPipelineModeAutoMode);
-    if (!input) return false;
-
-    const LadderState current = {mAutoSwapInterval, mPipelineMode};
-    const LadderDecision decision = decideSwapInterval(current, *input);
-
-    SWAPPY_LOGV("mPipelineMode = %d", static_cast<int>(mPipelineMode));
-    SWAPPY_LOGV("Average cpu frame time = %.2f",
-                (input->averageFrameTime.getCpuTime().count()) / 1e6f);
-    SWAPPY_LOGV("Average gpu frame time = %.2f",
-                (input->averageFrameTime.getGpuTime().count()) / 1e6f);
-    SWAPPY_LOGV("upperBound = %.2f", decision.upperBound.count() / 1e6f);
-    SWAPPY_LOGV("lowerBound = %.2f", decision.lowerBound.count() / 1e6f);
-    SWAPPY_LOGV("frame missed = %d%%", input->missedFramesPercent);
-    SWAPPY_LOGV("pipelineFrameTime = %.2f", decision.preferredRefreshPeriodHint.count() / 1e6f);
-
-    switch (decision.action) {
-        case LadderAction::SwapSlower:
-            SWAPPY_LOGV("Rendering takes too much time for the given config");
-            break;
-        case LadderAction::SwapFaster:
-            SWAPPY_LOGV("Rendering is much shorter for the given config");
-            break;
-        case LadderAction::PipelineOff:
-            SWAPPY_LOGV("Rendering time fits the current swap interval without pipelining");
-            break;
-        case LadderAction::None:
-            break;
-    }
-    if (decision.next.autoSwapInterval != mAutoSwapInterval) {
-        SWAPPY_LOGV("Changing Swap interval to %d from %d", decision.next.autoSwapInterval,
-                    mAutoSwapInterval);
-    }
-    if (decision.next.pipelineMode != mPipelineMode) {
-        SWAPPY_LOGV("Turning %s pipelining",
-                    decision.next.pipelineMode == PipelineMode::On ? "on" : "off");
-    }
+    const auto result =
+            mPacingImpl->updateSwapInterval(mAutoSwapInterval, mPipelineMode, mFrameDurations,
+                                            mCommonSettings.refreshPeriod, mSwapDuration,
+                                            mAutoSwapIntervalThreshold.load(),
+                                            mPipelineModeAutoMode);
 
     // Applied unconditionally: swapSlower() can restore pipelining without
     // reporting a config change.
-    mAutoSwapInterval = decision.next.autoSwapInterval;
-    mPipelineMode = decision.next.pipelineMode;
-
-    if (decision.configChanged) {
-        mFrameDurations.clear();
+    mAutoSwapInterval = result.autoSwapInterval;
+    mPipelineMode = result.pipelineMode;
+    if (result.preferredRefreshPeriodHint.count() > 0) {
+        setPreferredRefreshPeriod(result.preferredRefreshPeriodHint);
     }
 
-    setPreferredRefreshPeriod(decision.preferredRefreshPeriodHint);
-
-    return decision.configChanged;
+    return result.configChanged;
 }
 
 template <typename Tracers, typename Func>
