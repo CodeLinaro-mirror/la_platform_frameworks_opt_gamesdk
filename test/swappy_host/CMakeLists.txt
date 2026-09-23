@@ -42,6 +42,7 @@ include_directories(
 
 add_executable(swappy_host_test
   swappy_host_test.cpp
+  classicpacingimpl_test.cpp
   framedurations_test.cpp
   swapintervalladder_test.cpp
   ../../games-frame-pacing/common/Settings.cpp
