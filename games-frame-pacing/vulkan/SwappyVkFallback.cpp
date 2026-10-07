@@ -67,7 +67,7 @@ VkResult SwappyVkFallback::doQueuePresent(VkQueue queue, uint32_t queueFamilyInd
     VkSemaphore semaphore;
     result = injectFence(queue, pPresentInfo, &semaphore);
     if (result) {
-        SWAPPY_LOGE("Failed to vkQueueSubmit %d", result);
+        SWAPPY_LOGE("Failed to inject present fence %d", result);
         return result;
     }
 

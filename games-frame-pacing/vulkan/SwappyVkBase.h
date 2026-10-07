@@ -159,9 +159,17 @@ public:
 protected:
     struct VkSync {
         VkFence fence;
-        VkSemaphore semaphore;
         VkCommandBuffer command;
         VkEvent event;
+    };
+
+    struct SwapchainImageSemaphore {
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        // Fence of the last Swappy submission that signaled |semaphore|. A re-acquired image can
+        // come back before that submission retires (e.g. Android returns a dropped MAILBOX buffer
+        // with its pending acquire fence), so |semaphore| is not signaled again, and the frame is
+        // presented unpaced, until this fence signals. Cleared once the fence is seen signaled.
+        VkFence pendingFence = VK_NULL_HANDLE;
     };
 
     struct ThreadContext {
@@ -199,6 +207,10 @@ protected:
 
     // Holds VKSync objects that were signaled
     std::map<VkQueue, std::list<VkSync>> mSignaledSyncs;
+
+    // Holds present wait semaphores indexed by swapchain image index so a semaphore
+    // is only reused after the same swapchain image is re-acquired.
+    std::map<uint32_t, SwapchainImageSemaphore> mSwapchainImageSemaphores;
 
     std::map<VkQueue, VkCommandPool> mCommandPool;
     std::map<VkQueue, std::unique_ptr<ThreadContext>> mThreads;

@@ -182,15 +182,6 @@ VkResult SwappyVkBase::initializeVkSyncObjects(VkQueue queue, uint32_t queueFami
             return res;
         }
 
-        VkSemaphoreCreateInfo semaphore_ci = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                                              .pNext = NULL,
-                                              .flags = 0};
-        res = vkCreateSemaphore(mDevice, &semaphore_ci, NULL, &sync.semaphore);
-        if (res) {
-            SWAPPY_LOGE("failed to create semaphore: %d", res);
-            return res;
-        }
-
         res = vkAllocateCommandBuffers(mDevice, &present_cmd_info, &sync.command);
         if (res) {
             SWAPPY_LOGE("vkAllocateCommandBuffers failed %d", res);
@@ -278,11 +269,15 @@ void SwappyVkBase::destroyVkSyncObjects() {
             syncList.pop_front();
             vkFreeCommandBuffers(mDevice, mCommandPool[it->first], 1, &sync.command);
             vkDestroyEvent(mDevice, sync.event, NULL);
-            vkDestroySemaphore(mDevice, sync.semaphore, NULL);
             vkResetFences(mDevice, 1, &sync.fence);
             vkDestroyFence(mDevice, sync.fence, NULL);
         }
     }
+
+    for (auto& [imageIndex, imageSemaphore] : mSwapchainImageSemaphores) {
+        vkDestroySemaphore(mDevice, imageSemaphore.semaphore, NULL);
+    }
+    mSwapchainImageSemaphores.clear();
 
     // Free destroy the command pools
     for (auto it = mCommandPool.begin(); it != mCommandPool.end(); it++) {
@@ -325,9 +320,45 @@ VkResult SwappyVkBase::injectFence(VkQueue queue, const VkPresentInfoKHR* pPrese
         return VK_SUCCESS;
     }
 
+    const uint32_t imageIndex = pPresentInfo->pImageIndices[0];
+    SwapchainImageSemaphore& imageSemaphore = mSwapchainImageSemaphores[imageIndex];
+    if (imageSemaphore.pendingFence != VK_NULL_HANDLE) {
+        // Don't re-signal the semaphore until the submission that last signaled it has retired;
+        // present this frame unpaced instead.
+        if (vkGetFenceStatus(mDevice, imageSemaphore.pendingFence) != VK_SUCCESS) {
+            *pSemaphore = VK_NULL_HANDLE;
+            return VK_SUCCESS;
+        }
+        imageSemaphore.pendingFence = VK_NULL_HANDLE;
+    }
+
+    if (imageSemaphore.semaphore == VK_NULL_HANDLE) {
+        const VkSemaphoreCreateInfo semaphoreCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = NULL,
+                .flags = 0,
+        };
+        // Output parameters are undefined on failure, so only store the handle on success.
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        VkResult res = vkCreateSemaphore(mDevice, &semaphoreCreateInfo, NULL, &semaphore);
+        if (res != VK_SUCCESS) {
+            SWAPPY_LOGE("failed to create semaphore: %d", res);
+            *pSemaphore = VK_NULL_HANDLE;
+            return res;
+        }
+        imageSemaphore.semaphore = semaphore;
+    }
+
     VkSync sync = mFreeSyncPool[queue].front();
     mFreeSyncPool[queue].pop_front();
 
+    // The fence is about to be reused, so whichever image it guarded has retired (it was just
+    // checked signaled) and must not stay blocked on the fence's next submission.
+    for (auto& [index, semaphoreEntry] : mSwapchainImageSemaphores) {
+        if (semaphoreEntry.pendingFence == sync.fence) {
+            semaphoreEntry.pendingFence = VK_NULL_HANDLE;
+        }
+    }
     vkResetFences(mDevice, 1, &sync.fence);
 
     VkPipelineStageFlags pipe_stage_flags;
@@ -341,9 +372,10 @@ VkResult SwappyVkBase::injectFence(VkQueue queue, const VkPresentInfoKHR* pPrese
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &sync.command;
     submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = &sync.semaphore;
+    submit_info.pSignalSemaphores = &imageSemaphore.semaphore;
     VkResult res = vkQueueSubmit(queue, 1, &submit_info, sync.fence);
-    *pSemaphore = sync.semaphore;
+    imageSemaphore.pendingFence = sync.fence;
+    *pSemaphore = imageSemaphore.semaphore;
 
     std::lock_guard<std::mutex> lock(mThreads[queue]->lock);
     mWaitingSyncs[queue].push_back(sync);

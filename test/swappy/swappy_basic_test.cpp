@@ -10,12 +10,16 @@
 #include <vulkan/vulkan.h>
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstring>
+#include <map>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include "ChoreographerShim.h"
@@ -1617,15 +1621,610 @@ TEST_F(AImageReaderVulkanSwapchainTest, CommandBufferFlags_DoNotUseSimultaneousB
     EXPECT_TRUE(gCommandBufferBeginCalled);
 
     // 4. Assert that the SIMULTANEOUS_USE_BIT (0x00000004) is absent
-    EXPECT_EQ(
-            gCapturedCommandBufferBeginInfo.flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-            0U);
+    EXPECT_EQ(gCapturedCommandBufferBeginInfo.flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+              0U);
 
     cleanupMockChoreographer();
     cleanUpSwapchainForTest();
 
     // 5. Restore default function provider
     SwappyVk_setFunctionProvider(nullptr);
+}
+
+namespace {
+
+template <typename Handle>
+Handle makeFakeVkHandle(uint64_t id) {
+    if constexpr (std::is_pointer_v<Handle>) {
+        return reinterpret_cast<Handle>(static_cast<uintptr_t>(id));
+    } else {
+        return static_cast<Handle>(id);
+    }
+}
+
+struct RecordedQueueSubmit {
+    VkSemaphore waitSemaphore = VK_NULL_HANDLE;
+    VkSemaphore signalSemaphore = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+};
+
+struct RecordedQueuePresent {
+    uint32_t imageIndex = UINT32_MAX;
+    VkSemaphore waitSemaphore = VK_NULL_HANDLE;
+};
+
+class FakeSwapchainPresentEnv {
+public:
+    FakeSwapchainPresentEnv() {
+        sActive = this;
+    }
+
+    ~FakeSwapchainPresentEnv() {
+        if (sActive == this) {
+            sActive = nullptr;
+        }
+    }
+
+    static const SwappyVkFunctionProvider* provider() {
+        return &kProvider;
+    }
+
+    VkSemaphore allocateAppAcquireSemaphore() {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return makeFakeVkHandle<VkSemaphore>(++mNextHandleId);
+    }
+
+    void holdNextFenceUnsignaled() {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mHoldNextSubmittedFenceUnsignaled = true;
+    }
+
+    void markHeldFenceSignaled(VkFence fence) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mFencesHeldUnsignaled.erase(fence);
+        mFenceSignaled[fence] = true;
+    }
+
+    void failNextCreateSemaphore(VkResult errorResult) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mNextCreateSemaphoreResult = errorResult;
+    }
+
+    void waitForPendingFenceWaiters() {
+        std::unique_lock<std::mutex> lock(mMutex);
+        mFenceWaitCv.wait(lock, [this]() {
+            return mWaitForFencesCompletedCount >= mSubmittedFenceCount;
+        });
+    }
+
+    std::vector<VkSemaphore> createdSemaphores() const {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return mCreatedSemaphores;
+    }
+
+    std::vector<VkSemaphore> destroyedSemaphores() const {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return mDestroyedSemaphores;
+    }
+
+    std::vector<RecordedQueueSubmit> submits() const {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return mSubmits;
+    }
+
+    std::vector<RecordedQueuePresent> presents() const {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return mPresents;
+    }
+
+private:
+    static bool providerInit() {
+        return true;
+    }
+
+    static void providerClose() {}
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeCreateCommandPool(VkDevice,
+                                                                const VkCommandPoolCreateInfo*,
+                                                                const VkAllocationCallbacks*,
+                                                                VkCommandPool* pCommandPool) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        *pCommandPool = makeFakeVkHandle<VkCommandPool>(++sActive->mNextHandleId);
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR void VKAPI_CALL fakeDestroyCommandPool(VkDevice, VkCommandPool,
+                                                             const VkAllocationCallbacks*) {}
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeCreateFence(VkDevice,
+                                                          const VkFenceCreateInfo* pCreateInfo,
+                                                          const VkAllocationCallbacks*,
+                                                          VkFence* pFence) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        VkFence fence = makeFakeVkHandle<VkFence>(++sActive->mNextHandleId);
+        sActive->mFenceSignaled[fence] = (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT) != 0;
+        *pFence = fence;
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR void VKAPI_CALL fakeDestroyFence(VkDevice, VkFence fence,
+                                                       const VkAllocationCallbacks*) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        sActive->mFenceSignaled.erase(fence);
+        sActive->mFencesHeldUnsignaled.erase(fence);
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeWaitForFences(VkDevice, uint32_t fenceCount,
+                                                            const VkFence* pFences, VkBool32,
+                                                            uint64_t) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        VkResult result = VK_SUCCESS;
+        for (uint32_t i = 0; i < fenceCount; ++i) {
+            if (sActive->mFencesHeldUnsignaled.count(pFences[i]) > 0) {
+                result = VK_TIMEOUT;
+            } else {
+                sActive->mFenceSignaled[pFences[i]] = true;
+            }
+        }
+        sActive->mWaitForFencesCompletedCount++;
+        sActive->mFenceWaitCv.notify_all();
+        return result;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeGetFenceStatus(VkDevice, VkFence fence) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        auto it = sActive->mFenceSignaled.find(fence);
+        if (it != sActive->mFenceSignaled.end() && it->second) {
+            return VK_SUCCESS;
+        }
+        return VK_NOT_READY;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeResetFences(VkDevice, uint32_t fenceCount,
+                                                          const VkFence* pFences) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        for (uint32_t i = 0; i < fenceCount; ++i) {
+            sActive->mFenceSignaled[pFences[i]] = false;
+        }
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeCreateSemaphore(VkDevice,
+                                                              const VkSemaphoreCreateInfo*,
+                                                              const VkAllocationCallbacks*,
+                                                              VkSemaphore* pSemaphore) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        if (sActive->mNextCreateSemaphoreResult != VK_SUCCESS) {
+            VkResult errorResult = sActive->mNextCreateSemaphoreResult;
+            sActive->mNextCreateSemaphoreResult = VK_SUCCESS;
+            // Output parameters are undefined after a failed call; model a driver that scribbles.
+            *pSemaphore = makeFakeVkHandle<VkSemaphore>(0xdeadbeef);
+            return errorResult;
+        }
+        VkSemaphore semaphore = makeFakeVkHandle<VkSemaphore>(++sActive->mNextHandleId);
+        sActive->mCreatedSemaphores.push_back(semaphore);
+        *pSemaphore = semaphore;
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR void VKAPI_CALL fakeDestroySemaphore(VkDevice, VkSemaphore semaphore,
+                                                           const VkAllocationCallbacks*) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        sActive->mDestroyedSemaphores.push_back(semaphore);
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeCreateEvent(VkDevice, const VkEventCreateInfo*,
+                                                          const VkAllocationCallbacks*,
+                                                          VkEvent* pEvent) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        *pEvent = makeFakeVkHandle<VkEvent>(++sActive->mNextHandleId);
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR void VKAPI_CALL fakeDestroyEvent(VkDevice, VkEvent,
+                                                       const VkAllocationCallbacks*) {}
+
+    static VKAPI_ATTR void VKAPI_CALL fakeCmdSetEvent(VkCommandBuffer, VkEvent,
+                                                      VkPipelineStageFlags) {}
+
+    static VKAPI_ATTR VkResult VKAPI_CALL
+    fakeAllocateCommandBuffers(VkDevice, const VkCommandBufferAllocateInfo* pAllocateInfo,
+                               VkCommandBuffer* pCommandBuffers) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; ++i) {
+            pCommandBuffers[i] = makeFakeVkHandle<VkCommandBuffer>(++sActive->mNextHandleId);
+        }
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR void VKAPI_CALL fakeFreeCommandBuffers(VkDevice, VkCommandPool, uint32_t,
+                                                             const VkCommandBuffer*) {}
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeBeginCommandBuffer(VkCommandBuffer,
+                                                                 const VkCommandBufferBeginInfo*) {
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeEndCommandBuffer(VkCommandBuffer) {
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL fakeQueueSubmit(VkQueue, uint32_t submitCount,
+                                                          const VkSubmitInfo* pSubmits,
+                                                          VkFence fence) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        RecordedQueueSubmit record{};
+        if (submitCount > 0 && pSubmits != nullptr) {
+            if (pSubmits[0].waitSemaphoreCount > 0 && pSubmits[0].pWaitSemaphores != nullptr) {
+                record.waitSemaphore = pSubmits[0].pWaitSemaphores[0];
+            }
+            if (pSubmits[0].signalSemaphoreCount > 0 && pSubmits[0].pSignalSemaphores != nullptr) {
+                record.signalSemaphore = pSubmits[0].pSignalSemaphores[0];
+            }
+        }
+        record.fence = fence;
+        sActive->mSubmits.push_back(record);
+
+        if (sActive->mHoldNextSubmittedFenceUnsignaled) {
+            sActive->mHoldNextSubmittedFenceUnsignaled = false;
+            sActive->mFencesHeldUnsignaled.insert(fence);
+            sActive->mFenceSignaled[fence] = false;
+        } else {
+            sActive->mFenceSignaled[fence] = true;
+        }
+        sActive->mSubmittedFenceCount++;
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR VkResult VKAPI_CALL
+    fakeQueuePresentKHR(VkQueue, const VkPresentInfoKHR* pPresentInfo) {
+        std::lock_guard<std::mutex> lock(sActive->mMutex);
+        RecordedQueuePresent record{};
+        if (pPresentInfo->swapchainCount > 0 && pPresentInfo->pImageIndices != nullptr) {
+            record.imageIndex = pPresentInfo->pImageIndices[0];
+        }
+        if (pPresentInfo->waitSemaphoreCount > 0 && pPresentInfo->pWaitSemaphores != nullptr) {
+            record.waitSemaphore = pPresentInfo->pWaitSemaphores[0];
+        }
+        sActive->mPresents.push_back(record);
+        return VK_SUCCESS;
+    }
+
+    static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL fakeGetDeviceProcAddr(VkDevice,
+                                                                          const char* name) {
+        if (strcmp(name, "vkQueuePresentKHR") == 0) {
+            return reinterpret_cast<PFN_vkVoidFunction>(fakeQueuePresentKHR);
+        }
+        return nullptr;
+    }
+
+    static void* providerGetProcAddr(const char* name) {
+        if (strcmp(name, "vkCreateCommandPool") == 0) {
+            return reinterpret_cast<void*>(fakeCreateCommandPool);
+        }
+        if (strcmp(name, "vkDestroyCommandPool") == 0) {
+            return reinterpret_cast<void*>(fakeDestroyCommandPool);
+        }
+        if (strcmp(name, "vkCreateFence") == 0) {
+            return reinterpret_cast<void*>(fakeCreateFence);
+        }
+        if (strcmp(name, "vkDestroyFence") == 0) {
+            return reinterpret_cast<void*>(fakeDestroyFence);
+        }
+        if (strcmp(name, "vkWaitForFences") == 0) {
+            return reinterpret_cast<void*>(fakeWaitForFences);
+        }
+        if (strcmp(name, "vkGetFenceStatus") == 0) {
+            return reinterpret_cast<void*>(fakeGetFenceStatus);
+        }
+        if (strcmp(name, "vkResetFences") == 0) {
+            return reinterpret_cast<void*>(fakeResetFences);
+        }
+        if (strcmp(name, "vkCreateSemaphore") == 0) {
+            return reinterpret_cast<void*>(fakeCreateSemaphore);
+        }
+        if (strcmp(name, "vkDestroySemaphore") == 0) {
+            return reinterpret_cast<void*>(fakeDestroySemaphore);
+        }
+        if (strcmp(name, "vkCreateEvent") == 0) {
+            return reinterpret_cast<void*>(fakeCreateEvent);
+        }
+        if (strcmp(name, "vkDestroyEvent") == 0) {
+            return reinterpret_cast<void*>(fakeDestroyEvent);
+        }
+        if (strcmp(name, "vkCmdSetEvent") == 0) {
+            return reinterpret_cast<void*>(fakeCmdSetEvent);
+        }
+        if (strcmp(name, "vkAllocateCommandBuffers") == 0) {
+            return reinterpret_cast<void*>(fakeAllocateCommandBuffers);
+        }
+        if (strcmp(name, "vkFreeCommandBuffers") == 0) {
+            return reinterpret_cast<void*>(fakeFreeCommandBuffers);
+        }
+        if (strcmp(name, "vkBeginCommandBuffer") == 0) {
+            return reinterpret_cast<void*>(fakeBeginCommandBuffer);
+        }
+        if (strcmp(name, "vkEndCommandBuffer") == 0) {
+            return reinterpret_cast<void*>(fakeEndCommandBuffer);
+        }
+        if (strcmp(name, "vkQueueSubmit") == 0) {
+            return reinterpret_cast<void*>(fakeQueueSubmit);
+        }
+        if (strcmp(name, "vkGetDeviceProcAddr") == 0) {
+            return reinterpret_cast<void*>(fakeGetDeviceProcAddr);
+        }
+        return nullptr;
+    }
+
+    inline static FakeSwapchainPresentEnv* sActive = nullptr;
+    inline static const SwappyVkFunctionProvider kProvider = {
+            .init = &FakeSwapchainPresentEnv::providerInit,
+            .getProcAddr = &FakeSwapchainPresentEnv::providerGetProcAddr,
+            .close = &FakeSwapchainPresentEnv::providerClose,
+    };
+
+    mutable std::mutex mMutex;
+    std::condition_variable mFenceWaitCv;
+    uint64_t mNextHandleId = 0x1000;
+    std::vector<VkSemaphore> mCreatedSemaphores;
+    std::vector<VkSemaphore> mDestroyedSemaphores;
+    std::map<VkFence, bool> mFenceSignaled;
+    std::set<VkFence> mFencesHeldUnsignaled;
+    bool mHoldNextSubmittedFenceUnsignaled = false;
+    VkResult mNextCreateSemaphoreResult = VK_SUCCESS;
+    uint64_t mSubmittedFenceCount = 0;
+    uint64_t mWaitForFencesCompletedCount = 0;
+    std::vector<RecordedQueueSubmit> mSubmits;
+    std::vector<RecordedQueuePresent> mPresents;
+};
+
+class FakeSwapchainSemaphoreSession {
+public:
+    explicit FakeSwapchainSemaphoreSession(AImageReaderVulkanSwapchainTest* test)
+          : mTest(test),
+            mPhysicalDevice(makeFakeVkHandle<VkPhysicalDevice>(0x101)),
+            mDevice(makeFakeVkHandle<VkDevice>(0x102)),
+            mSwapchain(makeFakeVkHandle<VkSwapchainKHR>(0x103)),
+            mQueue(makeFakeVkHandle<VkQueue>(0x104)) {
+        mTest->setupMockJni(23);
+        mTest->setupMockChoreographer();
+        SwappyVk_setFunctionProvider(FakeSwapchainPresentEnv::provider());
+    }
+
+    ~FakeSwapchainSemaphoreSession() {
+        destroySwapchain();
+        SwappyVk_setFunctionProvider(nullptr);
+    }
+
+    bool initSwappy() {
+        uint64_t refreshDuration = 0;
+        jobject fakeActivity = reinterpret_cast<jobject>(0x1234);
+        if (!SwappyVk_initAndGetRefreshCycleDuration(gMockEnv, fakeActivity, mPhysicalDevice,
+                                                     mDevice, mSwapchain, &refreshDuration)) {
+            return false;
+        }
+        SwappyVk_setQueueFamilyIndex(mDevice, mQueue, 0);
+        mSwapchainInitialized = true;
+        return refreshDuration > 0;
+    }
+
+    VkResult presentImage(uint32_t imageIndex, VkSemaphore appWaitSemaphore) {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &appWaitSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &mSwapchain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        VkResult res = SwappyVk_queuePresent(mQueue, &presentInfo);
+        // The fence waiter handles syncs in submission order, so once it has waited on the newest
+        // fence every older sync has already been handed back for reuse by the next present.
+        mEnv.waitForPendingFenceWaiters();
+        return res;
+    }
+
+    void destroySwapchain() {
+        mTest->cleanupMockChoreographer();
+        if (mSwapchainInitialized) {
+            SwappyVk_destroySwapchain(mDevice, mSwapchain);
+            SwappyVk_destroyDevice(mDevice);
+            mSwapchainInitialized = false;
+        }
+    }
+
+    FakeSwapchainPresentEnv& env() {
+        return mEnv;
+    }
+
+private:
+    AImageReaderVulkanSwapchainTest* mTest;
+    FakeSwapchainPresentEnv mEnv;
+    VkPhysicalDevice mPhysicalDevice;
+    VkDevice mDevice;
+    VkSwapchainKHR mSwapchain;
+    VkQueue mQueue;
+    bool mSwapchainInitialized = false;
+};
+
+} // namespace
+
+TEST_F(AImageReaderVulkanSwapchainTest,
+       QueuePresent_PerSwapchainImageSemaphoresAreDistinctAndReusedAfterReacquire) {
+    FakeSwapchainSemaphoreSession session(this);
+    ASSERT_TRUE(session.initSwappy());
+
+    const VkSemaphore appAcquireSem0 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem1 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem2 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem3 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem4 = session.env().allocateAppAcquireSemaphore();
+
+    // First 5-image swapchain presentation cycle: images 0, 1, 2, 3, 4.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem0));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(1U, appAcquireSem1));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(2U, appAcquireSem2));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(3U, appAcquireSem3));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(4U, appAcquireSem4));
+
+    const std::vector<VkSemaphore> createdAfterFirstCycle = session.env().createdSemaphores();
+    ASSERT_EQ(5U, createdAfterFirstCycle.size());
+
+    // Second 5-image presentation cycle after re-acquire: images 0, 1, 2, 3, 4.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem0));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(1U, appAcquireSem1));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(2U, appAcquireSem2));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(3U, appAcquireSem3));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(4U, appAcquireSem4));
+
+    // No additional semaphores should be allocated on the second cycle.
+    EXPECT_EQ(5U, session.env().createdSemaphores().size());
+
+    const std::vector<RecordedQueueSubmit> submits = session.env().submits();
+    const std::vector<RecordedQueuePresent> presents = session.env().presents();
+    ASSERT_EQ(10U, submits.size());
+    ASSERT_EQ(10U, presents.size());
+
+    // Cycle 1: each swapchain image index signals and waits on its own distinct semaphore.
+    EXPECT_EQ(appAcquireSem0, submits[0].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[0], submits[0].signalSemaphore);
+    EXPECT_EQ(0U, presents[0].imageIndex);
+    EXPECT_EQ(createdAfterFirstCycle[0], presents[0].waitSemaphore);
+
+    EXPECT_EQ(appAcquireSem1, submits[1].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[1], submits[1].signalSemaphore);
+    EXPECT_EQ(1U, presents[1].imageIndex);
+    EXPECT_EQ(createdAfterFirstCycle[1], presents[1].waitSemaphore);
+
+    EXPECT_EQ(appAcquireSem2, submits[2].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[2], submits[2].signalSemaphore);
+    EXPECT_EQ(2U, presents[2].imageIndex);
+    EXPECT_EQ(createdAfterFirstCycle[2], presents[2].waitSemaphore);
+
+    EXPECT_EQ(appAcquireSem3, submits[3].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[3], submits[3].signalSemaphore);
+    EXPECT_EQ(3U, presents[3].imageIndex);
+    EXPECT_EQ(createdAfterFirstCycle[3], presents[3].waitSemaphore);
+
+    EXPECT_EQ(appAcquireSem4, submits[4].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[4], submits[4].signalSemaphore);
+    EXPECT_EQ(4U, presents[4].imageIndex);
+    EXPECT_EQ(createdAfterFirstCycle[4], presents[4].waitSemaphore);
+
+    // Cycle 2: each re-acquired image index reuses its own semaphore.
+    EXPECT_EQ(createdAfterFirstCycle[0], submits[5].signalSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[0], presents[5].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[1], submits[6].signalSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[1], presents[6].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[2], submits[7].signalSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[2], presents[7].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[3], submits[8].signalSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[3], presents[8].waitSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[4], submits[9].signalSemaphore);
+    EXPECT_EQ(createdAfterFirstCycle[4], presents[9].waitSemaphore);
+
+    // Teardown destroys all 5 per-image semaphores.
+    EXPECT_EQ(0U, session.env().destroyedSemaphores().size());
+    session.destroySwapchain();
+    EXPECT_EQ(createdAfterFirstCycle, session.env().destroyedSemaphores());
+}
+
+TEST_F(AImageReaderVulkanSwapchainTest,
+       QueuePresent_SkipsSemaphoreReuseWhilePriorFenceSubmissionPending) {
+    FakeSwapchainSemaphoreSession session(this);
+    ASSERT_TRUE(session.initSwappy());
+
+    const VkSemaphore appAcquireSem0 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem1 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem2 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem3 = session.env().allocateAppAcquireSemaphore();
+
+    // Frame 0: Present image 1 with normal fence signaling so a signaled fence remains in the
+    // free pool when image 0 is later re-presented.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(1U, appAcquireSem0));
+
+    // Frame 1: Present image 0 while holding its submitted fence unsignaled (simulating a fence
+    // wait timeout where GPU work for image 0's semaphore is still in flight).
+    session.env().holdNextFenceUnsignaled();
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem1));
+
+    const std::vector<VkSemaphore> createdSemaphores = session.env().createdSemaphores();
+    ASSERT_EQ(2U, createdSemaphores.size());
+    const VkSemaphore image0Semaphore = createdSemaphores[1];
+    const VkFence pendingImage0Fence = session.env().submits()[1].fence;
+
+    // Frame 2: Re-presenting image 0 while pendingImage0Fence is still VK_NOT_READY must NOT
+    // re-signal image0Semaphore via vkQueueSubmit, and must forward appAcquireSem2 directly to
+    // vkQueuePresentKHR.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem2));
+    EXPECT_EQ(2U, session.env().submits().size());
+    ASSERT_EQ(3U, session.env().presents().size());
+    EXPECT_EQ(0U, session.env().presents()[2].imageIndex);
+    EXPECT_EQ(appAcquireSem2, session.env().presents()[2].waitSemaphore);
+
+    // Frame 3: Once pendingImage0Fence signals, presenting image 0 reuses image0Semaphore.
+    session.env().markHeldFenceSignaled(pendingImage0Fence);
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem3));
+    EXPECT_EQ(2U, session.env().createdSemaphores().size());
+    ASSERT_EQ(3U, session.env().submits().size());
+    EXPECT_EQ(image0Semaphore, session.env().submits()[2].signalSemaphore);
+    ASSERT_EQ(4U, session.env().presents().size());
+    EXPECT_EQ(image0Semaphore, session.env().presents()[3].waitSemaphore);
+}
+
+TEST_F(AImageReaderVulkanSwapchainTest, QueuePresent_PropagatesCreateSemaphoreFailure) {
+    FakeSwapchainSemaphoreSession session(this);
+    ASSERT_TRUE(session.initSwappy());
+
+    const VkSemaphore appAcquireSem0 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem1 = session.env().allocateAppAcquireSemaphore();
+
+    session.env().failNextCreateSemaphore(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+    EXPECT_EQ(VK_ERROR_OUT_OF_DEVICE_MEMORY, session.presentImage(0U, appAcquireSem0));
+    EXPECT_EQ(0U, session.env().createdSemaphores().size());
+    EXPECT_EQ(0U, session.env().submits().size());
+    EXPECT_EQ(0U, session.env().presents().size());
+
+    // The next present creates a fresh semaphore instead of reusing the failed call's undefined
+    // output, and the failed attempt did not leak the free fence.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem1));
+    ASSERT_EQ(1U, session.env().createdSemaphores().size());
+    ASSERT_EQ(1U, session.env().submits().size());
+    ASSERT_EQ(1U, session.env().presents().size());
+    EXPECT_EQ(session.env().createdSemaphores()[0], session.env().presents()[0].waitSemaphore);
+}
+
+TEST_F(AImageReaderVulkanSwapchainTest,
+       QueuePresent_RecycledFenceDoesNotBlockOtherImageSemaphores) {
+    FakeSwapchainSemaphoreSession session(this);
+    ASSERT_TRUE(session.initSwappy());
+
+    const VkSemaphore appAcquireSem0 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem1 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem2 = session.env().allocateAppAcquireSemaphore();
+    const VkSemaphore appAcquireSem3 = session.env().allocateAppAcquireSemaphore();
+
+    // Images 0 and 1 use the two pooled fences; image 2 then recycles image 0's fence and keeps
+    // that new submission in flight.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem0));
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(1U, appAcquireSem1));
+    session.env().holdNextFenceUnsignaled();
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(2U, appAcquireSem2));
+    const std::vector<RecordedQueueSubmit> firstSubmits = session.env().submits();
+    ASSERT_EQ(3U, firstSubmits.size());
+    ASSERT_EQ(firstSubmits[0].fence, firstSubmits[2].fence);
+
+    // Image 0's own submission has retired, so image 2's in-flight reuse of that fence must not
+    // stop image 0's semaphore from being signaled again.
+    ASSERT_EQ(VK_SUCCESS, session.presentImage(0U, appAcquireSem3));
+    const std::vector<VkSemaphore> createdSemaphores = session.env().createdSemaphores();
+    const std::vector<RecordedQueueSubmit> submits = session.env().submits();
+    const std::vector<RecordedQueuePresent> presents = session.env().presents();
+    ASSERT_EQ(3U, createdSemaphores.size());
+    ASSERT_EQ(4U, submits.size());
+    EXPECT_EQ(createdSemaphores[0], submits[3].signalSemaphore);
+    ASSERT_EQ(4U, presents.size());
+    EXPECT_EQ(createdSemaphores[0], presents[3].waitSemaphore);
 }
 
 class AImageReaderEGLSwapchainTest : public AImageReaderSwapchainTestBase {

@@ -82,7 +82,7 @@ VkResult SwappyVkGoogleDisplayTiming::doQueuePresent(VkQueue queue, uint32_t que
     VkSemaphore semaphore;
     res = injectFence(queue, pPresentInfo, &semaphore);
     if (res) {
-        SWAPPY_LOGE("Failed to vkQueueSubmit %d", res);
+        SWAPPY_LOGE("Failed to inject present fence %d", res);
         return res;
     }
 
