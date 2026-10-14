@@ -161,6 +161,76 @@ class GenerateTestCoverageTest(unittest.TestCase):
             )
             self.assertTrue(report_html.exists())
             self.assertIn("50.0%", report_html.read_text(encoding="utf-8"))
+            detail_html = out_dir / "sources" / "common__Settings.cpp.html"
+            self.assertIn("5x", detail_html.read_text(encoding="utf-8"))
+            self.assertIn("int hit()", detail_html.read_text(encoding="utf-8"))
+
+    def test_parse_gcov_file_accumulates_line_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            module_dir = Path(tmp)
+            common_dir = module_dir / "common"
+            common_dir.mkdir()
+            src_file = common_dir / "Foo.cpp"
+            src_file.write_text("int a = 1;\nint b = 2;\n", encoding="utf-8")
+
+            target_map = {"foo.cpp": "common/Foo.cpp"}
+            executed: dict[str, dict[int, int]] = {"common/Foo.cpp": {}}
+
+            for counts in ((4, "#####"), (3, 2)):
+                gcov_file = module_dir / "Foo.cpp.gcov"
+                gcov_file.write_text(
+                    f"        -:    0:Source:{src_file}\n"
+                    f"        {counts[0]}:    1:int a = 1;\n"
+                    f"    {counts[1]}:    2:int b = 2;\n",
+                    encoding="utf-8",
+                )
+                cov._parse_gcov_file(
+                    gcov_file, module_dir, target_map, executed
+                )
+            self.assertEqual(executed["common/Foo.cpp"], {1: 7, 2: 2})
+
+    def test_generate_html_report_renders_clickable_source_views(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gamesdk_dir = Path(tmp) / "gamesdk"
+            module_dir = gamesdk_dir / "games-frame-pacing"
+            tools_dir = module_dir / "tools"
+            common_dir = module_dir / "common"
+            tools_dir.mkdir(parents=True)
+            common_dir.mkdir(parents=True)
+
+            real_template = (
+                Path(__file__).resolve().parent / "coverage_report_template.html"
+            )
+            (tools_dir / "coverage_report_template.html").write_text(
+                real_template.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (common_dir / "Settings.cpp").write_text(
+                "void hit() {\n  int x = 1;\n}\n", encoding="utf-8"
+            )
+
+            rows = [
+                cov.CoverageSummary(
+                    relative_path="common/Settings.cpp",
+                    total_lines=2,
+                    executed_lines=1,
+                    line_counts={1: 5, 2: 0},
+                )
+            ]
+            out_dir = Path(tmp) / "report_out"
+            index_html = cov.generate_html_report(
+                tools_dir, gamesdk_dir, rows, output_dir=out_dir
+            )
+            index_text = index_html.read_text(encoding="utf-8")
+            self.assertIn(
+                'href="sources/common__Settings.cpp.html"', index_text
+            )
+            detail_html = out_dir / "sources" / "common__Settings.cpp.html"
+            self.assertTrue(detail_html.exists())
+            detail_text = detail_html.read_text(encoding="utf-8")
+            self.assertIn("void hit()", detail_text)
+            self.assertIn("5x", detail_text)
+            self.assertIn("line-covered", detail_text)
+            self.assertIn("line-missed", detail_text)
 
 
 if __name__ == "__main__":

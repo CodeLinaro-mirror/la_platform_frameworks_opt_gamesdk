@@ -6,7 +6,8 @@ Usage:
 """
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import html
 import os
 from pathlib import Path
 import re
@@ -42,6 +43,17 @@ class CoverageSummary:
     relative_path: str
     total_lines: int
     executed_lines: int
+    line_counts: Dict[int, int] = field(default_factory=dict)
+
+    @property
+    def detail_html_filename(self) -> str:
+        """Returns relative HTML filename for per-file source view."""
+        sanitized = (
+                self.relative_path.replace("/", "__")
+                .replace("\\", "__")
+                .replace("..", "_")
+        )
+        return f"sources/{sanitized}.html"
 
     @property
     def percentage(self) -> float:
@@ -458,9 +470,9 @@ def _parse_gcov_file(
         gcov_file: Path,
         module_dir: Path,
         target_map: Dict[str, str],
-        file_executed_lines: Dict[str, Dict[int, bool]],
+        file_executed_lines: Dict[str, Dict[int, int]],
 ) -> None:
-    """Parses a standard or intermediate (-i) .gcov file into line execution status."""
+    """Parses a standard or intermediate (-i) .gcov file into line counts."""
     lines = gcov_file.read_text(encoding="utf-8", errors="ignore").splitlines()
     gcov_file.unlink(missing_ok=True)
     if not lines:
@@ -477,13 +489,11 @@ def _parse_gcov_file(
                 parts = line.split("lcount:", 1)[1].split(",")
                 if len(parts) >= 2 and parts[0].isdigit():
                     l_idx = int(parts[0])
-                    is_exec = parts[1].isdigit() and int(parts[1]) > 0
+                    hit_count = int(parts[1]) if parts[1].isdigit() else 0
                     if l_idx > 0:
                         file_executed_lines[current_rel][l_idx] = (
-                                file_executed_lines[current_rel].get(
-                                        l_idx, False
-                                )
-                                or is_exec
+                                file_executed_lines[current_rel].get(l_idx, 0)
+                                + hit_count
                         )
         return
 
@@ -513,10 +523,10 @@ def _parse_gcov_file(
                 continue
             l_idx = int(line_no)
             if count != "-":
-                is_exec = count.isdigit() and int(count) > 0
+                hit_count = int(count) if count.isdigit() else 0
                 file_executed_lines[source_rel][l_idx] = (
-                        file_executed_lines[source_rel].get(l_idx, False)
-                        or is_exec
+                        file_executed_lines[source_rel].get(l_idx, 0)
+                        + hit_count
                 )
 
 
@@ -561,7 +571,7 @@ def _process_gcno_files(
         llvm_cov_bin: Path,
         module_dir: Path,
         target_map: Dict[str, str],
-        file_executed_lines: Dict[str, Dict[int, bool]],
+        file_executed_lines: Dict[str, Dict[int, int]],
 ) -> None:
     """Runs llvm-cov gcov on .gcno files and parses resulting .gcov outputs."""
     print(
@@ -606,7 +616,7 @@ def generate_gcov_reports(
             cxx_dirs if cxx_dirs is not None else _get_cxx_dirs(module_dir)
     )
     target_map = discover_source_files(module_dir)
-    file_executed_lines: Dict[str, Dict[int, bool]] = {
+    file_executed_lines: Dict[str, Dict[int, int]] = {
             str(rel): {} for rel in target_map.values()
     }
 
@@ -622,13 +632,14 @@ def generate_gcov_reports(
     summary_rows: List[CoverageSummary] = []
     for rel_path, line_dict in sorted(file_executed_lines.items()):
         total_lines = len(line_dict)
-        executed_lines = sum(1 for v in line_dict.values() if v)
+        executed_lines = sum(1 for v in line_dict.values() if v > 0)
         if total_lines > 0:
             summary_rows.append(
                     CoverageSummary(
                             relative_path=rel_path,
                             total_lines=total_lines,
                             executed_lines=executed_lines,
+                            line_counts=dict(line_dict),
                     )
             )
 
@@ -691,10 +702,11 @@ def _render_table_rows(
         fill_cls, badge_cls, badge_label = _get_badge_properties(
                 row_data.percentage
         )
+        escaped_path = html.escape(row_data.relative_path)
+        escaped_href = html.escape(row_data.detail_html_filename, quote=True)
+        item_link = f'<a href="{escaped_href}">{escaped_path}</a>'
         row = (
-                row_template.replace(
-                        "{{ITEM_NAME_HTML}}", row_data.relative_path
-                )
+                row_template.replace("{{ITEM_NAME_HTML}}", item_link)
                 .replace("{{TOTAL_LOC}}", f"{row_data.total_lines:,}")
                 .replace("{{EXEC_LOC}}", f"{row_data.executed_lines:,}")
                 .replace("{{COVERAGE_PCT}}", f"{row_data.percentage:.1f}")
@@ -704,6 +716,69 @@ def _render_table_rows(
         )
         rows_html.append(row)
     return rows_html
+
+
+def _render_source_coverage_html(
+        row_data: CoverageSummary, source_text: str
+) -> str:
+    """Renders standalone dark-mode HTML view for a single source file."""
+    escaped_title = html.escape(row_data.relative_path)
+    line_rows: List[str] = []
+    for idx, raw_line in enumerate(source_text.splitlines(), start=1):
+        escaped_code = html.escape(raw_line)
+        count = row_data.line_counts.get(idx)
+        if count is None:
+            row_cls = "line-neutral"
+            count_str = ""
+        elif count > 0:
+            row_cls = "line-covered"
+            count_str = f"{count}x"
+        else:
+            row_cls = "line-missed"
+            count_str = "0x"
+        line_rows.append(
+                f'<tr class="{row_cls}">'
+                f'<td class="ln">{idx}</td>'
+                f'<td class="cnt">{count_str}</td>'
+                f'<td class="code"><pre>{escaped_code}</pre></td>'
+                "</tr>"
+        )
+    rows_joined = "\n".join(line_rows)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{escaped_title} - Coverage</title>
+  <style>
+    body {{ background:#0f172a; color:#f8fafc; font-family:ui-monospace,monospace; margin:0; padding:24px; }}
+    a {{ color:#38bdf8; text-decoration:none; }}
+    .header {{ margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #334155; }}
+    .meta {{ color:#94a3b8; font-size:13px; margin-top:6px; }}
+    table {{ width:100%; border-collapse:collapse; font-size:12px; background:#1e293b; }}
+    td {{ padding:2px 8px; vertical-align:top; }}
+    td.ln {{ width:48px; text-align:right; color:#64748b; user-select:none; border-right:1px solid #334155; }}
+    td.cnt {{ width:56px; text-align:right; color:#94a3b8; user-select:none; border-right:1px solid #334155; font-weight:600; }}
+    td.code pre {{ margin:0; white-space:pre-wrap; word-break:break-all; }}
+    tr.line-covered {{ background:rgba(34, 197, 94, 0.14); }}
+    tr.line-covered td.cnt {{ color:#4ade80; }}
+    tr.line-missed {{ background:rgba(239, 68, 68, 0.18); }}
+    tr.line-missed td.cnt {{ color:#f87171; }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div><a href="../{MODULE_NAME}_coverage.html">&larr; Back to {MODULE_NAME} Summary</a></div>
+    <h1 style="font-size:18px;margin:8px 0 0 0;">{escaped_title}</h1>
+    <div class="meta">Coverage: <strong>{row_data.percentage:.1f}%</strong> ({row_data.executed_lines:,} / {row_data.total_lines:,} executable lines)</div>
+  </div>
+  <table>
+    <tbody>
+{rows_joined}
+    </tbody>
+  </table>
+</body>
+</html>
+"""
 
 
 def generate_html_report(
@@ -754,6 +829,23 @@ def generate_html_report(
     )
 
     html_file.write_text(html_content, encoding="utf-8")
+
+    module_dir = gamesdk_dir / MODULE_NAME
+    sources_dir = reports_dir / "sources"
+    sources_dir.mkdir(parents=True, exist_ok=True)
+    for row_data in summary_rows:
+        src_file = module_dir / row_data.relative_path
+        if src_file.exists():
+            src_text = src_file.read_text(encoding="utf-8", errors="replace")
+        else:
+            print(f"Warning: Source file not found for detail view: {src_file}")
+            src_text = f"// Source file not found at {src_file}\n"
+        detail_file = reports_dir / row_data.detail_html_filename
+        detail_file.parent.mkdir(parents=True, exist_ok=True)
+        detail_file.write_text(
+                _render_source_coverage_html(row_data, src_text),
+                encoding="utf-8",
+        )
     print(
             "\n[Step 6] HTML Coverage Report written to:\n"
             f"  file://{html_file.resolve()}\n"
