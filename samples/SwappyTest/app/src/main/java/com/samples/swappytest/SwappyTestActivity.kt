@@ -365,24 +365,16 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         mMainHandler.removeCallbacks(mFinishAfterAutomatedRun)
         mIsFinishingAfterAutomatedRun = false
 
-        val customStepsSpec = extractCustomStepsSpec(intent)
-        nSetCustomSteps(customStepsSpec ?: "")
-
         val hasScenarioExtra =
-            intent != null &&
-                (intent.hasExtra("scenario") ||
-                    intent.hasExtra("SCENARIO") ||
-                    customStepsSpec != null)
-        val manualExtra = intent != null && getBooleanOption(intent, "manual", false)
+            intent != null && (intent.hasExtra("scenario") || intent.hasExtra("SCENARIO"))
         val autoExitExtra = intent != null && getBooleanOption(intent, "auto_exit", false)
         val requestedApi = extractRenderApi(intent)
         val calibrationKinds =
             extractCalibrationKinds(intent, if (requestedApi >= 0) requestedApi else nGetRenderApi())
         val calibrateExtra = calibrationKinds != 0
 
-        mStartedManually =
-            manualExtra || (!autoExitExtra && !hasScenarioExtra && !calibrateExtra)
-        mAutoStart = (hasScenarioExtra || autoExitExtra || calibrateExtra) && !manualExtra
+        mStartedManually = !autoExitExtra && !hasScenarioExtra && !calibrateExtra
+        mAutoStart = hasScenarioExtra || autoExitExtra || calibrateExtra
 
         var selectedScenario = "S1"
         var swappy = true
@@ -395,9 +387,6 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
             var scenario = getStringOption(intent, "scenario", null)
             if (scenario == null) {
                 scenario = getStringOption(intent, "SCENARIO", null)
-            }
-            if (scenario.isNullOrEmpty() && customStepsSpec != null) {
-                scenario = "CUSTOM"
             }
             if (!scenario.isNullOrEmpty()) {
                 selectedScenario = scenario
@@ -514,8 +503,11 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         mStartedManually = true
         mAutoStart = false
 
-        val scenarioItem = mSpinnerTestSelection?.selectedItem as? ScenarioItem
-        val scenarioId = scenarioItem?.id ?: "S1"
+        val scenarioIndex =
+            (mSpinnerTestSelection?.selectedItemPosition ?: 0)
+                .coerceIn(0, maxOf(0, mScenarios.size - 1))
+        val scenarioId =
+            if (scenarioIndex in mScenarios.indices) mScenarios[scenarioIndex].id else "S1"
         mActiveScenarioId = scenarioId
 
         val renderApi = selectedRenderApi()
@@ -534,7 +526,7 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         nSetPacingStrategy(pacingStrategy)
         nSetPipelineMode(pipelineMode)
         queueCalibrations(calibrationKinds, renderApi)
-        nSetTestScenario(scenarioId)
+        nSelectScenario(scenarioIndex)
         mCheckboxShowOverlay?.let {
             nSetOverlayEnabled(it.isChecked)
         }
@@ -990,22 +982,6 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         return intent.getIntExtra(key, defaultValue)
     }
 
-    private fun getFloatOption(intent: Intent?, key: String, defaultValue: Float): Float {
-        if (intent == null || !intent.hasExtra(key)) return defaultValue
-        val valObj = rawExtra(intent, key)
-        if (valObj is Number) return valObj.toFloat()
-        if (valObj is String) {
-            val s = valObj.trim()
-            if (s.isNotEmpty()) {
-                try {
-                    return s.toFloat()
-                } catch (_: NumberFormatException) {
-                }
-            }
-        }
-        return intent.getFloatExtra(key, defaultValue)
-    }
-
     private fun extractPipelineMode(intent: Intent?): String {
         if (intent == null) {
             return "auto"
@@ -1094,28 +1070,6 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         if (fenceTimeoutMs >= 0) {
             nSetFenceTimeoutMs(fenceTimeoutMs)
         }
-    }
-
-    private fun extractCustomStepsSpec(intent: Intent?): String? {
-        if (intent == null) return null
-        var steps = getStringOption(intent, "steps", null)
-        if (steps.isNullOrBlank()) {
-            steps = getStringOption(intent, "custom_steps", null)
-        }
-        if (!steps.isNullOrBlank()) {
-            return steps.trim()
-        }
-        val hasShorthand =
-            intent.hasExtra("duration") ||
-                intent.hasExtra("cpu_ms") ||
-                intent.hasExtra("gpu_ms")
-        if (hasShorthand) {
-            val duration = getFloatOption(intent, "duration", 5.0f)
-            val cpuMs = getIntOption(intent, "cpu_ms", 0)
-            val gpuMs = getIntOption(intent, "gpu_ms", 0)
-            return String.format(Locale.US, "%.1fs:cpu=%d,gpu=%d", duration, cpuMs, gpuMs)
-        }
-        return null
     }
 
     private fun hideSystemUI() {
@@ -1298,7 +1252,7 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         external fun nSetTestScenario(scenario: String)
 
         @JvmStatic
-        external fun nSetCustomSteps(stepsSpec: String)
+        external fun nSelectScenario(scenarioIndex: Int)
 
         @JvmStatic
         external fun nSetRunIteration(iteration: Int)

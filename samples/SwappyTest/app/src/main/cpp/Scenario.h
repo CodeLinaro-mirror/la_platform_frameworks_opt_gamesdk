@@ -16,91 +16,98 @@
 
 #pragma once
 
-// The DvfsBenchmark scenario catalog and the custom step parser. Pure: the
-// caller applies the steps and traits to the run state.
+// A DvfsBenchmark scenario and the ops ScenarioEngine plays. ScenarioBuilder
+// builds scenarios.
 
 #include <stdint.h>
 
+#include <string>
 #include <vector>
-
-#include "CalibrationKind.h"
 
 namespace dvfs {
 
 constexpr int kMaxScenarioSteps = 32;
 
-struct ScenarioStep {
-    int target_cpu_ms;
-    int target_gpu_ms;
-    float duration_sec;
-    int jitter_min_ms;
-    int jitter_max_ms;
-    bool reset_pacing_at_start;
-    bool external_boost_pulse;
-    int8_t auto_pipeline;             // -1 = unchanged, 0 = off, 1 = on, 2 = auto
-    int8_t auto_swap_interval;        // -1 = unchanged, 0 = off, 1 = on
-    int32_t buffer_stuffing_fix_wait; // -1 = unchanged, >= 0 = n_frames
-    int32_t target_fps;               // 0 = unchanged, > 0 = explicit FPS
+// Swap intervals in nanoseconds, matching SWAPPY_SWAP_60FPS and
+// SWAPPY_SWAP_30FPS in swappy_common.h without pulling in Android headers.
+constexpr int64_t kSwapInterval60FpsNs = 16666667LL;
+constexpr int64_t kSwapInterval30FpsNs = 33333333LL;
+
+enum class ScenarioPipelineMode : int8_t {
+    Off = 0,
+    On = 1,
+    Auto = 2,
 };
 
-// A run of repeat identical scenario steps.
-struct ScenarioSegment {
-    int repeat;
-    int cpu_ms;
-    int gpu_ms;
-    float duration_sec;
-    int jitter_min_ms = 0;
-    int jitter_max_ms = 0;
-    bool reset_pacing = false;
-    bool boost_pulse = false;
+enum class ScenarioOpKind : uint8_t {
+    kStepBegin,                // operand = step index
+    kSetCpu,                   // operand = duration in ns
+    kSetGpu,                   // operand = duration in ns
+    kSetAutoPipelineMode,      // operand = ScenarioPipelineMode, applies with the next frame
+    kSetAutoSwapInterval,      // operand = 1 on, 0 off, applies with the next frame
+    kSetBufferStuffingFixWait, // operand = frames, applies with the next frame
+    kSetSwapIntervalNs,        // operand = swap interval in ns, applies with the next frame
+    kResetFramePacing,         // fires with the next frame
+    kBoost,                    // operand = duration in ms, fires with the next frame
+    kFrames,                   // operand = frame count
+    kFramesFor,                // operand = duration in ns
+    kRepeat,                   // operand = iterations, partner = its kRepeatEnd
+    kRepeatFor,                // operand = duration in ns, partner = its kRepeatEnd
+    kRepeatEnd,                // partner = its kRepeat / kRepeatFor
 };
 
-enum ScenarioFlags : uint8_t {
-    kScenarioExplicit30Fps = 1 << 0,
-    kScenarioSquareWave = 1 << 1,
-    // Steps come from the custom steps spec instead of segments.
-    kScenarioCustom = 1 << 2,
+struct ScenarioOp {
+    ScenarioOpKind kind;
+    int64_t operand = 0;
+    int32_t partner = -1;
 };
 
-struct ScenarioDef {
-    const char* id;
-    const char* description;
-    std::vector<ScenarioSegment> segments;
-    uint8_t flags;
-};
+class ScenarioBuilder;
 
-// The scenario catalog, in UI order. Entry 0, S1, is the default.
-int scenario_count(void);
-const ScenarioDef& scenario_at(int index);
-const ScenarioDef* find_scenario(const char* id, bool ignore_case);
+// A built scenario: the ops the engine plays and any step names from step().
+class Scenario {
+public:
+    Scenario() = default;
+    Scenario(std::string title, std::string description, std::vector<std::string> step_names,
+             std::vector<ScenarioOp> ops)
+          : mTitle(std::move(title)),
+            mDescription(std::move(description)),
+            mStepNames(std::move(step_names)),
+            mOps(std::move(ops)) {}
 
-// Parses a semicolon-separated custom step specification such as:
-//   "3s:cpu=0,gpu=0; 5s:cpu=8,gpu=0,pipe=off; 5s:cpu=4,gpu=12,pipe=on,stuff_fix=2"
-// Never empty: an empty spec yields one idle 5 s step. At most
-// kMaxScenarioSteps steps.
-std::vector<ScenarioStep> parse_custom_steps(const char* spec);
+    const std::string& title() const {
+        return mTitle;
+    }
+    const std::string& description() const {
+        return mDescription;
+    }
+    const std::vector<std::string>& step_names() const {
+        return mStepNames;
+    }
+    const std::vector<ScenarioOp>& ops() const {
+        return mOps;
+    }
 
-// The steps of def; a custom scenario parses custom_spec.
-std::vector<ScenarioStep> build_scenario_steps(const ScenarioDef& def, const char* custom_spec);
+    // The number of steps in the scenario, including an unnamed step when
+    // step_names() is empty.
+    int step_count() const;
 
-// What a scenario's steps need from the run.
-struct ScenarioTraits {
-    // Some step has a calibrated CPU load.
-    bool uses_cpu;
-    // Some step has a calibrated GPU load.
-    bool uses_gpu;
-    // An explicit FPS of 30 or less.
-    bool explicit_30fps;
-    bool square_wave;
+    // What the scenario needs from the run, read from its ops.
+    // Some frame plays a calibrated CPU load. Conservative: a load set inside a
+    // repeat body counts, as a later iteration may play it.
+    bool uses_cpu() const;
+    // Some frame plays a calibrated GPU load, as above.
+    bool uses_gpu() const;
     // Boost pulses need the boost thread.
-    bool needs_boost;
+    bool needs_boost() const;
+
+private:
+    friend class ScenarioBuilder;
+
+    std::string mTitle;
+    std::string mDescription;
+    std::vector<std::string> mStepNames;
+    std::vector<ScenarioOp> mOps;
 };
-
-ScenarioTraits scenario_traits(const ScenarioDef& def, const std::vector<ScenarioStep>& steps);
-
-// The calibrations a scenario with traits needs on render_api: a CPU load
-// needs the CPU calibration, a GPU load the GPU calibration of render_api.
-// Boost pulses burn a fixed iteration count and need none.
-CalibrationSet required_calibrations(const ScenarioTraits& traits, CalibrationKind render_api);
 
 } // namespace dvfs

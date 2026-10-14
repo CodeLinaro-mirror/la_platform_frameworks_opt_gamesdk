@@ -358,14 +358,7 @@ void OverlayBatcher::BuildLiveTextPanel(const TelemetryHudInput& hud, float dens
     char line[128];
 
     const char* apiName = get_active_render_api_name();
-    if (phase == TEST_PHASE_READY) {
-        std::snprintf(line, sizeof(line), "[%s] Exp: Ready [%s]", apiName, ui.test_scenario);
-    } else if (phase == TEST_PHASE_COOLDOWN) {
-        std::snprintf(line, sizeof(line), "[%s] Exp: Cooldown [%s]", apiName, ui.test_scenario);
-    } else {
-        std::snprintf(line, sizeof(line), "[%s] Exp: %.1f FPS [%s]", apiName, ui.expected_fps,
-                      ui.test_scenario);
-    }
+    std::snprintf(line, sizeof(line), "[%s] %s", apiName, ui.test_scenario);
     AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFF00E5FFu), line);
     textY += lineStep;
 
@@ -423,9 +416,8 @@ void OverlayBatcher::BuildLiveTextPanel(const TelemetryHudInput& hud, float dens
                 std::snprintf(stepPrefix, sizeof(stepPrefix),
                               "Step %d/%d: ", ui.current_step_index + 1, ui.scenario_step_count);
             }
-            std::snprintf(line, sizeof(line), "%sTarget: %.0f ms (%.1fs left)%s", stepPrefix,
-                          ui.target_workload_ms, ui.step_time_remaining_sec,
-                          ui.fps_diverged ? " [DIVERGED]" : "");
+            std::snprintf(line, sizeof(line), "%sTarget: %.0f ms (%.1fs)", stepPrefix,
+                          ui.target_workload_ms, ui.step_elapsed_sec);
             break;
         }
         case TEST_PHASE_COMPLETE:

@@ -46,6 +46,10 @@ void swappy_backend_set_swap_interval_ns(uint64_t swap_ns);
 void swappy_backend_set_auto_swap_interval(bool enabled);
 void swappy_backend_set_auto_pipeline_mode(bool enabled);
 void swappy_backend_set_buffer_stuffing_fix_wait(int32_t n_frames);
+// The options the app last applied, which a scenario run starts from; the
+// stuffing fix wait is -1 while never set.
+bool swappy_backend_get_auto_pipeline_mode(void);
+int32_t swappy_backend_get_buffer_stuffing_fix_wait(void);
 void swappy_backend_reset_frame_pacing(void);
 const char* swappy_backend_get_pacing_strategy_name(void);
 
@@ -66,13 +70,11 @@ typedef struct {
     const char* test_scenario;
     int current_step_index;
     int scenario_step_count;
-    float step_time_remaining_sec;
+    float step_elapsed_sec;
     float target_workload_ms;
     float last_frame_expected_ms;
     float last_frame_real_cpu_ms;
-    float expected_fps;
     float measured_real_fps;
-    bool fps_diverged;
     float cooldown_progress_sec;
     int cooldown_headroom_pct;
     int current_cpu_core;
@@ -101,11 +103,11 @@ typedef struct {
 
 void get_ui_snapshot(DvfsUiSnapshot* out);
 
-bool get_is_fps_diverged(void);
 int get_current_step_index(void);
 
 // Scenario engine & run record (T7, T8, T9)
 void set_test_scenario(const char* scenario_name);
+void select_scenario(int index);
 int get_scenario_count(void);
 const char* get_scenario_id_by_index(int index);
 const char* get_scenario_description_by_index(int index);
@@ -118,7 +120,6 @@ void set_output_directory(const char* dir_path);
 void set_calibration_run(CalibrationSet kinds);
 // Rereads the calibration caches into get_ui_snapshot()'s calibration_status.
 void refresh_calibration_status(void);
-void set_custom_steps(const char* steps_spec);
 int32_t get_current_gpu_workload(void);
 bool is_scenario_explicit_30fps(void);
 float get_last_swappy_gpu_ms(void);
@@ -126,6 +127,10 @@ void set_render_surface_size(int32_t width, int32_t height);
 
 #ifdef __cplusplus
 }
+
+#include "Scenario.h"
+
+void set_test_scenario(dvfs::Scenario scenario);
 
 namespace samples {
 class GpuCalibrationTarget;

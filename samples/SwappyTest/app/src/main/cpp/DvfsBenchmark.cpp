@@ -48,6 +48,8 @@
 #include "DvfsTrace.h"
 #include "Log.h"
 #include "Scenario.h"
+#include "ScenarioCatalog.h"
+#include "ScenarioEngine.h"
 #include "Trace.h"
 #include "swappy/swappy_common.h"
 
@@ -64,7 +66,6 @@ using dvfs::CpuCalibrationCache;
 using dvfs::CpuCalibrationResult;
 using dvfs::execute_cpu_workload;
 using dvfs::find_device_global_max_freq_khz;
-using dvfs::find_scenario;
 using dvfs::format_calibration_set;
 using dvfs::get_thread_cpu_time_ns;
 using dvfs::get_time_monotonic_ns;
@@ -74,8 +75,6 @@ using dvfs::GpuCalibrationResult;
 using dvfs::kExternalFilesDir;
 using dvfs::khz_to_mhz;
 using dvfs::kMaxCpus;
-using dvfs::kMaxScenarioSteps;
-using dvfs::kScenarioCustom;
 using dvfs::load_cpu_calibration_cache;
 using dvfs::load_gpu_calibration_cache;
 using dvfs::output_path;
@@ -101,8 +100,10 @@ using dvfs::s_run_tainted;
 using dvfs::s_test_mutex;
 using dvfs::save_cpu_calibration_cache;
 using dvfs::save_gpu_calibration_cache;
-using dvfs::ScenarioDef;
-using dvfs::ScenarioStep;
+using dvfs::Scenario;
+using dvfs::ScenarioCatalog;
+using dvfs::ScenarioEngine;
+using dvfs::ScenarioPipelineMode;
 using dvfs::sleep_ms;
 using dvfs::worst_cpu_headroom_pct;
 using dvfs::write_calibration_report;
@@ -116,22 +117,32 @@ void set_render_surface_size(int32_t width, int32_t height) {
 }
 
 static constexpr int kFpsHistorySize = 30;
-static constexpr uint32_t kRngSeed = 0xCAFEBABE;
+
+// The Swappy settings in effect for a scenario run, as the SwappyTest::Step
+// marker reports them. The defaults are the app's at launch: pipeline mode
+// auto, auto swap interval on, the buffer stuffing fix off, and no explicit
+// swap interval (fps 0 = Swappy's auto rate).
+struct SwappySettings {
+    ScenarioPipelineMode pipeline = ScenarioPipelineMode::Auto;
+    bool auto_swap_interval = true;
+    int32_t buffer_stuffing_fix_wait = 0;
+    int32_t fps = 0;
+};
 
 // The run and scenario step state. The plain fields are guarded by
 // s_test_mutex. The atomics are shared between the UI, render and
 // calibration threads so get_ui_snapshot() reads them lock-free.
 struct RunState {
-    // Guarded by s_test_mutex: the selected scenario and its configuration,
-    // the scenario table, the RNG behind the step jitter, and the frame-time
-    // window.
-    char selected_scenario_name[32] = "S1";
-    char selected_scenario_desc[128] = "S1: Deterministic 39.0s CPU Ramp-Down (27, 18, 14->4 ms)";
+    // Guarded by s_test_mutex: the selected scenario, the engine playing it,
+    // and the frame-time window.
+    Scenario selected_scenario = ScenarioCatalog::scenario_at(0);
     char output_directory[512] = "/sdcard/Android/data/com.samples.swappytest/files";
-    char custom_steps_spec[1024] = "";
     int run_iteration = 1;
-    ScenarioStep scenario_steps[kMaxScenarioSteps];
-    uint32_t rng_state = kRngSeed;
+    ScenarioEngine scenario_engine;
+    // The Swappy settings in effect for the run: what start_scenario_run()
+    // found applied (the app's options from the intent extras or the UI, the
+    // run's swap interval) with the steps' changes applied so far.
+    SwappySettings applied_settings;
     uint64_t frame_times_ns[kFpsHistorySize] = {0};
     int frame_time_idx = 0;
     int frame_time_count = 0;
@@ -141,10 +152,6 @@ struct RunState {
     // s_run_tainted publishes it to the lock-free readers.
     char taint_reason[192] = {0};
 
-    // The catalog entry of selected_scenario_name, or null while it is not a
-    // catalog id. Catalog entries are immutable, so get_test_scenario() reads
-    // its id lock-free.
-    std::atomic<const ScenarioDef*> selected_scenario{nullptr};
     std::atomic<TestPhase> test_phase{TEST_PHASE_READY};
     std::atomic<bool> steps_active{false};
     // The calibrations the next run runs and stores instead of running the
@@ -158,11 +165,9 @@ struct RunState {
     std::atomic<bool> run_failed{false};
     std::atomic<bool> user_30fps_limit{false};
     std::atomic<bool> active_scenario_explicit_30fps{false};
-    std::atomic<bool> active_scenario_square_wave{false};
     std::atomic<int> scenario_step_count{0};
-    std::atomic<int> current_step_index{0};
+    std::atomic<int> current_step_index{-1};
     std::atomic<uint64_t> current_step_start_ns{0};
-    std::atomic<float> current_step_duration_sec{1.0f};
     std::atomic<float> target_workload_ms{0.0f};
     std::atomic<float> target_cpu_workload_ms{0.0f};
     std::atomic<float> target_gpu_workload_ms{0.0f};
@@ -190,7 +195,6 @@ struct UiTelemetry {
     std::atomic<float> last_frame_real_cpu_ms{0.0f};
     std::atomic<float> actual_workload_ms{0.0f};
     std::atomic<float> actual_gpu_workload_ms{0.0f};
-    std::atomic<float> expected_fps{60.0f};
     std::atomic<float> measured_real_fps{60.0f};
     std::atomic<float> cooldown_progress_sec{0.0f};
     std::atomic<int> cooldown_headroom_pct{-1};
@@ -276,7 +280,6 @@ static BoostThread s_boost;
 // active and otherwise polls every kBoostIdlePollMs.
 static constexpr uint64_t kBoostChunkIterations = 200000ULL;
 static constexpr long kBoostIdlePollMs = 20;
-static constexpr uint64_t kBoostPulseNs = 500000000ULL;
 
 void set_user_30fps_limit(bool enabled) {
     s_run.user_30fps_limit = enabled;
@@ -349,15 +352,6 @@ static void mark_run_failed(const char* reason) {
 // Scenario Catalog Definitions (T7)
 static std::atomic<bool> s_active_scenario_uses_gpu{false};
 
-static uint32_t next_rng_u32(void) {
-    uint32_t x = s_run.rng_state;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    s_run.rng_state = x;
-    return x;
-}
-
 bool is_scenario_explicit_30fps(void) {
     return s_run.active_scenario_explicit_30fps;
 }
@@ -379,181 +373,150 @@ void set_calibration_run(CalibrationSet kinds) {
     s_run.calibration_run.store(kinds & dvfs::kAllCalibrations, std::memory_order_relaxed);
 }
 
-void set_custom_steps(const char* steps_spec) {
-    std::lock_guard<std::mutex> lock(s_test_mutex);
-    if (!steps_spec) {
-        s_run.custom_steps_spec[0] = '\0';
-    } else {
-        snprintf(s_run.custom_steps_spec, sizeof(s_run.custom_steps_spec), "%s", steps_spec);
-        ALOGI("SwappyTest: Custom steps spec set to '%s'", s_run.custom_steps_spec);
-    }
-}
-
-// Stores the selected scenario name and publishes its catalog entry, if any,
-// to get_test_scenario(). Called under s_test_mutex.
-static void set_selected_scenario_name_locked(const char* name) {
-    snprintf(s_run.selected_scenario_name, sizeof(s_run.selected_scenario_name), "%s", name);
-    s_run.selected_scenario.store(find_scenario(s_run.selected_scenario_name,
-                                                /*ignore_case=*/false),
-                                  std::memory_order_release);
-}
-
-// A catalog id is returned lock-free from its immutable catalog entry. Any
-// other name, stored verbatim by set_test_scenario() until the run resolves
-// it, is returned as a per-thread snapshot copied under s_test_mutex, so
-// set_test_scenario() on another thread cannot rewrite the string while the
-// caller reads it; valid until the calling thread's next call.
+// Returns a per-thread snapshot of the selected scenario title copied under
+// s_test_mutex, so set_test_scenario() on another thread cannot rewrite the
+// string while the caller reads it; valid until the calling thread's next
+// call.
 static const char* get_test_scenario(void) {
-    if (const ScenarioDef* def = s_run.selected_scenario.load(std::memory_order_acquire)) {
-        return def->id;
-    }
-    thread_local char name[sizeof(s_run.selected_scenario_name)];
+    thread_local std::string title;
     std::lock_guard<std::mutex> lock(s_test_mutex);
-    snprintf(name, sizeof(name), "%s", s_run.selected_scenario_name);
-    return name;
-}
-
-// Once CUSTOM is selected, its entry describes the configured steps. Called
-// under s_test_mutex.
-static const char* scenario_description_locked(const ScenarioDef& def) {
-    if ((def.flags & kScenarioCustom) && strcasecmp(s_run.selected_scenario_name, "CUSTOM") == 0 &&
-        s_run.selected_scenario_desc[0] != '\0') {
-        return s_run.selected_scenario_desc;
-    }
-    return def.description;
+    title = s_run.selected_scenario.title();
+    return title.c_str();
 }
 
 int get_scenario_count(void) {
-    return dvfs::scenario_count();
+    return ScenarioCatalog::scenario_count();
 }
 
 const char* get_scenario_id_by_index(int index) {
     if (index >= 0 && index < get_scenario_count()) {
-        return dvfs::scenario_at(index).id;
+        return ScenarioCatalog::scenario_at(index).title().c_str();
     }
     return nullptr;
 }
 
-// The CUSTOM entry returns a per-thread snapshot of the configured description,
-// copied under s_test_mutex; valid until the calling thread's next call. Unlike
-// the catalog descriptions it is rebuilt from the custom steps spec, so it has
-// no immutable copy a lock-free pointer could point at without leaking one
-// string per change.
 const char* get_scenario_description_by_index(int index) {
     if (index < 0 || index >= get_scenario_count()) return nullptr;
-    const ScenarioDef& def = dvfs::scenario_at(index);
-    if (!(def.flags & kScenarioCustom)) return def.description;
-    thread_local char desc[sizeof(s_run.selected_scenario_desc)];
-    std::lock_guard<std::mutex> lock(s_test_mutex);
-    snprintf(desc, sizeof(desc), "%s", scenario_description_locked(def));
-    return desc;
+    return ScenarioCatalog::scenario_at(index).description().c_str();
 }
 
-static const char* find_scenario_description_by_id(const char* name) {
-    const ScenarioDef* def = find_scenario(name, /*ignore_case=*/true);
-    return def ? scenario_description_locked(*def) : nullptr;
+// The trace name of a pipeline mode.
+static const char* pipeline_mode_name(ScenarioPipelineMode pipeline) {
+    switch (pipeline) {
+        case ScenarioPipelineMode::Off:
+            return "off";
+        case ScenarioPipelineMode::On:
+            return "on";
+        case ScenarioPipelineMode::Auto:
+            break;
+    }
+    return "auto";
 }
 
-// Makes the given step the active workload target and applies any per-step Swappy overrides.
-static void stage_scenario_step(const ScenarioStep* step) {
-    s_run.target_cpu_workload_ms = (float)step->target_cpu_ms;
-    s_run.target_gpu_workload_ms = (float)step->target_gpu_ms;
-    s_run.target_workload_ms = (step->target_gpu_ms > step->target_cpu_ms)
-            ? (float)step->target_gpu_ms
-            : (float)step->target_cpu_ms;
-    s_run.current_step_duration_sec = step->duration_sec;
+// The Swappy settings in effect once start_scenario_run() has applied the
+// run's swap interval and auto swap interval; pipeline mode and the buffer
+// stuffing fix are what the app's options left in the renderer.
+static SwappySettings swappy_settings_in_effect(bool limit_30fps) {
+    SwappySettings settings;
+    if (!swappy_backend_get_auto_pipeline_mode()) {
+        // on and off both turn auto mode off; SWAPPY_PIPELINE_MODE, set with
+        // it, names which one the app asked for.
+        const char* mode = getenv("SWAPPY_PIPELINE_MODE");
+        settings.pipeline = (mode != nullptr && strcmp(mode, "off") == 0)
+                ? ScenarioPipelineMode::Off
+                : ScenarioPipelineMode::On;
+    }
+    settings.auto_swap_interval = true;
+    const int32_t stuffing_fix = swappy_backend_get_buffer_stuffing_fix_wait();
+    if (stuffing_fix >= 0) settings.buffer_stuffing_fix_wait = stuffing_fix;
+    settings.fps = limit_30fps ? 30 : 0;
+    return settings;
+}
 
-    if (step->auto_pipeline >= 0) {
-        const char* mode_str =
-                (step->auto_pipeline == 0) ? "off" : ((step->auto_pipeline == 1) ? "on" : "auto");
-        bool pipe_auto = (step->auto_pipeline == 2);
+// Applies the Swappy settings frame changes and records them in
+// s_run.applied_settings. Called under s_test_mutex.
+static void apply_swappy_settings(const ScenarioEngine::Frame& frame) {
+    if (frame.auto_pipeline_mode) {
+        const char* mode_str = pipeline_mode_name(*frame.auto_pipeline_mode);
+        bool pipe_auto = (*frame.auto_pipeline_mode == ScenarioPipelineMode::Auto);
         setenv("SWAPPY_PIPELINE_MODE", mode_str, 1);
         ALOGI("SwappyTest: Step override -> pipeline=%s (setAutoPipelineMode(%s))", mode_str,
               pipe_auto ? "true" : "false");
         swappy_backend_set_auto_pipeline_mode(pipe_auto);
+        s_run.applied_settings.pipeline = *frame.auto_pipeline_mode;
     }
-    if (step->auto_swap_interval >= 0) {
-        bool auto_si = (step->auto_swap_interval != 0);
+    if (frame.auto_swap_interval) {
+        bool auto_si = *frame.auto_swap_interval;
         ALOGI("SwappyTest: Step override -> setAutoSwapInterval(%s)", auto_si ? "true" : "false");
         swappy_backend_set_auto_swap_interval(auto_si);
+        s_run.applied_settings.auto_swap_interval = auto_si;
     }
-    if (step->buffer_stuffing_fix_wait >= 0) {
+    if (frame.buffer_stuffing_fix_wait) {
         ALOGI("SwappyTest: Step override -> setBufferStuffingFixWait(%d)",
-              step->buffer_stuffing_fix_wait);
-        swappy_backend_set_buffer_stuffing_fix_wait(step->buffer_stuffing_fix_wait);
+              *frame.buffer_stuffing_fix_wait);
+        swappy_backend_set_buffer_stuffing_fix_wait(*frame.buffer_stuffing_fix_wait);
+        s_run.applied_settings.buffer_stuffing_fix_wait = *frame.buffer_stuffing_fix_wait;
     }
-    if (step->target_fps > 0) {
-        uint64_t interval_ns =
-                static_cast<uint64_t>(1000000000.0 / static_cast<double>(step->target_fps));
+    if (frame.swap_interval_ns) {
+        const uint64_t interval_ns = static_cast<uint64_t>(*frame.swap_interval_ns);
+        const int32_t fps =
+                static_cast<int32_t>(std::lround(1000000000.0 / static_cast<double>(interval_ns)));
         ALOGI("SwappyTest: Step override -> setSwapIntervalNS(%llu) (%d FPS)",
-              (unsigned long long)interval_ns, step->target_fps);
+              (unsigned long long)interval_ns, (int)fps);
         swappy_backend_set_swap_interval_ns(interval_ns);
-        s_run.active_scenario_explicit_30fps = (step->target_fps <= 30);
+        s_run.active_scenario_explicit_30fps = (interval_ns >= SWAPPY_SWAP_30FPS);
+        s_run.applied_settings.fps = fps;
     }
 }
 
-// Keeps the boost thread busy for the next 500 ms: an external CPU load that
-// briefly lifts the clocks the render thread runs at.
-static void fire_external_boost_pulse(uint64_t now_ns) {
-    ALOGI("SwappyTest: Step %d firing 500 ms external big-core boost pulse",
-          s_run.current_step_index.load());
-    s_boost.until_ns = now_ns + kBoostPulseNs;
+// Keeps the boost thread busy for the next boost_ms ms: an external CPU load
+// that briefly lifts the clocks the render thread runs at.
+static void fire_external_boost_pulse(uint64_t now_ns, int boost_ms) {
+    ALOGI("SwappyTest: Step %d firing %d ms external big-core boost pulse",
+          s_run.current_step_index.load(), boost_ms);
+    s_boost.until_ns = now_ns + static_cast<uint64_t>(boost_ms) * 1000000ULL;
 }
 
+// Copies the selected scenario into the run and publishes what it needs.
+// Called under s_test_mutex.
 static void populate_active_scenario_steps(void) {
-    s_run.current_step_index = 0;
-    s_run.rng_state = kRngSeed;
+    s_run.current_step_index = -1;
 
-    // Only CUSTOM matches case-insensitively.
-    const char* sc = s_run.selected_scenario_name;
-    const ScenarioDef* def = find_scenario(sc, /*ignore_case=*/strcasecmp(sc, "CUSTOM") == 0);
-    if (def == nullptr) {
-        ALOGE("SwappyTest: Unrecognized scenario '%s', defaulting to S1", sc);
-        def = &dvfs::scenario_at(0);
-    }
-    set_selected_scenario_name_locked(def->id);
-
-    const std::vector<ScenarioStep> steps =
-            dvfs::build_scenario_steps(*def, s_run.custom_steps_spec);
-    std::copy(steps.begin(), steps.end(), s_run.scenario_steps);
-    s_run.scenario_step_count = static_cast<int>(steps.size());
-
-    if (def->flags & kScenarioCustom) {
-        float total_sec = 0.0f;
-        for (const ScenarioStep& step : steps) {
-            total_sec += step.duration_sec;
-        }
-        snprintf(s_run.selected_scenario_desc, sizeof(s_run.selected_scenario_desc),
-                 "CUSTOM (%d steps, %.1fs): %s", s_run.scenario_step_count.load(), total_sec,
-                 s_run.custom_steps_spec[0] != '\0' ? s_run.custom_steps_spec : "5s:cpu=0,gpu=0");
-    } else {
-        snprintf(s_run.selected_scenario_desc, sizeof(s_run.selected_scenario_desc), "%s",
-                 def->description);
-    }
-
-    const dvfs::ScenarioTraits traits = dvfs::scenario_traits(*def, steps);
-    s_active_scenario_uses_gpu = traits.uses_gpu;
-    s_run.required_calibrations =
-            dvfs::required_calibrations(traits, active_gpu_calibration_kind());
-    s_run.active_scenario_explicit_30fps = traits.explicit_30fps;
-    s_run.active_scenario_square_wave = traits.square_wave;
-    if (traits.needs_boost) {
+    const Scenario& scenario = s_run.selected_scenario;
+    s_run.scenario_step_count = scenario.step_count();
+    s_active_scenario_uses_gpu = scenario.uses_gpu();
+    CalibrationSet required = 0;
+    if (scenario.uses_cpu()) required |= calibration_bit(CALIBRATION_CPU);
+    if (scenario.uses_gpu()) required |= calibration_bit(active_gpu_calibration_kind());
+    s_run.required_calibrations = required;
+    s_run.active_scenario_explicit_30fps = false;
+    if (scenario.needs_boost()) {
         ensure_boost_thread_started();
     }
+    s_run.scenario_engine.start(scenario);
+}
+
+void set_test_scenario(Scenario scenario) {
+    std::lock_guard<std::mutex> lock(s_test_mutex);
+    s_run.selected_scenario = std::move(scenario);
+}
+
+void select_scenario(int index) {
+    if (index < 0 || index >= ScenarioCatalog::scenario_count()) {
+        ALOGE("SwappyTest: Scenario index %d out of range, defaulting to 0", index);
+        index = 0;
+    }
+    set_test_scenario(ScenarioCatalog::scenario_at(index));
 }
 
 void set_test_scenario(const char* scenario_name) {
-    std::lock_guard<std::mutex> lock(s_test_mutex);
-    if (!scenario_name || scenario_name[0] == '\0') {
-        set_selected_scenario_name_locked("S1");
-    } else {
-        set_selected_scenario_name_locked(scenario_name);
+    const char* name = (scenario_name && scenario_name[0] != '\0') ? scenario_name : "S1";
+    const Scenario* scenario = ScenarioCatalog::find_scenario(name, /*ignore_case=*/false);
+    if (scenario == nullptr) {
+        ALOGE("SwappyTest: Unrecognized scenario '%s', defaulting to S1", name);
+        scenario = &ScenarioCatalog::scenario_at(0);
     }
-    const char* desc = find_scenario_description_by_id(s_run.selected_scenario_name);
-    // For CUSTOM the lookup can return s_run.selected_scenario_desc itself.
-    if (desc && desc != s_run.selected_scenario_desc) {
-        snprintf(s_run.selected_scenario_desc, sizeof(s_run.selected_scenario_desc), "%s", desc);
-    }
+    set_test_scenario(*scenario);
 }
 
 // A file in s_run.output_directory. Called under s_test_mutex.
@@ -588,7 +551,7 @@ static void complete_scenario_run(void) {
             s_run.run_failed.load() ? "failed" : (s_run_tainted.load() ? "tainted" : "ok");
     ALOGI("SCENARIO_RESULT status=%s scenario=%s api=%s pacing=%s headroom_start=%d "
           "headroom_end=%d tainted=%d run_failed=%d reason=%s",
-          status, s_run.selected_scenario_name, get_active_render_api_name(),
+          status, s_run.selected_scenario.title().c_str(), get_active_render_api_name(),
           swappy_backend_get_pacing_strategy_name(), s_headroom_start_pct.load(),
           s_headroom_end_pct.load(), s_run_tainted.load() ? 1 : 0, s_run.run_failed.load() ? 1 : 0,
           reason);
@@ -774,14 +737,14 @@ static void fail_run_without_calibration(CalibrationSet missing) {
     ALOGE("SwappyTest: scenario %s not run on %s: missing or invalid calibrations: %s. Run them "
           "first (Calibrate CPU / Calibrate GPU buttons, --es calibrate %s, or "
           "run_swappy_matrix.py --calibrate-only %s).",
-          s_run.selected_scenario_name, get_active_render_api_name(), kinds.c_str(), kinds.c_str(),
-          kinds.c_str());
+          s_run.selected_scenario.title().c_str(), get_active_render_api_name(), kinds.c_str(),
+          kinds.c_str(), kinds.c_str());
     s_run.missing_calibrations = missing;
     char reason[64];
     snprintf(reason, sizeof(reason), "%s:%s", kNoCalibrationReason, kinds.c_str());
     mark_run_failed(reason);
     complete_scenario_run();
-    // Release-publishes the run state, as advance_scenario_step() does.
+    // Release-publishes the run state, as finish_scenario_run() does.
     s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
 }
 
@@ -816,14 +779,20 @@ static void start_scenario_run(void) {
     s_ui.calib_core = calib.best_core;
     s_ui.calib_freq_mhz = calib.best_freq_mhz;
     s_ui.calib_at_max_freq = true;
-    s_run.current_step_index = 0;
+    s_run.current_step_index = -1;
     s_run.test_phase = TEST_PHASE_RUNNING;
     s_run.current_step_start_ns = 0;
 
-    const bool limit_30fps = s_run.active_scenario_explicit_30fps || s_run.user_30fps_limit;
+    // The run turns auto swap interval on over a 60 FPS floor (30 FPS for the
+    // UI limit). Pipeline mode and the buffer stuffing fix are not reset:
+    // SwappyTestRenderer::setOptions() applied the app's options (the pipeline
+    // / stuff_fix extras or the UI choice, else auto and off) before the run.
+    // Step 0 applies the scenario's own changes.
+    const bool limit_30fps = s_run.user_30fps_limit;
     swappy_backend_set_swap_interval_ns(limit_30fps ? SWAPPY_SWAP_30FPS : SWAPPY_SWAP_60FPS);
     swappy_backend_set_auto_swap_interval(true);
-    stage_scenario_step(&s_run.scenario_steps[0]);
+    s_run.applied_settings = swappy_settings_in_effect(limit_30fps);
+    // The first frame opens step 0 and applies its settings.
 
     SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(0, s_run.scenario_step_count));
     s_run.steps_active.store(true, std::memory_order_release);
@@ -926,7 +895,7 @@ void start_benchmark_run(void) {
             }
         }
 
-        SWAPPY_TEST_START_RUN(s_run.selected_scenario_name, s_run.run_iteration);
+        SWAPPY_TEST_START_RUN(s_run.selected_scenario.title().c_str(), s_run.run_iteration);
 
         populate_active_scenario_steps();
         s_run.steps_active = false;
@@ -951,7 +920,6 @@ void start_benchmark_run(void) {
         s_run.target_gpu_workload_ms = 0.0f;
         s_ui.actual_workload_ms = 0.0f;
         s_ui.actual_gpu_workload_ms = 0.0f;
-        s_run.current_step_duration_sec = 3.0f;
         s_run.frame_time_idx = 0;
         s_run.frame_time_count = 0;
         s_run.last_frame_stamp_ns = 0;
@@ -992,33 +960,14 @@ void stop_benchmark_run(void) {
     }
 }
 
-static float step_time_remaining_sec(void) {
-    uint64_t now_ns = get_time_monotonic_ns();
+// How long the active step has run; steps are as long as their frames.
+static float step_elapsed_sec(void) {
     if (s_run.test_phase == TEST_PHASE_RUNNING) {
-        if (s_run.current_step_start_ns == 0) {
-            return s_run.current_step_duration_sec;
-        }
-        uint64_t elapsed = now_ns - s_run.current_step_start_ns;
-        float rem = s_run.current_step_duration_sec - (float)elapsed / 1e9f;
-        return rem > 0.0f ? rem : 0.0f;
+        if (s_run.current_step_start_ns == 0) return 0.0f;
+        uint64_t elapsed = get_time_monotonic_ns() - s_run.current_step_start_ns;
+        return (float)elapsed / 1e9f;
     }
     return 0.0f;
-}
-
-static float step_duration_sec(void) {
-    if (s_run.test_phase == TEST_PHASE_RUNNING) {
-        return s_run.current_step_duration_sec;
-    }
-    return 0.0f;
-}
-
-// The run diverged when a 60 FPS target measures below 45 FPS.
-static constexpr float kDivergenceMinExpectedFps = 55.0f;
-static constexpr float kDivergenceMaxRealFps = 45.0f;
-
-bool get_is_fps_diverged(void) {
-    return (s_ui.expected_fps >= kDivergenceMinExpectedFps &&
-            s_ui.measured_real_fps < kDivergenceMaxRealFps);
 }
 
 int get_current_step_index(void) {
@@ -1031,13 +980,11 @@ void get_ui_snapshot(DvfsUiSnapshot* out) {
     out->test_scenario = get_test_scenario();
     out->current_step_index = s_run.current_step_index;
     out->scenario_step_count = s_run.scenario_step_count;
-    out->step_time_remaining_sec = step_time_remaining_sec();
+    out->step_elapsed_sec = step_elapsed_sec();
     out->target_workload_ms = s_run.target_workload_ms;
     out->last_frame_expected_ms = s_ui.last_frame_expected_ms;
     out->last_frame_real_cpu_ms = s_ui.last_frame_real_cpu_ms;
-    out->expected_fps = s_ui.expected_fps;
     out->measured_real_fps = s_ui.measured_real_fps;
-    out->fps_diverged = get_is_fps_diverged();
     out->cooldown_progress_sec = s_ui.cooldown_progress_sec;
     out->cooldown_headroom_pct = s_ui.cooldown_headroom_pct;
     out->current_cpu_core = s_ui.current_cpu_core;
@@ -1078,23 +1025,6 @@ static void record_frame_time_sample(uint64_t frame_dur_ns) {
     }
 }
 
-// The largest workload targets expected to sustain 60 and 30 FPS.
-static constexpr float kMax60FpsWorkloadMs = 14.0f;
-static constexpr float kMax30FpsWorkloadMs = 33.0f;
-
-// The cadence a workload target is expected to sustain.
-static float expected_fps_for_target(float target_workload_ms) {
-    if (s_run.active_scenario_explicit_30fps) return 30.0f;
-    if (target_workload_ms <= kMax60FpsWorkloadMs) return 60.0f;
-    if (target_workload_ms <= kMax30FpsWorkloadMs) return 30.0f;
-    return 20.0f;
-}
-
-// Derives the cadence the active target is expected to sustain.
-static void update_expected_fps(void) {
-    s_ui.expected_fps = expected_fps_for_target(s_run.target_workload_ms);
-}
-
 static int32_t compute_gpu_iterations_for_target_ms(double target_gpu_ms, double gpu_iters_per_ms,
                                                     double gpu_fixed_ms,
                                                     bool* out_clamped = nullptr) {
@@ -1115,28 +1045,43 @@ static int32_t compute_gpu_iterations_for_target_ms(double target_gpu_ms, double
     return static_cast<int32_t>(raw_iters);
 }
 
-// Opens the async trace slice spanning scenario step step_idx, which must
-// already be staged. Called under s_test_mutex.
-static void trace_step_begin(int step_idx) {
+static std::string scenario_step_name(const Scenario& scenario, int step_idx) {
+    if (step_idx >= 0 && static_cast<size_t>(step_idx) < scenario.step_names().size()) {
+        return scenario.step_names()[step_idx];
+    }
+    return std::to_string(step_idx + 1) + ".";
+}
+
+// Opens the async trace slice spanning scenario step step_idx, logging the
+// values in effect at its first frame; the Swappy settings are the run's
+// actual ones, s_run.applied_settings, after the step's changes (pipeline
+// off|on|auto, fps 0 = Swappy's auto rate). Called under s_test_mutex.
+static void trace_step_begin(int step_idx, const ScenarioEngine::Frame& frame) {
     if (!SWAPPY_TEST_TRACE_ENABLED()) return;
-    const ScenarioStep* step = &s_run.scenario_steps[step_idx];
+    const std::string step_name = scenario_step_name(s_run.scenario_engine.scenario(), step_idx);
     // The same clamp dispatch_gpu_workload() applies on every frame.
     [[maybe_unused]] bool gpu_clamped = false;
-    (void)compute_gpu_iterations_for_target_ms(static_cast<double>(step->target_gpu_ms),
+    (void)compute_gpu_iterations_for_target_ms(static_cast<double>(frame.gpu_ms),
                                                s_run.calibrated_gpu_iters_per_ms.load(
                                                        std::memory_order_relaxed),
                                                s_run.calibrated_gpu_fixed_ms.load(
                                                        std::memory_order_relaxed),
                                                &gpu_clamped);
-    SWAPPY_TEST_BEGIN_STEP("SwappyTest::Step;%d;tgt=%d;cpu=%d;gpu=%d;dur=%.2f;exp_fps=%.1f;jit=%d-%"
-                           "d"
-                           ";gpu_clamped=%d;reset=%d;boost=%d;fps=%d;phase=%s",
-                           step_idx, (int)s_run.target_workload_ms, step->target_cpu_ms,
-                           step->target_gpu_ms, step->duration_sec,
-                           expected_fps_for_target(s_run.target_workload_ms), step->jitter_min_ms,
-                           step->jitter_max_ms, gpu_clamped ? 1 : 0,
-                           step->reset_pacing_at_start ? 1 : 0, step->external_boost_pulse ? 1 : 0,
-                           step->target_fps,
+    // ';' and '|' separate marker fields, and a step name may contain them.
+    char name[64];
+    snprintf(name, sizeof(name), "%s", step_name.c_str());
+    for (char* c = name; *c != '\0'; ++c) {
+        if (*c == ';' || *c == '|') *c = '/';
+    }
+    [[maybe_unused]] const SwappySettings& settings = s_run.applied_settings;
+    [[maybe_unused]] const double target_ms =
+            frame.gpu_ms > frame.cpu_ms ? frame.gpu_ms : frame.cpu_ms;
+    SWAPPY_TEST_BEGIN_STEP("SwappyTest::Step;%d;name=%s;tgt=%g;cpu=%g;gpu=%g;pipeline=%s;fps=%d"
+                           ";auto_swap=%d;stuff_fix=%d;reset=%d;boost=%d;gpu_clamped=%d;phase=%s",
+                           step_idx, name, target_ms, frame.cpu_ms, frame.gpu_ms,
+                           pipeline_mode_name(settings.pipeline), (int)settings.fps,
+                           (int)settings.auto_swap_interval, (int)settings.buffer_stuffing_fix_wait,
+                           frame.reset_frame_pacing ? 1 : 0, frame.boost_ms, gpu_clamped ? 1 : 0,
                            get_phase_name_for_step(step_idx, s_run.scenario_step_count));
 }
 
@@ -1146,26 +1091,24 @@ static void trace_step_begin(int step_idx) {
 // projection and clock settings.
 static void trace_run_settings(void) {
     if (!SWAPPY_TEST_TRACE_ENABLED()) return;
-    // '|' separates marker fields, and a CUSTOM description may contain it.
-    char desc[sizeof(s_run.selected_scenario_desc)];
-    snprintf(desc, sizeof(desc), "%s", s_run.selected_scenario_desc);
-    for (char* c = desc; *c != '\0'; ++c) {
-        if (*c == '|') *c = '/';
+    // '|' separates marker fields, so it must not appear in the description.
+    std::string desc = s_run.selected_scenario.description();
+    for (char& c : desc) {
+        if (c == '|') c = '/';
     }
     SWAPPY_TEST_TRACE_INSTANT("SwappyTest::Settings|scenario=%s|api=%s|pacing=%s|iter=%d"
-                              "|uses_gpu=%d|explicit_30fps=%d|square_wave=%d"
+                              "|uses_gpu=%d|explicit_30fps=%d"
                               "|user_30fps=%d|steps=%d|refresh_ns=%llu|device_max_mhz=%d|headroom_"
                               "start=%d"
                               "|desc=%s",
-                              s_run.selected_scenario_name, get_active_render_api_name(),
+                              s_run.selected_scenario.title().c_str(), get_active_render_api_name(),
                               swappy_backend_get_pacing_strategy_name(), s_run.run_iteration,
                               s_active_scenario_uses_gpu ? 1 : 0,
                               s_run.active_scenario_explicit_30fps ? 1 : 0,
-                              s_run.active_scenario_square_wave ? 1 : 0,
                               s_run.user_30fps_limit ? 1 : 0, s_run.scenario_step_count.load(),
                               (unsigned long long)get_display_refresh_period_ns(),
                               s_device_global_max_freq_mhz.load(), s_headroom_start_pct.load(),
-                              desc);
+                              desc.c_str());
 
     const int64_t gpu_pixels =
             static_cast<int64_t>(s_render_surface_width.load()) * s_render_surface_height.load();
@@ -1192,20 +1135,6 @@ static void trace_run_settings(void) {
                               s_gpu_calibration_result.accepted_samples);
 }
 
-// Opens the trace slice of the step just staged and fires its start-of-step
-// side effects. Called under s_test_mutex.
-static void begin_staged_step(int step_idx, uint64_t now_ns) {
-    const ScenarioStep* step = &s_run.scenario_steps[step_idx];
-    trace_step_begin(step_idx);
-    if (step->reset_pacing_at_start) {
-        ALOGI("SwappyTest: Step %d invoking resetFramePacing()", step_idx);
-        swappy_backend_reset_frame_pacing();
-    }
-    if (step->external_boost_pulse) {
-        fire_external_boost_pulse(now_ns);
-    }
-}
-
 // Drops the workload to a 1 ms CPU load with no GPU work once no step runs.
 static void set_idle_targets(void) {
     s_run.target_workload_ms = 1.0f;
@@ -1214,56 +1143,78 @@ static void set_idle_targets(void) {
     s_ui.current_gpu_workload = 0;
 }
 
-// Closes the active step once its duration has elapsed, staging the next
-// step or completing the run.
-static void advance_scenario_step(uint64_t now_ns) {
-    if (s_run.test_phase == TEST_PHASE_RUNNING) {
-        uint64_t elapsed_step_ns = now_ns - s_run.current_step_start_ns;
-        uint64_t target_step_ns = (uint64_t)(s_run.current_step_duration_sec * 1000000000.0);
+// Makes frame's targets the active workload.
+static void set_frame_targets(const ScenarioEngine::Frame& frame) {
+    s_run.target_cpu_workload_ms = (float)frame.cpu_ms;
+    s_run.target_gpu_workload_ms = (float)frame.gpu_ms;
+    s_run.target_workload_ms = (float)(frame.gpu_ms > frame.cpu_ms ? frame.gpu_ms : frame.cpu_ms);
+}
 
-        if (elapsed_step_ns >= target_step_ns) {
-            SWAPPY_TEST_END_STEP();
-            s_run.current_step_start_ns = now_ns;
-            s_run.current_step_index++;
-            if (s_run.current_step_index < s_run.scenario_step_count) {
-                SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(s_run.current_step_index,
-                                                                 s_run.scenario_step_count));
-                ScenarioStep* next = &s_run.scenario_steps[s_run.current_step_index];
-                stage_scenario_step(next);
-                begin_staged_step(s_run.current_step_index, now_ns);
-                ALOGI("SwappyTest: [%s] Step %d/%d -> CPU=%.0fms GPU=%.0fms (dur=%.1fs, "
-                      "Expected=%.1f, Real=%.1f)",
-                      s_run.selected_scenario_name, s_run.current_step_index + 1,
-                      s_run.scenario_step_count.load(), s_run.target_cpu_workload_ms.load(),
-                      s_run.target_gpu_workload_ms.load(), s_run.current_step_duration_sec.load(),
-                      s_ui.expected_fps.load(), s_ui.measured_real_fps.load());
-            } else {
-                set_idle_targets();
-                complete_scenario_run();
-                // Release-publishes the run state to the UI thread, which
-                // reads it lock-free once get_ui_snapshot() reports COMPLETE.
-                s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
-                ALOGI("SwappyTest: Scenario %s completed (%d steps)! Score it on the host from "
-                      "its trace.",
-                      s_run.selected_scenario_name, s_run.scenario_step_count.load());
-            }
-        }
-    } else if (s_run.test_phase == TEST_PHASE_COMPLETE || s_run.test_phase == TEST_PHASE_READY) {
-        set_idle_targets();
+// Opens the step frame begins: closes the previous step's trace slice,
+// applies the Swappy settings frame changes and opens its slice. Called under
+// s_test_mutex.
+static void begin_scenario_step(const ScenarioEngine::Frame& frame, uint64_t now_ns) {
+    const int step_idx = frame.step_index;
+    const int step_count = s_run.scenario_step_count.load();
+    const std::string step_name = scenario_step_name(s_run.scenario_engine.scenario(), step_idx);
+    SWAPPY_TEST_END_STEP();
+    s_run.current_step_index = step_idx;
+    s_run.current_step_start_ns = now_ns;
+    s_run.test_phase = TEST_PHASE_RUNNING;
+    SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(step_idx, step_count));
+    // The builder puts a step's Swappy settings on its first frame.
+    apply_swappy_settings(frame);
+    if (step_idx == 0) trace_run_settings();
+    trace_step_begin(step_idx, frame);
+    ALOGI("SwappyTest: [%s] Step %d/%d \"%s\" -> CPU=%gms GPU=%gms (Real=%.1f)",
+          s_run.selected_scenario.title().c_str(), step_idx + 1, step_count, step_name.c_str(),
+          frame.cpu_ms, frame.gpu_ms, s_ui.measured_real_fps.load());
+}
+
+// Fires the one-shot actions frame carries.
+static void fire_frame_actions(const ScenarioEngine::Frame& frame, uint64_t now_ns) {
+    if (frame.reset_frame_pacing) {
+        ALOGI("SwappyTest: Step %d invoking resetFramePacing()", frame.step_index);
+        swappy_backend_reset_frame_pacing();
+    }
+    if (frame.boost_ms > 0) {
+        fire_external_boost_pulse(now_ns, frame.boost_ms);
     }
 }
 
-// Picks this frame's CPU target, applying the active step's jitter window.
-static float pick_frame_cpu_workload_ms(void) {
-    float frame_cpu_ms = s_run.target_cpu_workload_ms;
-    if (s_run.current_step_index < s_run.scenario_step_count) {
-        ScenarioStep* cur = &s_run.scenario_steps[s_run.current_step_index];
-        if (cur->jitter_max_ms > cur->jitter_min_ms) {
-            uint32_t span = (uint32_t)(cur->jitter_max_ms - cur->jitter_min_ms + 1);
-            frame_cpu_ms = (float)(cur->jitter_min_ms + (int)(next_rng_u32() % span));
+// Completes the run once the scenario has no frame left. Called under
+// s_test_mutex.
+static void finish_scenario_run(void) {
+    SWAPPY_TEST_END_STEP();
+    set_idle_targets();
+    complete_scenario_run();
+    // Release-publishes the run state to the UI thread, which reads it
+    // lock-free once get_ui_snapshot() reports COMPLETE.
+    s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
+    ALOGI("SwappyTest: Scenario %s completed (%d steps)! Score it on the host from its trace.",
+          s_run.selected_scenario.title().c_str(), s_run.scenario_step_count.load());
+}
+
+// Plays this frame of the scenario: opens the step it begins, sets its
+// workload targets, fires its actions, and completes the run once the
+// scenario is over. Called under s_test_mutex.
+static void run_scenario_frame(uint64_t now_ns) {
+    if (s_run.test_phase != TEST_PHASE_RUNNING) {
+        if (s_run.test_phase == TEST_PHASE_COMPLETE || s_run.test_phase == TEST_PHASE_READY) {
+            set_idle_targets();
         }
+        return;
     }
-    return frame_cpu_ms;
+    const ScenarioEngine::Frame frame = s_run.scenario_engine.next_frame(now_ns);
+    if (frame.finished) {
+        finish_scenario_run();
+        return;
+    }
+    if (frame.step_index != s_run.current_step_index) {
+        begin_scenario_step(frame, now_ns);
+    }
+    set_frame_targets(frame);
+    fire_frame_actions(frame, now_ns);
 }
 
 // Publishes this frame's fragment shader iteration count and samples the GPU
@@ -1397,25 +1348,14 @@ void run_frame_swappy_test_workload(void) {
     SWAPPY_TEST_TRACE_FRAME(s_run.run_frame_count);
 
     if (steps_active) {
-        if (s_run.current_step_start_ns == 0 && s_run.scenario_step_count > 0) {
-            s_run.current_step_start_ns = now_ns;
-            stage_scenario_step(&s_run.scenario_steps[0]);
-            trace_run_settings();
-            begin_staged_step(0, now_ns);
-        }
-
-        update_expected_fps();
-        advance_scenario_step(now_ns);
-        update_expected_fps();
-
-        frame_cpu_ms = pick_frame_cpu_workload_ms();
+        run_scenario_frame(now_ns);
+        frame_cpu_ms = s_run.target_cpu_workload_ms;
         dispatch_gpu_workload();
     } else {
         s_run.target_workload_ms = 0.0f;
         s_ui.actual_workload_ms = 0.0f;
         s_ui.last_frame_expected_ms = 0.0f;
         s_ui.last_frame_real_cpu_ms = 0.0f;
-        s_ui.expected_fps = 60.0f;
         s_ui.current_gpu_workload = 0;
     }
     running_steps = steps_active && s_run.test_phase != TEST_PHASE_COMPLETE;
@@ -1453,17 +1393,15 @@ void run_frame_swappy_test_workload(void) {
         double target_fps = refresh_ns > 0 ? (1e9 / (double)refresh_ns) : 0.0;
         const char* api_label =
                 (get_active_render_api() == SWAPPY_RENDER_API_VULKAN) ? "VK" : "GLES";
-        ALOGI("API: %s | Expected FPS: %.1f | Real FPS: %.1f | Swappy Target FPS: %.1f | CPU: Core "
-              "%d @ %d MHz (eff: %.0f%%) | Calib: Core %d @ %d/%d MHz (MaxOK: %s) | Target: %.0f "
-              "ms | Actual: %.1f ms | Step: %.1fs (rem: %.1fs) | Diverged: %s | Tainted: %s | "
-              "Phase: %d | Scenario: %s",
-              api_label, (double)s_ui.expected_fps, (double)s_ui.measured_real_fps, target_fps,
-              (int)s_ui.current_cpu_core, (int)s_ui.current_cpu_freq_mhz, (double)freq_ratio_pct,
-              (int)s_ui.calib_core, (int)s_ui.calib_freq_mhz, (int)s_device_global_max_freq_mhz,
+        ALOGI("API: %s | Real FPS: %.1f | Swappy Target FPS: %.1f | CPU: Core %d @ %d MHz "
+              "(eff: %.0f%%) | Calib: Core %d @ %d/%d MHz (MaxOK: %s) | Target: %.0f ms | "
+              "Actual: %.1f ms | Step: %d at %.1fs | Tainted: %s | Phase: %d | Scenario: %s",
+              api_label, (double)s_ui.measured_real_fps, target_fps, (int)s_ui.current_cpu_core,
+              (int)s_ui.current_cpu_freq_mhz, (double)freq_ratio_pct, (int)s_ui.calib_core,
+              (int)s_ui.calib_freq_mhz, (int)s_device_global_max_freq_mhz,
               s_ui.calib_at_max_freq ? "true" : "false", (double)s_run.target_workload_ms,
-              (double)s_ui.actual_workload_ms, (double)step_duration_sec(),
-              (double)step_time_remaining_sec(), get_is_fps_diverged() ? "true" : "false",
-              s_run_tainted ? "true" : "false",
-              (int)s_run.test_phase.load(std::memory_order_relaxed), s_run.selected_scenario_name);
+              (double)s_ui.actual_workload_ms, s_run.current_step_index.load() + 1,
+              (double)step_elapsed_sec(), s_run_tainted ? "true" : "false",
+              (int)s_run.test_phase.load(std::memory_order_relaxed), get_test_scenario());
     }
 }

@@ -479,6 +479,17 @@ public:
         return ns == static_cast<uint64_t>(-1) ? 0 : ns;
     }
 
+    // The pipeline and buffer stuffing options the app last applied, which a
+    // scenario run starts from: auto pipeline mode on or off, and the stuffing
+    // fix wait in frames, -1 while never set (Swappy's default, 0, applies).
+    bool getAutoPipelineMode() const {
+        return mAutoPipelineMode.load();
+    }
+
+    int32_t getBufferStuffingFixWait() const {
+        return mBufferStuffingFixWait.load();
+    }
+
     uint64_t getRefreshDurationNs() const {
         // Without Swappy there is no measured refresh period; fall back to the
         // last one Swappy reported in this process, else 60 Hz.
@@ -881,10 +892,7 @@ private:
         const float aspect = extent.height > 0
                 ? static_cast<float>(extent.width) / static_cast<float>(extent.height)
                 : 1.0f;
-        const bool diverged = get_is_fps_diverged();
-        const samples::Circle::Color ballColor = diverged
-                ? samples::Circle::Color{1.0f, 0.35f, 0.25f}
-                : samples::Circle::Color{0.0f, 0.9f, 0.75f};
+        const samples::Circle::Color ballColor{0.0f, 0.9f, 0.75f};
         const int32_t gpuWork = get_current_gpu_workload();
         const float drawRadius = (gpuWork > 0) ? 0.65f : 0.12f;
         const float drawX = (gpuWork > 0) ? 0.0f : ball.x;
@@ -1130,9 +1138,7 @@ private:
     CirclePosition drawGlesFrame(GlesRenderState& gl, const BallMotionState& ball) {
         const SurfaceSize size = mSurfaceSize.load();
         float aspect = size.height > 0 ? static_cast<float>(size.width) / size.height : 1.0f;
-        bool diverged = get_is_fps_diverged();
-        samples::Circle::Color ballColor = diverged ? samples::Circle::Color{1.0f, 0.35f, 0.25f}
-                                                    : samples::Circle::Color{0.0f, 0.9f, 0.75f};
+        const samples::Circle::Color ballColor{0.0f, 0.9f, 0.75f};
         int32_t gpuWork = get_current_gpu_workload();
         const float drawRadius = (gpuWork > 0) ? 0.65f : 0.12f;
         const float drawX = (gpuWork > 0) ? 0.0f : ball.x;
@@ -1210,7 +1216,7 @@ private:
             // Execute calibrated DVFS workload inside the Swappy frame window
             run_frame_swappy_test_workload();
 
-            // Update bouncyball position and color based on current test phase / divergence
+            // Update bouncyball position and color based on current test phase
             const float dt = clampedFrameDeltaSeconds(prevFrameEnd);
             updateBallMotion(ball, dt);
 
@@ -1292,6 +1298,14 @@ void swappy_backend_set_auto_pipeline_mode(bool enabled) {
 
 void swappy_backend_set_buffer_stuffing_fix_wait(int32_t n_frames) {
     SwappyTestRenderer::getInstance().setBufferStuffingFixWait(n_frames);
+}
+
+bool swappy_backend_get_auto_pipeline_mode(void) {
+    return SwappyTestRenderer::getInstance().getAutoPipelineMode();
+}
+
+int32_t swappy_backend_get_buffer_stuffing_fix_wait(void) {
+    return SwappyTestRenderer::getInstance().getBufferStuffingFixWait();
 }
 
 void swappy_backend_reset_frame_pacing(void) {
@@ -1404,15 +1418,9 @@ JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetTestSc
     env->ReleaseStringUTFChars(scenario, str);
 }
 
-JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetCustomSteps(
-        JNIEnv* env, jobject /* this */, jstring stepsSpec) {
-    if (!stepsSpec) {
-        set_custom_steps("");
-        return;
-    }
-    const char* str = env->GetStringUTFChars(stepsSpec, nullptr);
-    set_custom_steps(str);
-    env->ReleaseStringUTFChars(stepsSpec, str);
+JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSelectScenario(
+        JNIEnv* /* env */, jobject /* this */, jint scenarioIndex) {
+    select_scenario(scenarioIndex);
 }
 
 JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetRunIteration(
