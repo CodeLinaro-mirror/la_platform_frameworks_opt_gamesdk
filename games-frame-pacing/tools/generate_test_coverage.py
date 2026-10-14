@@ -132,6 +132,9 @@ def _get_cxx_dirs(
     gamesdk_dir = module_dir.parent
     cxx_dirs = [
             module_dir / ".cxx",
+            gamesdk_dir / "games-controller" / ".cxx",
+            gamesdk_dir / "game-activity" / ".cxx",
+            gamesdk_dir / "game-text-input" / ".cxx",
             gamesdk_dir / "test" / "swappy" / "testapp" / "app" / ".cxx",
             gamesdk_dir / "host_cmake",
     ]
@@ -449,11 +452,14 @@ def pull_and_sync_device_gcov_data(module_dir: Path, out_dir: Path) -> None:
     print(f"Synced {synced} .gcda files to build output folders.")
 
 
+EXTRA_NATIVE_MODULES = ("games-controller", "game-text-input", "game-activity")
+
+
 def discover_source_files(module_dir: Path) -> Dict[str, str]:
-    """Maps source file lower-case names to module-relative paths.
+    """Maps source file lower-case names to module-relative or repo-relative paths.
 
     Args:
-        module_dir: Root directory of module.
+        module_dir: Root directory of primary module.
 
     Returns:
         Dict mapping filename (lowercase) to relative path string.
@@ -464,8 +470,19 @@ def discover_source_files(module_dir: Path) -> Dict[str, str]:
         for src in module_dir.rglob(ext):
             if any(part in src.parts for part in ignore_dirs):
                 continue
-            rel_path = src.relative_to(module_dir)
-            target_map[src.name.lower()] = str(rel_path)
+            rel_path = src.relative_to(module_dir).as_posix()
+            target_map[src.name.lower()] = rel_path
+    gamesdk_dir = module_dir.parent
+    for extra_mod in EXTRA_NATIVE_MODULES:
+        extra_dir = gamesdk_dir / extra_mod
+        if not (extra_dir / ".cxx").exists():
+            continue
+        for ext in ("*.cpp", "*.c", "*.h", "*.hpp"):
+            for src in extra_dir.rglob(ext):
+                if any(part in src.parts for part in ignore_dirs):
+                    continue
+                rel_repo = src.relative_to(gamesdk_dir).as_posix()
+                target_map.setdefault(src.name.lower(), rel_repo)
     return target_map
 
 
@@ -474,12 +491,17 @@ def _resolve_module_relative_path(
         module_dir: Path,
         target_map: Dict[str, str],
 ) -> Optional[str]:
-    """Resolves a compile-time source path from gcov to a module-relative path."""
+    """Resolves a compile-time source path from gcov to a tracked relative path."""
     normalized = os.path.normpath(source_str.strip()).replace("\\", "/")
     module_norm = os.path.normpath(str(module_dir)).replace("\\", "/")
+    gamesdk_norm = os.path.normpath(str(module_dir.parent)).replace("\\", "/")
     valid_rels = set(target_map.values())
     if normalized.startswith(module_norm + "/"):
         rel = normalized[len(module_norm) + 1 :]
+        if rel in valid_rels:
+            return rel
+    if normalized.startswith(gamesdk_norm + "/"):
+        rel = normalized[len(gamesdk_norm) + 1 :]
         if rel in valid_rels:
             return rel
 
@@ -488,6 +510,13 @@ def _resolve_module_relative_path(
         rel = normalized.split(marker, 1)[1]
         if rel in valid_rels:
             return rel
+    for extra_mod in EXTRA_NATIVE_MODULES:
+        extra_marker = f"/{extra_mod}/"
+        if extra_marker in normalized:
+            rel = f"{extra_mod}/{normalized.split(extra_marker, 1)[1]}"
+            if rel in valid_rels:
+                return rel
+            return target_map.get(Path(normalized).name.lower())
 
     if "/" not in normalized:
         return target_map.get(Path(normalized).name.lower())
@@ -1227,9 +1256,14 @@ def package_gcno_bundle(
 
         target_map = discover_source_files(module_dir)
         for rel_src in target_map.values():
-            src_path = module_dir / rel_src
+            if rel_src.startswith(tuple(f"{m}/" for m in EXTRA_NATIVE_MODULES)):
+                src_path = gamesdk_dir / rel_src
+                arc_path = rel_src
+            else:
+                src_path = module_dir / rel_src
+                arc_path = f"{MODULE_NAME}/{rel_src}"
             if src_path.exists():
-                tar.add(src_path, arcname=f"{MODULE_NAME}/{rel_src}")
+                tar.add(src_path, arcname=arc_path)
 
         for tool_name in (
                 "coverage_report_template.html",

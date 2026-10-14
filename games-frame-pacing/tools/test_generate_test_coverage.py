@@ -392,6 +392,35 @@ class GenerateTestCoverageTest(unittest.TestCase):
             self.assertEqual(summary_json["java"]["executed_lines"], 1)
             self.assertEqual(summary_json["java"]["pct"], 50.0)
 
+    def test_discover_source_files_includes_extra_native_modules_with_cxx(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gamesdk_dir = Path(tmp) / "gamesdk"
+            swappy_dir = gamesdk_dir / "games-frame-pacing"
+            controller_dir = gamesdk_dir / "games-controller"
+            (swappy_dir / "common").mkdir(parents=True)
+            (swappy_dir / "common" / "SwappyCommon.cpp").write_text(
+                "void s() {}\n", encoding="utf-8"
+            )
+            (controller_dir / "src" / "main" / "cpp").mkdir(parents=True)
+            (
+                controller_dir / "src" / "main" / "cpp" / "GameController.cpp"
+            ).write_text("void c() {}\n", encoding="utf-8")
+
+            # Without .cxx, extra module is not included.
+            without_cxx = cov.discover_source_files(swappy_dir)
+            self.assertIn("swappycommon.cpp", without_cxx)
+            self.assertNotIn("gamecontroller.cpp", without_cxx)
+
+            # With .cxx present, extra module is discovered.
+            (controller_dir / ".cxx").mkdir()
+            with_cxx = cov.discover_source_files(swappy_dir)
+            self.assertEqual(
+                with_cxx["gamecontroller.cpp"],
+                "games-controller/src/main/cpp/GameController.cpp",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

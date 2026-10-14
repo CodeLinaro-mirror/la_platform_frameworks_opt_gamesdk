@@ -27,9 +27,12 @@ extern "C" void __gcov_flush(void) __attribute__((weak));
 namespace swappy {
 namespace testing {
 
+#ifndef AGDK_GCOV_PREFIX
+#define AGDK_GCOV_PREFIX "/data/data/com.swappy.testapp/files"
+#endif
+
 // App-writable directory on Android where runtime .gcda files are written.
-constexpr const char* kDefaultAndroidGcovPrefix =
-        "/data/data/com.swappy.testapp/files";
+constexpr const char* kDefaultAndroidGcovPrefix = AGDK_GCOV_PREFIX;
 // Strips leading host build-directory path components (up to 20 levels) so
 // .gcda files are emitted inside GCOV_PREFIX.
 constexpr const char* kDefaultGcovPrefixStrip = "20";

@@ -218,6 +218,7 @@ then
               :game-text-input:assembleAndroidTest :game-text-input:assembleDebug \
               -Plibraries=paddleboat,game_activity,game_text_input \
               -PincludeSampleSources -PincludeSampleArtifacts \
+              -PenableCoverage=true \
               -PdistPath="$dist_dir" -PpackageName=$package_name
 
     pushd test/swappy/testapp
