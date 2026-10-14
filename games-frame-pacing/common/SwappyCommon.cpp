@@ -942,3 +942,23 @@ void SwappyCommon::enableBlockingWait(bool enable) {
 }
 
 } // namespace swappy
+
+#ifdef AGDK_COVERAGE
+extern "C" void __gcov_dump(void) __attribute__((weak));
+extern "C" void __gcov_reset(void) __attribute__((weak));
+extern "C" void __gcov_flush(void) __attribute__((weak));
+
+// Flushes and resets gcov counters for this DSO. LLVM 14+ removed __gcov_flush
+// in favor of __gcov_dump() + __gcov_reset(); resetting zeroes in-memory arc
+// counters so subsequent flushes or atexit destructors do not double-count.
+extern "C" __attribute__((used, visibility("default"))) void Swappy_flushCoverage() {
+    if (__gcov_dump) {
+        __gcov_dump();
+        if (__gcov_reset) {
+            __gcov_reset();
+        }
+    } else if (__gcov_flush) {
+        __gcov_flush();
+    }
+}
+#endif  // AGDK_COVERAGE
