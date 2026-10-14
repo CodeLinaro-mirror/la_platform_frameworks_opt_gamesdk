@@ -7,6 +7,7 @@ repositories {
 plugins {
     // Activate Kotlin support
     `kotlin-dsl`
+    jacoco
 }
 
 val ktlint by configurations.creating
@@ -31,6 +32,13 @@ tasks {
     test {
         testLogging.showExceptions = true
         testLogging.exceptionFormat = TestExceptionFormat.FULL
+    }
+    jacocoTestReport {
+        dependsOn(test)
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
     }
 }
 

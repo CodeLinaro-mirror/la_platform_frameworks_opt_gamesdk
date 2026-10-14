@@ -241,7 +241,10 @@ then
 elif [[ $1 == "hostUnitTests" ]]
 then
     find ../.temp/host/.cmake -name "*.gcda" -delete 2>/dev/null || true
-    ./gradlew hostUnitTests -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
+    ./gradlew hostUnitTests \
+        :game-activity:testDebugUnitTest :game-activity:jacocoTestReport \
+        :buildSrc:test :buildSrc:jacocoTestReport \
+        -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
     python3 -B -m unittest discover -s games-frame-pacing/tools -p 'test_generate_test_coverage.py'
     python3 games-frame-pacing/tools/generate_test_coverage.py \
         --mode=report --gcda-dir="../.temp/host/.cmake" --output-dir="$dist_dir/host_coverage"
