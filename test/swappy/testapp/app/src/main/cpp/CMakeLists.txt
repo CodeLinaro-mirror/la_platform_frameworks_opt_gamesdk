@@ -23,6 +23,12 @@ set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-siz
 
 add_subdirectory( "${TEST_DIR}" test_dir)
 
+if(AGDK_ENABLE_COVERAGE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -g -Wno-error")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0 -g")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
+endif()
+
 include_directories("${TEST_DIR}"
         "${TEST_DIR}/../../samples/common/include"
         "${TEST_DIR}/../../games-frame-pacing"
