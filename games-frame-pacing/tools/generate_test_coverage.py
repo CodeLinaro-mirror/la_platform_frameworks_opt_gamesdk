@@ -5,6 +5,7 @@ Usage:
         python3 games-frame-pacing/tools/generate_test_coverage.py
 """
 
+import argparse
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -15,6 +16,7 @@ import sys
 import tarfile
 import tempfile
 from typing import Dict, List, Optional, Tuple
+import zipfile
 
 MODULE_NAME = "games-frame-pacing"
 TEST_PKG = "com.swappy.testapp.test"
@@ -427,36 +429,79 @@ def discover_source_files(module_dir: Path) -> Dict[str, str]:
     return target_map
 
 
+def _resolve_module_relative_path(
+        source_str: str,
+        module_dir: Path,
+        target_map: Dict[str, str],
+) -> Optional[str]:
+    """Resolves a compile-time source path from gcov to a module-relative path."""
+    normalized = os.path.normpath(source_str.strip()).replace("\\", "/")
+    module_norm = os.path.normpath(str(module_dir)).replace("\\", "/")
+    valid_rels = set(target_map.values())
+    if normalized.startswith(module_norm + "/"):
+        rel = normalized[len(module_norm) + 1 :]
+        if rel in valid_rels:
+            return rel
+
+    marker = f"/{MODULE_NAME}/"
+    if marker in normalized:
+        rel = normalized.split(marker, 1)[1]
+        if rel in valid_rels:
+            return rel
+
+    if "/" not in normalized:
+        return target_map.get(Path(normalized).name.lower())
+    return None
+
+
 def _parse_gcov_file(
         gcov_file: Path,
         module_dir: Path,
         target_map: Dict[str, str],
         file_executed_lines: Dict[str, Dict[int, bool]],
 ) -> None:
-    """Parses a .gcov output file and updates line execution dictionary."""
+    """Parses a standard or intermediate (-i) .gcov file into line execution status."""
     lines = gcov_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+    gcov_file.unlink(missing_ok=True)
     if not lines:
-        gcov_file.unlink()
+        return
+
+    if any(line.startswith("file:") for line in lines[:5]):
+        current_rel: Optional[str] = None
+        for line in lines:
+            if line.startswith("file:"):
+                current_rel = _resolve_module_relative_path(
+                        line.split("file:", 1)[1], module_dir, target_map
+                )
+            elif line.startswith("lcount:") and current_rel in file_executed_lines:
+                parts = line.split("lcount:", 1)[1].split(",")
+                if len(parts) >= 2 and parts[0].isdigit():
+                    l_idx = int(parts[0])
+                    is_exec = parts[1].isdigit() and int(parts[1]) > 0
+                    if l_idx > 0:
+                        file_executed_lines[current_rel][l_idx] = (
+                                file_executed_lines[current_rel].get(
+                                        l_idx, False
+                                )
+                                or is_exec
+                        )
         return
 
     source_rel: Optional[str] = None
+    has_source_header = False
     for line in lines[:15]:
         if "0:Source:" in line:
-            source_str = line.split("0:Source:", 1)[1].strip()
-            try:
-                s_path = Path(source_str)
-                if s_path.is_absolute() and module_dir in s_path.parents:
-                    source_rel = str(s_path.relative_to(module_dir))
-            except ValueError:
-                pass
+            has_source_header = True
+            source_rel = _resolve_module_relative_path(
+                    line.split("0:Source:", 1)[1], module_dir, target_map
+            )
             break
 
-    if not source_rel:
-        stem = gcov_file.name.replace(".gcov", "").lower()
+    if not source_rel and not has_source_header:
+        stem = gcov_file.name.removesuffix(".gcov").lower()
         source_rel = target_map.get(stem)
 
     if not source_rel or source_rel not in file_executed_lines:
-        gcov_file.unlink()
         return
 
     for line in lines:
@@ -473,7 +518,6 @@ def _parse_gcov_file(
                         file_executed_lines[source_rel].get(l_idx, False)
                         or is_exec
                 )
-    gcov_file.unlink()
 
 
 def _find_active_gcno_files(cxx_dirs: List[Path]) -> List[Path]:
@@ -530,7 +574,7 @@ def _process_gcno_files(
             sub_dir = temp_dir_path / f"target_{idx}"
             sub_dir.mkdir(exist_ok=True)
             subprocess.run(
-                    [str(llvm_cov_bin), "gcov", str(gcno)],
+                    [str(llvm_cov_bin), "gcov", "-i", str(gcno)],
                     cwd=sub_dir,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -544,24 +588,29 @@ def _process_gcno_files(
 
 
 def generate_gcov_reports(
-        module_dir: Path, llvm_cov_bin: Path
+        module_dir: Path,
+        llvm_cov_bin: Path,
+        cxx_dirs: Optional[List[Path]] = None,
 ) -> List[CoverageSummary]:
     """Executes llvm-cov gcov and parses line-by-line execution results.
 
     Args:
         module_dir: Path to module directory.
         llvm_cov_bin: Path to llvm-cov binary.
+        cxx_dirs: Optional override list of native build directories.
 
     Returns:
         List of CoverageSummary items for all source files.
     """
-    cxx_dirs = _get_cxx_dirs(module_dir)
+    resolved_cxx_dirs = (
+            cxx_dirs if cxx_dirs is not None else _get_cxx_dirs(module_dir)
+    )
     target_map = discover_source_files(module_dir)
     file_executed_lines: Dict[str, Dict[int, bool]] = {
             str(rel): {} for rel in target_map.values()
     }
 
-    gcno_files = _find_active_gcno_files(cxx_dirs)
+    gcno_files = _find_active_gcno_files(resolved_cxx_dirs)
     _process_gcno_files(
             gcno_files,
             llvm_cov_bin,
@@ -658,16 +707,27 @@ def _render_table_rows(
 
 
 def generate_html_report(
-        tools_dir: Path, gamesdk_dir: Path, summary_rows: List[CoverageSummary]
-) -> None:
+        tools_dir: Path,
+        gamesdk_dir: Path,
+        summary_rows: List[CoverageSummary],
+        output_dir: Optional[Path] = None,
+) -> Path:
     """Generates single-page HTML coverage report from template.
 
     Args:
         tools_dir: Path to tools directory containing template.
         gamesdk_dir: Root gamesdk directory for report output.
         summary_rows: List of CoverageSummary objects.
+        output_dir: Optional custom output directory for reports.
+
+    Returns:
+        Path to the generated index HTML report.
     """
-    reports_dir = gamesdk_dir / "out" / "reports" / "cxx_coverage"
+    reports_dir = (
+            output_dir
+            if output_dir is not None
+            else (gamesdk_dir / "out" / "reports" / "cxx_coverage")
+    )
     reports_dir.mkdir(parents=True, exist_ok=True)
     html_file = reports_dir / f"{MODULE_NAME}_coverage.html"
 
@@ -698,6 +758,7 @@ def generate_html_report(
             "\n[Step 6] HTML Coverage Report written to:\n"
             f"  file://{html_file.resolve()}\n"
     )
+    return html_file
 
 
 def _run_coverage_pipeline(
@@ -715,16 +776,132 @@ def _run_coverage_pipeline(
     generate_html_report(tools_dir, gamesdk_dir, summary_rows)
 
 
-def main() -> None:
-    """Main entry point for coverage generation script."""
-    tools_dir = Path(__file__).resolve().parent
-    module_dir = tools_dir.parent
-    gamesdk_dir = module_dir.parent
-    repo_root = gamesdk_dir.parent
+def package_gcno_bundle(
+        gamesdk_dir: Path, module_dir: Path, bundle_path: Path
+) -> Path:
+    """Packages compile-time .gcno notes, module sources, and report tooling."""
+    bundle_path.parent.mkdir(parents=True, exist_ok=True)
+    cxx_dirs = _get_cxx_dirs(module_dir)
+    gcno_count = 0
+    with tarfile.open(bundle_path, "w:gz") as tar:
+        for cxx in cxx_dirs:
+            if not cxx.exists():
+                continue
+            for gcno in cxx.rglob("*.gcno"):
+                try:
+                    rel = gcno.relative_to(gamesdk_dir)
+                except ValueError:
+                    rel = Path("host_cmake") / gcno.relative_to(cxx)
+                tar.add(gcno, arcname=str(rel))
+                gcno_count += 1
 
-    out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
+        target_map = discover_source_files(module_dir)
+        for rel_src in target_map.values():
+            src_path = module_dir / rel_src
+            if src_path.exists():
+                tar.add(src_path, arcname=f"{MODULE_NAME}/{rel_src}")
+
+        for tool_name in (
+                "coverage_report_template.html",
+                "generate_test_coverage.py",
+        ):
+            tool_path = module_dir / "tools" / tool_name
+            if tool_path.exists():
+                tar.add(
+                        tool_path,
+                        arcname=f"{MODULE_NAME}/tools/{tool_name}",
+                )
+
+    print(f"Packaged {gcno_count} .gcno files into {bundle_path}")
+    return bundle_path
+
+
+def _collect_gcda_files(gcda_dir: Path, scratch_dir: Path) -> List[Path]:
+    """Collects .gcda files from a directory and any nested TradeFed .zip archives."""
+    gcda_files = list(gcda_dir.rglob("*.gcda"))
+    for idx, zip_path in enumerate(gcda_dir.rglob("*.zip")):
+        extract_dir = scratch_dir / f"zip_{idx}"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                for member in zf.infolist():
+                    member_path = Path(member.filename)
+                    if ".." in member_path.parts or member_path.is_absolute():
+                        continue
+                    if member.filename.endswith(".gcda"):
+                        zf.extract(member, path=extract_dir)
+            gcda_files.extend(extract_dir.rglob("*.gcda"))
+        except (zipfile.BadZipFile, OSError) as e:
+            print(f"Warning: Failed to extract {zip_path}: {e}")
+    return gcda_files
+
+
+def run_report_from_artifacts(
+        gamesdk_dir: Path,
+        module_dir: Path,
+        tools_dir: Path,
+        llvm_cov_bin: Path,
+        gcda_dir: Optional[Path],
+        bundle_path: Optional[Path],
+        output_dir: Path,
+) -> Path:
+    """Generates coverage HTML report from a .gcno bundle and/or .gcda dir.
+
+    Raises:
+        FileNotFoundError: If a specified bundle_path or gcda_dir does not exist.
+    """
+    if bundle_path is not None and not bundle_path.is_file():
+        raise FileNotFoundError(f"Coverage bundle not found: {bundle_path}")
+    if gcda_dir is not None and not gcda_dir.exists():
+        raise FileNotFoundError(f"gcda directory not found: {gcda_dir}")
+
+    with tempfile.TemporaryDirectory() as tmp_str:
+        tmp_root = Path(tmp_str)
+        work_gamesdk = gamesdk_dir
+        work_module = module_dir
+        work_tools = tools_dir
+
+        if bundle_path is not None:
+            work_gamesdk = tmp_root / "bundle_root"
+            work_gamesdk.mkdir(parents=True, exist_ok=True)
+            with tarfile.open(bundle_path, "r:*") as tar:
+                tar.extractall(path=work_gamesdk, filter="data")
+            work_module = work_gamesdk / MODULE_NAME
+            work_tools = work_module / "tools"
+            cxx_dirs = _get_cxx_dirs(work_module, include_workspace_temp=False)
+        elif gcda_dir is not None and any(gcda_dir.rglob("*.gcno")):
+            cxx_dirs = [gcda_dir]
+        else:
+            cxx_dirs = _get_cxx_dirs(work_module)
+
+        if gcda_dir is not None:
+            pulled_gcda = _collect_gcda_files(gcda_dir, tmp_root / "unzipped")
+            _sync_pulled_gcda_files(pulled_gcda, cxx_dirs)
+
+        summary_rows = generate_gcov_reports(
+                work_module, llvm_cov_bin, cxx_dirs=cxx_dirs
+        )
+        return generate_html_report(
+                work_tools, work_gamesdk, summary_rows, output_dir=output_dir
+        )
+
+
+def _find_llvm_cov_binary(
+        repo_root: Path, explicit_path: Optional[Path] = None
+) -> Path:
+    """Locates llvm-cov from explicit CLI arg, NDK/Clang prebuilts, or PATH."""
+    if explicit_path is not None:
+        if not explicit_path.exists():
+            raise FileNotFoundError(
+                    f"llvm-cov binary not found at {explicit_path}"
+            )
+        return explicit_path
+
     host_tag = "darwin-x86_64" if sys.platform == "darwin" else "linux-x86_64"
-    llvm_cov_bin = (
+    candidates: List[Path] = []
+    if cc_env := os.environ.get("CC"):
+        candidates.append(Path(cc_env).with_name("llvm-cov"))
+    candidates.append(
             _resolve_ndk_dir(repo_root)
             / "toolchains"
             / "llvm"
@@ -733,8 +910,106 @@ def main() -> None:
             / "bin"
             / "llvm-cov"
     )
-    if not llvm_cov_bin.exists():
-        sys.exit(f"Error: llvm-cov binary not found at {llvm_cov_bin}")
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    clang_host = prebuilts_dir / "clang" / "host" / (
+            "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    )
+    if clang_host.exists():
+        for clang_dir in sorted(clang_host.glob("clang-r*"), reverse=True):
+            candidates.append(clang_dir / "bin" / "llvm-cov")
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    if which_cov := shutil.which("llvm-cov"):
+        return Path(which_cov)
+    raise FileNotFoundError(
+            "llvm-cov binary not found in prebuilts or PATH; pass --llvm-cov."
+    )
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parses command-line arguments."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+            "--mode",
+            choices=("local", "package-gcno", "report"),
+            default="local",
+            help="Execution mode (default: local).",
+    )
+    parser.add_argument(
+            "--bundle-path",
+            type=Path,
+            default=None,
+            help="Path to swappy_coverage_bundle.tar.gz.",
+    )
+    parser.add_argument(
+            "--dist-dir",
+            type=Path,
+            default=None,
+            help="Distribution directory for swappy_coverage_bundle.tar.gz.",
+    )
+    parser.add_argument(
+            "--gcda-dir",
+            type=Path,
+            default=None,
+            help="Directory containing runtime .gcda files or TradeFed .zip archives.",
+    )
+    parser.add_argument(
+            "--output-dir",
+            type=Path,
+            default=None,
+            help="Output directory for HTML coverage reports.",
+    )
+    parser.add_argument(
+            "--llvm-cov",
+            type=Path,
+            default=None,
+            help="Explicit path to llvm-cov binary.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    """Main entry point for coverage generation script."""
+    args = parse_args(argv)
+    tools_dir = Path(__file__).resolve().parent
+    module_dir = tools_dir.parent
+    gamesdk_dir = module_dir.parent
+    repo_root = gamesdk_dir.parent
+
+    if args.mode == "package-gcno":
+        if args.bundle_path:
+            bundle_out = args.bundle_path
+        elif args.dist_dir:
+            bundle_out = args.dist_dir / "swappy_coverage_bundle.tar.gz"
+        else:
+            bundle_out = (
+                    gamesdk_dir / "out" / "dist" / "swappy_coverage_bundle.tar.gz"
+            )
+        package_gcno_bundle(gamesdk_dir, module_dir, bundle_out)
+        return
+
+    out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
+    try:
+        llvm_cov_bin = _find_llvm_cov_binary(repo_root, args.llvm_cov)
+    except FileNotFoundError as err:
+        sys.exit(f"Error: {err}")
+
+    if args.mode == "report":
+        report_out = args.output_dir or (
+                gamesdk_dir / "out" / "reports" / "cxx_coverage"
+        )
+        run_report_from_artifacts(
+                gamesdk_dir=gamesdk_dir,
+                module_dir=module_dir,
+                tools_dir=tools_dir,
+                llvm_cov_bin=llvm_cov_bin,
+                gcda_dir=args.gcda_dir,
+                bundle_path=args.bundle_path,
+                output_dir=report_out,
+        )
+        return
 
     _run_coverage_pipeline(
             gamesdk_dir, module_dir, tools_dir, out_dir, llvm_cov_bin

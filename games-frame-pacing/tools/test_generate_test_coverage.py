@@ -2,8 +2,11 @@
 """Unit tests for generate_test_coverage.py."""
 
 from pathlib import Path
+import shutil
+import tarfile
 import tempfile
 import unittest
+import zipfile
 
 import generate_test_coverage as cov
 
@@ -83,6 +86,81 @@ class GenerateTestCoverageTest(unittest.TestCase):
                     arm_dir / "Unexecuted.cpp.gcno",
                 },
             )
+
+    def test_package_gcno_bundle_and_offline_report_without_gamesdk_dir(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gamesdk_dir = Path(tmp) / "gamesdk"
+            module_dir = gamesdk_dir / "games-frame-pacing"
+            tools_dir = module_dir / "tools"
+            common_dir = module_dir / "common"
+            gcno_dir = module_dir / ".cxx" / "Debug" / "arm64-v8a"
+            tools_dir.mkdir(parents=True)
+            common_dir.mkdir(parents=True)
+            gcno_dir.mkdir(parents=True)
+
+            src_file = common_dir / "Settings.cpp"
+            src_file.write_text(
+                "int hit() {\n  return 1;\n}\n", encoding="utf-8"
+            )
+            real_template = (
+                Path(__file__).resolve().parent / "coverage_report_template.html"
+            )
+            (tools_dir / "coverage_report_template.html").write_text(
+                real_template.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (tools_dir / "generate_test_coverage.py").write_text(
+                "# stub\n", encoding="utf-8"
+            )
+            (gcno_dir / "Settings.cpp.gcno").write_bytes(b"oncg*504ARM8xxxx")
+
+            bundle_path = Path(tmp) / "dist" / "swappy_coverage_bundle.tar.gz"
+            cov.package_gcno_bundle(gamesdk_dir, module_dir, bundle_path)
+            with tarfile.open(bundle_path, "r:gz") as tar:
+                self.assertEqual(
+                    sorted(tar.getnames()),
+                    [
+                        "games-frame-pacing/.cxx/Debug/arm64-v8a/Settings.cpp.gcno",
+                        "games-frame-pacing/common/Settings.cpp",
+                        "games-frame-pacing/tools/coverage_report_template.html",
+                        "games-frame-pacing/tools/generate_test_coverage.py",
+                    ],
+                )
+
+            # Simulate a clean CI machine where the compile-time gamesdk_dir is absent.
+            shutil.rmtree(gamesdk_dir)
+
+            gcda_dir = Path(tmp) / "pulled_gcda"
+            gcda_dir.mkdir()
+            with zipfile.ZipFile(gcda_dir / "files_123.zip", "w") as zf:
+                zf.writestr("Settings.cpp.gcda", b"adcg*504ARM8data")
+
+            fake_llvm_cov = Path(tmp) / "fake_llvm_cov.py"
+            fake_llvm_cov.write_text(
+                "#!/usr/bin/env python3\n"
+                "from pathlib import Path\n"
+                "import sys\n"
+                "gcno = Path(sys.argv[-1])\n"
+                "gcda = gcno.with_suffix('.gcda')\n"
+                "hits = 5 if gcda.exists() else 0\n"
+                f"Path('Settings.cpp.gcov').write_text('file:{src_file}\\nlcount:1,' + str(hits) + '\\nlcount:2,0\\n')\n",
+                encoding="utf-8",
+            )
+            fake_llvm_cov.chmod(0o755)
+
+            out_dir = Path(tmp) / "ci_report_out"
+            report_html = cov.run_report_from_artifacts(
+                gamesdk_dir=gamesdk_dir,
+                module_dir=module_dir,
+                tools_dir=tools_dir,
+                llvm_cov_bin=fake_llvm_cov,
+                gcda_dir=gcda_dir,
+                bundle_path=bundle_path,
+                output_dir=out_dir,
+            )
+            self.assertTrue(report_html.exists())
+            self.assertIn("50.0%", report_html.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
