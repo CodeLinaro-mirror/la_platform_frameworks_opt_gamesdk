@@ -35,6 +35,12 @@ find_package(Threads REQUIRED)
 
 add_subdirectory("${ANDROID_GTEST_DIR}" googletest-build)
 
+if(AGDK_ENABLE_COVERAGE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -g -Wno-error")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0 -g")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+endif()
+
 include_directories(
   "${ANDROID_GTEST_DIR}/googletest/include"
   ../../games-frame-pacing/common

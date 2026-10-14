@@ -57,6 +57,10 @@ class CMakeWrapper {
                 "-GNinja"
             )
 
+            val enableCoverage = project.findProperty("enableCoverage")
+                ?.toString()?.toBoolean() == true
+            cmdLine.add("-DAGDK_ENABLE_COVERAGE=" + (if (enableCoverage) "ON" else "OFF"))
+
             if (buildOptions.arch != "host") {
                 cmdLine.add("-DCMAKE_CXX_FLAGS=$cxx_flags")
                 cmdLine.addAll(listOf(
