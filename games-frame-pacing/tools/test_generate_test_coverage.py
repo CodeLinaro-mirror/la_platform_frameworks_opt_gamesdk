@@ -2,6 +2,7 @@
 """Unit tests for generate_test_coverage.py."""
 
 from pathlib import Path
+import json
 import shutil
 import tarfile
 import tempfile
@@ -231,6 +232,89 @@ class GenerateTestCoverageTest(unittest.TestCase):
             self.assertIn("5x", detail_text)
             self.assertIn("line-covered", detail_text)
             self.assertIn("line-missed", detail_text)
+
+    def test_parse_git_diff_output_extracts_added_and_modified_lines(
+        self,
+    ) -> None:
+        diff_text = (
+            "diff --git a/games-frame-pacing/common/SwappyCommon.cpp "
+            "b/games-frame-pacing/common/SwappyCommon.cpp\n"
+            "--- a/games-frame-pacing/common/SwappyCommon.cpp\n"
+            "+++ b/games-frame-pacing/common/SwappyCommon.cpp\n"
+            "@@ -10,0 +11,3 @@ void foo() {\n"
+            "+  int a = 1;\n"
+            "+  int b = 2;\n"
+            "+  int c = 3;\n"
+            "@@ -25,2 +28 @@ void bar() {\n"
+            "-  old1();\n"
+            "-  old2();\n"
+            "+  new1();\n"
+            "@@ -40,3 +42,0 @@ void deleted_only() {\n"
+            "-  gone();\n"
+        )
+        parsed = cov._parse_git_diff_output(diff_text)
+        self.assertEqual(
+            parsed,
+            {"games-frame-pacing/common/SwappyCommon.cpp": {11, 12, 13, 28}},
+        )
+
+    def test_coverage_summary_diff_metrics_and_json_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gamesdk_dir = Path(tmp) / "gamesdk"
+            module_dir = gamesdk_dir / "games-frame-pacing"
+            tools_dir = module_dir / "tools"
+            common_dir = module_dir / "common"
+            tools_dir.mkdir(parents=True)
+            common_dir.mkdir(parents=True)
+
+            real_template = (
+                Path(__file__).resolve().parent / "coverage_report_template.html"
+            )
+            (tools_dir / "coverage_report_template.html").write_text(
+                real_template.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (common_dir / "Settings.cpp").write_text(
+                "int a() {\n  return 1;\n  return 2;\n}\n", encoding="utf-8"
+            )
+
+            changed_map = {
+                "games-frame-pacing/common/Settings.cpp": {1, 2, 3},
+            }
+            base_rows = [
+                cov.CoverageSummary(
+                    relative_path="common/Settings.cpp",
+                    total_lines=2,
+                    executed_lines=1,
+                    line_counts={2: 4, 3: 0},
+                )
+            ]
+            annotated = cov._attach_diff_lines(base_rows, changed_map)
+            self.assertEqual(annotated[0].diff_total_lines, 2)
+            self.assertEqual(annotated[0].diff_executed_lines, 1)
+            self.assertAlmostEqual(annotated[0].diff_percentage or 0.0, 50.0)
+
+            out_dir = Path(tmp) / "report_out"
+            index_html = cov.generate_html_report(
+                tools_dir,
+                gamesdk_dir,
+                annotated,
+                output_dir=out_dir,
+                diff_base="HEAD~1",
+            )
+            index_text = index_html.read_text(encoding="utf-8")
+            self.assertIn("1 / 2 modified lines executed", index_text)
+            self.assertIn('data-changed="true"', index_text)
+
+            summary_json_path = out_dir / "coverage_summary.json"
+            self.assertTrue(summary_json_path.exists())
+            payload = json.loads(summary_json_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["diff_base"], "HEAD~1")
+            self.assertEqual(payload["overall"]["diff_total_lines"], 2)
+            self.assertEqual(payload["overall"]["diff_executed_lines"], 1)
+            self.assertEqual(payload["overall"]["diff_pct"], 50.0)
+            file_entry = payload["files"]["common/Settings.cpp"]
+            self.assertEqual(file_entry["changed_lines"], [1, 2, 3])
+            self.assertEqual(file_entry["lines"], {"2": 4, "3": 0})
 
 
 if __name__ == "__main__":

@@ -6,8 +6,11 @@ Usage:
 """
 
 import argparse
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 import html
+import io
+import json
 import os
 from pathlib import Path
 import re
@@ -16,7 +19,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 import zipfile
 
 MODULE_NAME = "games-frame-pacing"
@@ -44,6 +47,8 @@ class CoverageSummary:
     total_lines: int
     executed_lines: int
     line_counts: Dict[int, int] = field(default_factory=dict)
+    changed_lines: FrozenSet[int] = field(default_factory=frozenset)
+    language: str = "cpp"
 
     @property
     def detail_html_filename(self) -> str:
@@ -61,6 +66,28 @@ class CoverageSummary:
         if self.total_lines > 0:
             return self.executed_lines / self.total_lines * 100.0
         return 0.0
+
+    @property
+    def diff_total_lines(self) -> int:
+        """Returns count of executable lines modified in the active diff."""
+        return sum(1 for ln in self.changed_lines if ln in self.line_counts)
+
+    @property
+    def diff_executed_lines(self) -> int:
+        """Returns count of executed lines modified in the active diff."""
+        return sum(
+                1
+                for ln in self.changed_lines
+                if self.line_counts.get(ln, 0) > 0
+        )
+
+    @property
+    def diff_percentage(self) -> Optional[float]:
+        """Calculates incremental diff line coverage percentage, if applicable."""
+        diff_total = self.diff_total_lines
+        if diff_total > 0:
+            return self.diff_executed_lines / diff_total * 100.0
+        return None
 
 
 def _resolve_prebuilts_dir(repo_root: Path) -> Path:
@@ -646,6 +673,159 @@ def generate_gcov_reports(
     return summary_rows
 
 
+_DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def _parse_git_diff_output(diff_text: str) -> Dict[str, Set[int]]:
+    """Parses `git diff --unified=0` output into {repo_rel_path: {line_numbers}}."""
+    changed_by_file: Dict[str, Set[int]] = {}
+    current_file: Optional[str] = None
+    for raw_line in diff_text.splitlines():
+        if raw_line.startswith("+++ "):
+            target = raw_line[4:].strip()
+            if target == "/dev/null":
+                current_file = None
+            elif target.startswith("b/"):
+                current_file = target[2:]
+            else:
+                current_file = target
+            continue
+        if current_file is None:
+            continue
+        match = _DIFF_HUNK_RE.match(raw_line)
+        if not match:
+            continue
+        start_line = int(match.group(1))
+        line_count = int(match.group(2)) if match.group(2) is not None else 1
+        if line_count <= 0:
+            continue
+        file_lines = changed_by_file.setdefault(current_file, set())
+        file_lines.update(range(start_line, start_line + line_count))
+    return changed_by_file
+
+
+def _get_git_changed_lines(
+        gamesdk_dir: Path, diff_base: str
+) -> Dict[str, Set[int]]:
+    """Runs `git diff --unified=0 <diff_base>` and returns modified line numbers."""
+    try:
+        res = subprocess.run(
+                ["git", "-C", str(gamesdk_dir), "diff", "--unified=0", diff_base],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=LLVM_COV_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as err:
+        print(f"Warning: Failed to compute git diff against {diff_base}: {err}")
+        return {}
+    return _parse_git_diff_output(res.stdout)
+
+
+def _resolve_changed_lines_for_path(
+        changed_map: Dict[str, Set[int]], relative_path: str
+) -> FrozenSet[int]:
+    """Resolves changed line numbers for a module-relative or repo-relative path."""
+    normalized = relative_path.replace("\\", "/")
+    candidates = (normalized, f"{MODULE_NAME}/{normalized}")
+    for candidate in candidates:
+        if candidate in changed_map:
+            return frozenset(changed_map[candidate])
+    return frozenset()
+
+
+def _attach_diff_lines(
+        summary_rows: Sequence[CoverageSummary],
+        changed_map: Dict[str, Set[int]],
+) -> List[CoverageSummary]:
+    """Returns summary rows annotated with `changed_lines` from `changed_map`."""
+    if not changed_map:
+        return list(summary_rows)
+    return [
+            replace(
+                    row,
+                    changed_lines=_resolve_changed_lines_for_path(
+                            changed_map, row.relative_path
+                    ),
+            )
+            for row in summary_rows
+    ]
+
+
+def _compute_group_metrics(
+        rows: Sequence[CoverageSummary],
+) -> Dict[str, Any]:
+    """Computes aggregate total and incremental diff metrics for a group of rows."""
+    total_lines = sum(r.total_lines for r in rows)
+    executed_lines = sum(r.executed_lines for r in rows)
+    pct = (
+            round(executed_lines / total_lines * 100.0, 2)
+            if total_lines > 0
+            else 0.0
+    )
+    diff_total = sum(r.diff_total_lines for r in rows)
+    diff_exec = sum(r.diff_executed_lines for r in rows)
+    diff_pct = (
+            round(diff_exec / diff_total * 100.0, 2)
+            if diff_total > 0
+            else None
+    )
+    return {
+            "total_lines": total_lines,
+            "executed_lines": executed_lines,
+            "pct": pct,
+            "diff_total_lines": diff_total,
+            "diff_executed_lines": diff_exec,
+            "diff_pct": diff_pct,
+    }
+
+
+def write_coverage_summary_json(
+        summary_rows: Sequence[CoverageSummary],
+        output_path: Path,
+        diff_base: Optional[str] = None,
+) -> Path:
+    """Writes machine-readable coverage_summary.json for CI and Gerrit analyzers."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cpp_rows = [r for r in summary_rows if r.language == "cpp"]
+    java_rows = [r for r in summary_rows if r.language != "cpp"]
+
+    files_payload: Dict[str, Any] = {}
+    for row in summary_rows:
+        files_payload[row.relative_path] = {
+                "language": row.language,
+                "total_lines": row.total_lines,
+                "executed_lines": row.executed_lines,
+                "pct": round(row.percentage, 2),
+                "diff_total_lines": row.diff_total_lines,
+                "diff_executed_lines": row.diff_executed_lines,
+                "diff_pct": (
+                        round(row.diff_percentage, 2)
+                        if row.diff_percentage is not None
+                        else None
+                ),
+                "changed_lines": sorted(row.changed_lines),
+                "lines": {
+                        str(ln): cnt
+                        for ln, cnt in sorted(row.line_counts.items())
+                },
+        }
+
+    payload: Dict[str, Any] = {
+            "module": MODULE_NAME,
+            "diff_base": diff_base,
+            "overall": _compute_group_metrics(summary_rows),
+            "cpp": _compute_group_metrics(cpp_rows),
+            "java": _compute_group_metrics(java_rows),
+            "files": files_payload,
+    }
+    output_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+    )
+    return output_path
+
+
 def load_report_template(tools_dir: Path) -> Tuple[str, str]:
     """Loads HTML main template and row template.
 
@@ -694,7 +874,7 @@ def _get_badge_properties(pct: float) -> Tuple[str, str, str]:
 
 
 def _render_table_rows(
-        summary_rows: List[CoverageSummary], row_template: str
+        summary_rows: Sequence[CoverageSummary], row_template: str
 ) -> List[str]:
     """Renders individual HTML table rows for each file coverage summary."""
     rows_html: List[str] = []
@@ -705,11 +885,25 @@ def _render_table_rows(
         escaped_path = html.escape(row_data.relative_path)
         escaped_href = html.escape(row_data.detail_html_filename, quote=True)
         item_link = f'<a href="{escaped_href}">{escaped_path}</a>'
+        diff_pct = row_data.diff_percentage
+        if diff_pct is not None:
+            diff_cell = (
+                    f"<strong>{diff_pct:.1f}%</strong> "
+                    f"({row_data.diff_executed_lines}/{row_data.diff_total_lines})"
+            )
+        elif row_data.changed_lines:
+            diff_cell = "N/A (non-exec)"
+        else:
+            diff_cell = "&mdash;"
+        data_changed = "true" if row_data.changed_lines else "false"
         row = (
                 row_template.replace("{{ITEM_NAME_HTML}}", item_link)
                 .replace("{{TOTAL_LOC}}", f"{row_data.total_lines:,}")
                 .replace("{{EXEC_LOC}}", f"{row_data.executed_lines:,}")
                 .replace("{{COVERAGE_PCT}}", f"{row_data.percentage:.1f}")
+                .replace("{{DIFF_COVERAGE_CELL}}", diff_cell)
+                .replace("{{DATA_CHANGED}}", data_changed)
+                .replace("{{DATA_LANG}}", html.escape(row_data.language, quote=True))
                 .replace("{{FILL_CLASS}}", fill_cls)
                 .replace("{{BADGE_CLASS}}", badge_cls)
                 .replace("{{BADGE_LABEL}}", badge_label)
@@ -736,14 +930,24 @@ def _render_source_coverage_html(
         else:
             row_cls = "line-missed"
             count_str = "0x"
+        is_changed = idx in row_data.changed_lines
+        if is_changed:
+            row_cls = f"{row_cls} line-changed"
+        delta_marker = "&Delta; " if is_changed else ""
         line_rows.append(
-                f'<tr class="{row_cls}">'
-                f'<td class="ln">{idx}</td>'
+                f'<tr class="{row_cls}" data-changed="{"true" if is_changed else "false"}">'
+                f'<td class="ln">{delta_marker}{idx}</td>'
                 f'<td class="cnt">{count_str}</td>'
                 f'<td class="code"><pre>{escaped_code}</pre></td>'
                 "</tr>"
         )
     rows_joined = "\n".join(line_rows)
+    diff_meta = ""
+    if row_data.diff_percentage is not None:
+        diff_meta = (
+                f" &middot; CL Diff (&Delta;): <strong>{row_data.diff_percentage:.1f}%</strong> "
+                f"({row_data.diff_executed_lines:,} / {row_data.diff_total_lines:,} lines)"
+        )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -756,20 +960,21 @@ def _render_source_coverage_html(
     .meta {{ color:#94a3b8; font-size:13px; margin-top:6px; }}
     table {{ width:100%; border-collapse:collapse; font-size:12px; background:#1e293b; }}
     td {{ padding:2px 8px; vertical-align:top; }}
-    td.ln {{ width:48px; text-align:right; color:#64748b; user-select:none; border-right:1px solid #334155; }}
+    td.ln {{ width:64px; text-align:right; color:#64748b; user-select:none; border-right:1px solid #334155; }}
     td.cnt {{ width:56px; text-align:right; color:#94a3b8; user-select:none; border-right:1px solid #334155; font-weight:600; }}
     td.code pre {{ margin:0; white-space:pre-wrap; word-break:break-all; }}
     tr.line-covered {{ background:rgba(34, 197, 94, 0.14); }}
     tr.line-covered td.cnt {{ color:#4ade80; }}
     tr.line-missed {{ background:rgba(239, 68, 68, 0.18); }}
     tr.line-missed td.cnt {{ color:#f87171; }}
+    tr.line-changed td.ln {{ color:#38bdf8; font-weight:700; border-left:3px solid #38bdf8; }}
   </style>
 </head>
 <body>
   <div class="header">
     <div><a href="../{MODULE_NAME}_coverage.html">&larr; Back to {MODULE_NAME} Summary</a></div>
     <h1 style="font-size:18px;margin:8px 0 0 0;">{escaped_title}</h1>
-    <div class="meta">Coverage: <strong>{row_data.percentage:.1f}%</strong> ({row_data.executed_lines:,} / {row_data.total_lines:,} executable lines)</div>
+    <div class="meta">Coverage: <strong>{row_data.percentage:.1f}%</strong> ({row_data.executed_lines:,} / {row_data.total_lines:,} executable lines){diff_meta}</div>
   </div>
   <table>
     <tbody>
@@ -784,16 +989,18 @@ def _render_source_coverage_html(
 def generate_html_report(
         tools_dir: Path,
         gamesdk_dir: Path,
-        summary_rows: List[CoverageSummary],
+        summary_rows: Sequence[CoverageSummary],
         output_dir: Optional[Path] = None,
+        diff_base: Optional[str] = None,
 ) -> Path:
-    """Generates single-page HTML coverage report from template.
+    """Generates single-page HTML coverage report and coverage_summary.json.
 
     Args:
         tools_dir: Path to tools directory containing template.
         gamesdk_dir: Root gamesdk directory for report output.
-        summary_rows: List of CoverageSummary objects.
+        summary_rows: Sequence of CoverageSummary objects.
         output_dir: Optional custom output directory for reports.
+        diff_base: Optional git revision used for incremental diff coverage.
 
     Returns:
         Path to the generated index HTML report.
@@ -812,6 +1019,15 @@ def generate_html_report(
     exec_loc = sum(r.executed_lines for r in summary_rows)
     overall_pct = (exec_loc / total_loc * 100.0) if total_loc > 0 else 0.0
 
+    diff_total = sum(r.diff_total_lines for r in summary_rows)
+    diff_exec = sum(r.diff_executed_lines for r in summary_rows)
+    if diff_total > 0:
+        diff_pct_str = f"{diff_exec / diff_total * 100.0:.1f}%"
+        diff_subtext = f"{diff_exec:,} / {diff_total:,} modified lines executed"
+    else:
+        diff_pct_str = "N/A"
+        diff_subtext = "No modified executable lines"
+
     if total_loc > 0 and exec_loc == 0:
         print(
                 "\nWARNING: No runtime execution data (.gcda) was"
@@ -824,6 +1040,8 @@ def generate_html_report(
             main_template.replace("{{OVERALL_PCT}}", f"{overall_pct:.1f}")
             .replace("{{EXEC_LOC}}", f"{exec_loc:,}")
             .replace("{{TOTAL_LOC}}", f"{total_loc:,}")
+            .replace("{{DIFF_PCT}}", diff_pct_str)
+            .replace("{{DIFF_SUBTEXT}}", diff_subtext)
             .replace("{{NUM_FILES}}", str(len(summary_rows)))
             .replace("{{TABLE_ROWS}}", "\n".join(rows_html))
     )
@@ -835,6 +1053,10 @@ def generate_html_report(
     sources_dir.mkdir(parents=True, exist_ok=True)
     for row_data in summary_rows:
         src_file = module_dir / row_data.relative_path
+        if not src_file.exists():
+            repo_candidate = gamesdk_dir / row_data.relative_path
+            if repo_candidate.exists():
+                src_file = repo_candidate
         if src_file.exists():
             src_text = src_file.read_text(encoding="utf-8", errors="replace")
         else:
@@ -846,6 +1068,11 @@ def generate_html_report(
                 _render_source_coverage_html(row_data, src_text),
                 encoding="utf-8",
         )
+    write_coverage_summary_json(
+            summary_rows,
+            reports_dir / "coverage_summary.json",
+            diff_base=diff_base,
+    )
     print(
             "\n[Step 6] HTML Coverage Report written to:\n"
             f"  file://{html_file.resolve()}\n"
@@ -859,17 +1086,26 @@ def _run_coverage_pipeline(
         tools_dir: Path,
         out_dir: Path,
         llvm_cov_bin: Path,
+        diff_base: Optional[str] = None,
 ) -> None:
     """Runs the full stateless test coverage and HTML generation pipeline."""
     run_tests(gamesdk_dir)
     if _has_adb_device():
         pull_and_sync_device_gcov_data(module_dir, out_dir)
     summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
-    generate_html_report(tools_dir, gamesdk_dir, summary_rows)
+    if diff_base:
+        changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+        summary_rows = _attach_diff_lines(summary_rows, changed_map)
+    generate_html_report(
+            tools_dir, gamesdk_dir, summary_rows, diff_base=diff_base
+    )
 
 
 def package_gcno_bundle(
-        gamesdk_dir: Path, module_dir: Path, bundle_path: Path
+        gamesdk_dir: Path,
+        module_dir: Path,
+        bundle_path: Path,
+        diff_base: Optional[str] = None,
 ) -> Path:
     """Packages compile-time .gcno notes, module sources, and report tooling."""
     bundle_path.parent.mkdir(parents=True, exist_ok=True)
@@ -904,6 +1140,24 @@ def package_gcno_bundle(
                         arcname=f"{MODULE_NAME}/tools/{tool_name}",
                 )
 
+        if diff_base:
+            changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+            diff_payload = json.dumps(
+                    {
+                            "diff_base": diff_base,
+                            "changed_lines": {
+                                    k: sorted(v) for k, v in changed_map.items()
+                            },
+                    },
+                    indent=2,
+                    sort_keys=True,
+            ).encode("utf-8")
+            info = tarfile.TarInfo(
+                    name=f"{MODULE_NAME}/tools/git_changed_lines.json"
+            )
+            info.size = len(diff_payload)
+            tar.addfile(info, io.BytesIO(diff_payload))
+
     print(f"Packaged {gcno_count} .gcno files into {bundle_path}")
     return bundle_path
 
@@ -936,6 +1190,7 @@ def run_report_from_artifacts(
         gcda_dir: Optional[Path],
         bundle_path: Optional[Path],
         output_dir: Path,
+        diff_base: Optional[str] = None,
 ) -> Path:
     """Generates coverage HTML report from a .gcno bundle and/or .gcda dir.
 
@@ -973,8 +1228,31 @@ def run_report_from_artifacts(
         summary_rows = generate_gcov_reports(
                 work_module, llvm_cov_bin, cxx_dirs=cxx_dirs
         )
+        effective_diff_base = diff_base
+        changed_map: Dict[str, Set[int]] = {}
+        if diff_base and (gamesdk_dir / ".git").exists():
+            changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+        elif (work_tools / "git_changed_lines.json").exists():
+            bundled_diff = json.loads(
+                    (work_tools / "git_changed_lines.json").read_text(
+                            encoding="utf-8"
+                    )
+            )
+            effective_diff_base = effective_diff_base or bundled_diff.get(
+                    "diff_base"
+            )
+            changed_map = {
+                    k: set(v)
+                    for k, v in bundled_diff.get("changed_lines", {}).items()
+            }
+        if changed_map:
+            summary_rows = _attach_diff_lines(summary_rows, changed_map)
         return generate_html_report(
-                work_tools, work_gamesdk, summary_rows, output_dir=output_dir
+                work_tools,
+                work_gamesdk,
+                summary_rows,
+                output_dir=output_dir,
+                diff_base=effective_diff_base,
         )
 
 
@@ -1059,6 +1337,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             default=None,
             help="Explicit path to llvm-cov binary.",
     )
+    parser.add_argument(
+            "--diff-base",
+            type=str,
+            default=None,
+            help="Git revision to compute incremental diff coverage against (e.g. HEAD~1).",
+    )
     return parser.parse_args(argv)
 
 
@@ -1079,7 +1363,12 @@ def main(argv: Optional[List[str]] = None) -> None:
             bundle_out = (
                     gamesdk_dir / "out" / "dist" / "swappy_coverage_bundle.tar.gz"
             )
-        package_gcno_bundle(gamesdk_dir, module_dir, bundle_out)
+        package_gcno_bundle(
+                gamesdk_dir,
+                module_dir,
+                bundle_out,
+                diff_base=args.diff_base,
+        )
         return
 
     out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
@@ -1100,11 +1389,17 @@ def main(argv: Optional[List[str]] = None) -> None:
                 gcda_dir=args.gcda_dir,
                 bundle_path=args.bundle_path,
                 output_dir=report_out,
+                diff_base=args.diff_base,
         )
         return
 
     _run_coverage_pipeline(
-            gamesdk_dir, module_dir, tools_dir, out_dir, llvm_cov_bin
+            gamesdk_dir,
+            module_dir,
+            tools_dir,
+            out_dir,
+            llvm_cov_bin,
+            diff_base=args.diff_base,
     )
 
 
