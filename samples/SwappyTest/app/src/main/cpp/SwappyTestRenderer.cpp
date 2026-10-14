@@ -434,7 +434,7 @@ public:
         return isNoSwappy() ? "no_swappy" : "classic";
     }
 
-    void start(ANativeWindow* window, int32_t width, int32_t height, bool autoStart = false) {
+    void start(ANativeWindow* window, int32_t width, int32_t height) {
         stop();
         if (!window) return;
 
@@ -443,9 +443,7 @@ public:
                        height > 0 ? height : ANativeWindow_getHeight(window));
         mRunning.store(true);
 
-        if (autoStart) {
-            start_calibration_thread();
-        }
+        start_benchmark_run();
         mRenderThread = std::thread(&SwappyTestRenderer::renderLoop, this);
     }
 
@@ -454,7 +452,7 @@ public:
         if (mRenderThread.joinable()) {
             mRenderThread.join();
         }
-        stop_calibration_thread();
+        stop_benchmark_run();
         if (mWindow) {
             SwappyGL_setWindow(nullptr);
             ANativeWindow_release(mWindow);
@@ -540,12 +538,15 @@ public:
         return false;
     }
 
-    std::array<bool, samples::TelemetrySnapshot::kNumFpsGuidelines> getSupportedFpsFlags() const {
-        std::array<bool, samples::TelemetrySnapshot::kNumFpsGuidelines> flags{};
-        for (size_t i = 0; i < samples::TelemetrySnapshot::kNumFpsGuidelines; ++i) {
-            flags[i] = isFpsSupported(samples::TelemetrySnapshot::kFpsGuidelines[i]);
+    std::vector<int32_t> getSupportedFps() const {
+        static constexpr int32_t kCandidateFps[] = {120, 60, 40, 30, 15};
+        std::vector<int32_t> supported;
+        for (int32_t fps : kCandidateFps) {
+            if (isFpsSupported(fps)) {
+                supported.push_back(fps);
+            }
         }
-        return flags;
+        return supported;
     }
 
 private:
@@ -893,19 +894,30 @@ private:
         mCurrentCircleRadius.store(drawRadius);
         const std::vector<samples::Circle> circles = {{ballColor, drawRadius, drawX, drawY}};
 
-        if (mOverlayEnabled.load()) {
-            mTelemetry.CaptureSnapshot(&mTelemetrySnapshot);
-            mTelemetrySnapshot.histogramMode = mTouchDrag.histogramMode.load();
-            mOverlayBatcher.BeginFrame(static_cast<float>(extent.width),
-                                       static_cast<float>(extent.height));
-            mOverlayBatcher.BuildTelemetryHud(mTelemetrySnapshot);
-        }
+        buildTelemetryOverlay(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
         vk.circleRenderer.RecordDraw(cmd, imageIndex, extent, aspect, circles, gpuWork,
                                      mOverlayEnabled.load() ? &vk.overlayRenderer : nullptr,
                                      frameCounter,
                                      mOverlayEnabled.load() ? &mOverlayBatcher : nullptr);
         return {drawX, drawY};
+    }
+
+    void buildTelemetryOverlay(float width, float height) {
+        if (!mOverlayEnabled.load()) {
+            return;
+        }
+        DvfsUiSnapshot ui{};
+        get_ui_snapshot(&ui);
+        const samples::TelemetryHudInput hud{
+                .telemetry = mTelemetry,
+                .ui = ui,
+                .pacingStrategyName = getPacingStrategyName(),
+                .supportedFps = getSupportedFps(),
+                .histogramMode = mTouchDrag.histogramMode.load(),
+        };
+        mOverlayBatcher.BeginFrame(width, height);
+        mOverlayBatcher.BuildTelemetryHud(hud);
     }
 
     // Closes the pending input-latency async trace section, if any, and logs the circle
@@ -970,8 +982,7 @@ private:
         const uint64_t frameDurNs = static_cast<uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(frameEnd - prevFrameEnd)
                         .count());
-        mTelemetry.RecordFrame(frameDurNs, frameMs, getPacingStrategyName(),
-                               getSupportedFpsFlags());
+        mTelemetry.recordFrame(frameDurNs, frameMs);
         prevFrameEnd = frameEnd;
     }
 
@@ -1004,7 +1015,7 @@ private:
         bool wasTracing = false;
         int prevStepIndex = -2;
         uint64_t frameCounter = 0;
-        mTelemetry.Reset();
+        mTelemetry.reset();
 
         while (mRunning.load()) {
             switch (poll_calibration_hold()) {
@@ -1131,13 +1142,7 @@ private:
         mCurrentCircleY.store(drawY);
         mCurrentCircleRadius.store(drawRadius);
 
-        if (mOverlayEnabled.load()) {
-            mTelemetry.CaptureSnapshot(&mTelemetrySnapshot);
-            mTelemetrySnapshot.histogramMode = mTouchDrag.histogramMode.load();
-            mOverlayBatcher.BeginFrame(static_cast<float>(size.width),
-                                       static_cast<float>(size.height));
-            mOverlayBatcher.BuildTelemetryHud(mTelemetrySnapshot);
-        }
+        buildTelemetryOverlay(static_cast<float>(size.width), static_cast<float>(size.height));
 
         gl.circleRenderer.Draw(size.width, size.height, aspect, circles, gpuWork,
                                mOverlayEnabled.load() ? &gl.overlayRenderer : nullptr,
@@ -1173,7 +1178,7 @@ private:
         bool wasTracing = false;
         int prevStepIndex = -2;
         uint64_t frameCounter = 0;
-        mTelemetry.Reset();
+        mTelemetry.reset();
 
         while (mRunning.load()) {
             switch (poll_calibration_hold()) {
@@ -1257,7 +1262,6 @@ private:
     std::atomic<bool> mOverlayEnabled{true};
     samples::TelemetryRingBuffer mTelemetry;
     samples::OverlayBatcher mOverlayBatcher;
-    samples::TelemetrySnapshot mTelemetrySnapshot;
     TouchDragState mTouchDrag;
     std::atomic<float> mCurrentCircleX{0.0f};
     std::atomic<float> mCurrentCircleY{0.0f};
@@ -1352,9 +1356,9 @@ JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetPacing
 
 JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nStartRender(
         JNIEnv* env, jobject /* this */, jobject surface, jint width, jint height,
-        jboolean autoStart) {
+        jboolean /* autoStart */) {
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
-    SwappyTestRenderer::getInstance().start(window, width, height, autoStart);
+    SwappyTestRenderer::getInstance().start(window, width, height);
 }
 
 JNIEXPORT void JNICALL

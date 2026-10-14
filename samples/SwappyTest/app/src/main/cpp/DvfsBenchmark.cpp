@@ -255,8 +255,8 @@ std::atomic<int> dvfs::s_device_global_max_freq_mhz{-1};
 std::atomic<int> dvfs::s_headroom_start_pct{-1};
 std::atomic<int> dvfs::s_headroom_end_pct{-1};
 
-// The calibration thread start_calibration_thread() spawns and
-// stop_calibration_thread() joins.
+// The calibration thread start_benchmark_run() spawns and
+// stop_benchmark_run() joins.
 struct CalibrationThread {
     pthread_t thread;
     bool joinable = false;
@@ -817,7 +817,7 @@ static void start_scenario_run(void) {
     s_ui.calib_freq_mhz = calib.best_freq_mhz;
     s_ui.calib_at_max_freq = true;
     s_run.current_step_index = 0;
-    s_run.test_phase = TEST_PHASE_SPIKE_27MS;
+    s_run.test_phase = TEST_PHASE_RUNNING;
     s_run.current_step_start_ns = 0;
 
     const bool limit_30fps = s_run.active_scenario_explicit_30fps || s_run.user_30fps_limit;
@@ -902,7 +902,7 @@ static void* calibration_thread_func(void* arg) {
     return NULL;
 }
 
-void start_calibration_thread(void) {
+void start_benchmark_run(void) {
     CalibrationSet kinds = 0;
     {
         std::lock_guard<std::mutex> lock(s_test_mutex);
@@ -977,7 +977,7 @@ void start_calibration_thread(void) {
                                                     calibration_thread_func, NULL) == 0);
 }
 
-void stop_calibration_thread(void) {
+void stop_benchmark_run(void) {
     s_calibration_running = false;
     s_run.steps_active.store(false, std::memory_order_relaxed);
     if (s_calibration_thread.joinable) {
@@ -994,7 +994,7 @@ void stop_calibration_thread(void) {
 
 static float step_time_remaining_sec(void) {
     uint64_t now_ns = get_time_monotonic_ns();
-    if (s_run.test_phase == TEST_PHASE_SPIKE_27MS || s_run.test_phase == TEST_PHASE_RAMP_DOWN) {
+    if (s_run.test_phase == TEST_PHASE_RUNNING) {
         if (s_run.current_step_start_ns == 0) {
             return s_run.current_step_duration_sec;
         }
@@ -1006,7 +1006,7 @@ static float step_time_remaining_sec(void) {
 }
 
 static float step_duration_sec(void) {
-    if (s_run.test_phase == TEST_PHASE_SPIKE_27MS || s_run.test_phase == TEST_PHASE_RAMP_DOWN) {
+    if (s_run.test_phase == TEST_PHASE_RUNNING) {
         return s_run.current_step_duration_sec;
     }
     return 0.0f;
@@ -1217,7 +1217,7 @@ static void set_idle_targets(void) {
 // Closes the active step once its duration has elapsed, staging the next
 // step or completing the run.
 static void advance_scenario_step(uint64_t now_ns) {
-    if (s_run.test_phase == TEST_PHASE_SPIKE_27MS || s_run.test_phase == TEST_PHASE_RAMP_DOWN) {
+    if (s_run.test_phase == TEST_PHASE_RUNNING) {
         uint64_t elapsed_step_ns = now_ns - s_run.current_step_start_ns;
         uint64_t target_step_ns = (uint64_t)(s_run.current_step_duration_sec * 1000000000.0);
 
@@ -1229,7 +1229,6 @@ static void advance_scenario_step(uint64_t now_ns) {
                 SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(s_run.current_step_index,
                                                                  s_run.scenario_step_count));
                 ScenarioStep* next = &s_run.scenario_steps[s_run.current_step_index];
-                s_run.test_phase = TEST_PHASE_RAMP_DOWN;
                 stage_scenario_step(next);
                 begin_staged_step(s_run.current_step_index, now_ns);
                 ALOGI("SwappyTest: [%s] Step %d/%d -> CPU=%.0fms GPU=%.0fms (dur=%.1fs, "

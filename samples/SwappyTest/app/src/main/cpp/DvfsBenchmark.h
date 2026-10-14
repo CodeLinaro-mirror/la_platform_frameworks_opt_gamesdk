@@ -28,8 +28,7 @@ extern "C" {
 // Phase of the current test. SwappyTestActivity mirrors these values.
 typedef enum {
     TEST_PHASE_READY = -1,
-    TEST_PHASE_SPIKE_27MS = 1,
-    TEST_PHASE_RAMP_DOWN = 2,
+    TEST_PHASE_RUNNING = 1,
     TEST_PHASE_COMPLETE = 4,
     TEST_PHASE_COOLDOWN = 5
 } TestPhase;
@@ -50,8 +49,8 @@ void swappy_backend_set_buffer_stuffing_fix_wait(int32_t n_frames);
 void swappy_backend_reset_frame_pacing(void);
 const char* swappy_backend_get_pacing_strategy_name(void);
 
-void start_calibration_thread(void);
-void stop_calibration_thread(void);
+void start_benchmark_run(void);
+void stop_benchmark_run(void);
 void run_frame_swappy_test_workload(void);
 void record_swappy_post_wait_sample(int64_t cpu_time_ns, int64_t gpu_time_ns);
 void set_user_30fps_limit(bool enabled);

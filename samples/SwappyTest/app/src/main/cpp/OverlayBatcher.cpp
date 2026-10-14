@@ -312,32 +312,36 @@ void OverlayBatcher::AddText(float x, float y, float scale, OverlayColor color,
     }
 }
 
-void OverlayBatcher::BuildTelemetryHud(const TelemetrySnapshot& snapshot) noexcept {
+void OverlayBatcher::BuildTelemetryHud(const TelemetryHudInput& hud) noexcept {
     const float densityScale =
             std::clamp(std::min(mScreenWidth, mScreenHeight) / 1080.0f, 0.75f, 2.5f);
     const float margin = 18.0f * densityScale;
     const float topPanelTop = margin;
     const float topPanelHeight = 148.0f * densityScale;
 
-    BuildLiveTextPanel(snapshot, densityScale, margin, topPanelTop, topPanelHeight);
+    BuildLiveTextPanel(hud, densityScale, margin, topPanelTop, topPanelHeight);
+
+    const TelemetryRollingStats rolling = hud.telemetry.computeRollingStats();
 
     const float freqPanelTop = topPanelTop + topPanelHeight + 12.0f * densityScale;
     const float freqPanelHeight = 196.0f * densityScale;
-    BuildFrequencyPanel(snapshot, densityScale, margin, freqPanelTop, freqPanelHeight);
+    BuildFrequencyPanel(rolling, densityScale, margin, freqPanelTop, freqPanelHeight);
 
     const float graphPanelHeight = std::min(420.0f * densityScale, mScreenHeight * 0.34f);
     const float graphPanelTop = mScreenHeight - margin - graphPanelHeight;
     if (graphPanelTop > freqPanelTop + freqPanelHeight + 12.0f * densityScale) {
-        if (snapshot.histogramMode) {
-            BuildHistogramPanel(snapshot, densityScale, margin, graphPanelTop, graphPanelHeight);
+        if (hud.histogramMode) {
+            const Histogram1sData histogram = hud.telemetry.computeHistogram1s();
+            BuildHistogramPanel(hud, rolling.swapDurationMs, histogram, densityScale, margin,
+                                graphPanelTop, graphPanelHeight);
         } else {
-            BuildFrameTimeGraphPanel(snapshot, densityScale, margin, graphPanelTop,
-                                     graphPanelHeight);
+            BuildFrameTimeGraphPanel(hud, rolling.swapDurationMs, densityScale, margin,
+                                     graphPanelTop, graphPanelHeight);
         }
     }
 }
 
-void OverlayBatcher::BuildLiveTextPanel(const TelemetrySnapshot& snapshot, float densityScale,
+void OverlayBatcher::BuildLiveTextPanel(const TelemetryHudInput& hud, float densityScale,
                                         float margin, float panelTop, float panelHeight) noexcept {
     const float left = margin;
     const float right = mScreenWidth - margin;
@@ -349,20 +353,95 @@ void OverlayBatcher::BuildLiveTextPanel(const TelemetrySnapshot& snapshot, float
     const float textX = left + 16.0f * densityScale;
     float textY = panelTop + 14.0f * densityScale;
 
-    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFF00E5FFu),
-            snapshot.lineExpectedFps.data());
+    const DvfsUiSnapshot& ui = hud.ui;
+    const int32_t phase = ui.test_phase;
+    char line[128];
+
+    const char* apiName = get_active_render_api_name();
+    if (phase == TEST_PHASE_READY) {
+        std::snprintf(line, sizeof(line), "[%s] Exp: Ready [%s]", apiName, ui.test_scenario);
+    } else if (phase == TEST_PHASE_COOLDOWN) {
+        std::snprintf(line, sizeof(line), "[%s] Exp: Cooldown [%s]", apiName, ui.test_scenario);
+    } else {
+        std::snprintf(line, sizeof(line), "[%s] Exp: %.1f FPS [%s]", apiName, ui.expected_fps,
+                      ui.test_scenario);
+    }
+    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFF00E5FFu), line);
     textY += lineStep;
-    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFF00FF88u),
-            snapshot.lineRealFps.data());
+
+    const bool runningScenarioSteps = (phase == TEST_PHASE_RUNNING);
+    const FrameTelemetrySample* latest = hud.telemetry.latestSample();
+    const char* pacingStrategyName = hud.pacingStrategyName ? hud.pacingStrategyName : "auto";
+    if (runningScenarioSteps && latest != nullptr &&
+        (latest->realCpuMs > 0.0f || latest->gpuWorkMs > 0.0f)) {
+        std::snprintf(line, sizeof(line), "Real: %.1f FPS (%.1f+%.1fms) | Pacing: %s",
+                      ui.measured_real_fps, latest->realCpuMs, latest->gpuWorkMs,
+                      pacingStrategyName);
+    } else {
+        std::snprintf(line, sizeof(line), "Real: %.1f FPS | Pacing: %s", ui.measured_real_fps,
+                      pacingStrategyName);
+    }
+    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFF00FF88u), line);
     textY += lineStep;
-    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFFFFDD00u),
-            snapshot.lineCpuFrequency.data());
+
+    char calibTag[48];
+    if (ui.run_tainted) {
+        std::snprintf(calibTag, sizeof(calibTag), " [TAINTED]");
+    } else if (runningScenarioSteps && !ui.calib_at_max_freq && ui.device_global_max_freq_mhz > 0) {
+        std::snprintf(calibTag, sizeof(calibTag), " [THROTTLED %d/%d]", ui.calib_freq_mhz,
+                      ui.device_global_max_freq_mhz);
+    } else {
+        std::snprintf(calibTag, sizeof(calibTag), " [Calib OK]");
+    }
+
+    const int32_t cpuFreqMhz = ui.current_cpu_freq_mhz;
+    if (cpuFreqMhz > 0) {
+        const int32_t referenceMaxMhz = std::max(ui.current_cpu_max_freq_mhz, cpuFreqMhz);
+        const float clockPercent = (referenceMaxMhz > 0)
+                ? (static_cast<float>(cpuFreqMhz) * 100.0f / static_cast<float>(referenceMaxMhz))
+                : 0.0f;
+        std::snprintf(line, sizeof(line), "CPU: Core %d @ %d/%d MHz (%.0f%%)%s",
+                      ui.current_cpu_core, cpuFreqMhz, referenceMaxMhz, clockPercent, calibTag);
+    } else {
+        std::snprintf(line, sizeof(line), "CPU: Core %d (eff %.0f%%)%s", ui.current_cpu_core,
+                      std::min(100.0f, ui.cpu_freq_ratio_pct), calibTag);
+    }
+    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFFFFDD00u), line);
     textY += lineStep;
-    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFFE2E8F0u),
-            snapshot.lineTestStatus.data());
+
+    switch (phase) {
+        case TEST_PHASE_READY:
+            std::snprintf(line, sizeof(line), "Status: Ready");
+            break;
+        case TEST_PHASE_COOLDOWN:
+            std::snprintf(line, sizeof(line), "Cooldown: %d%% headroom (%.1fs)",
+                          ui.cooldown_headroom_pct, ui.cooldown_progress_sec);
+            break;
+        case TEST_PHASE_RUNNING: {
+            char stepPrefix[32] = "";
+            if (ui.current_step_index >= 0 && ui.scenario_step_count > 0) {
+                std::snprintf(stepPrefix, sizeof(stepPrefix),
+                              "Step %d/%d: ", ui.current_step_index + 1, ui.scenario_step_count);
+            }
+            std::snprintf(line, sizeof(line), "%sTarget: %.0f ms (%.1fs left)%s", stepPrefix,
+                          ui.target_workload_ms, ui.step_time_remaining_sec,
+                          ui.fps_diverged ? " [DIVERGED]" : "");
+            break;
+        }
+        case TEST_PHASE_COMPLETE:
+        default: {
+            if (ui.run_tainted) {
+                std::snprintf(line, sizeof(line), "Complete: TAINTED (%s)", ui.taint_reason);
+            } else {
+                std::snprintf(line, sizeof(line), "Complete");
+            }
+            break;
+        }
+    }
+    AddText(textX, textY, textScale, OverlayColor::FromArgb(0xFFE2E8F0u), line);
 }
 
-void OverlayBatcher::BuildFrequencyPanel(const TelemetrySnapshot& snapshot, float densityScale,
+void OverlayBatcher::BuildFrequencyPanel(const TelemetryRollingStats& rolling, float densityScale,
                                          float margin, float panelTop, float panelHeight) noexcept {
     const float left = margin;
     const float right = mScreenWidth - margin;
@@ -384,8 +463,9 @@ void OverlayBatcher::BuildFrequencyPanel(const TelemetrySnapshot& snapshot, floa
     AddText(leftColX, headerY, headerScale, headerColor, "Avg Freq (% max, 1s)");
     AddText(rightColX, headerY, headerScale, headerColor, "Core Type (% frames, 1s)");
 
-    const int32_t numClusters = std::clamp(snapshot.clusterCount, 1,
-                                           static_cast<int32_t>(TelemetrySnapshot::kMaxClusters));
+    const int32_t numClusters =
+            std::clamp(rolling.clusterCount, 1,
+                       static_cast<int32_t>(TelemetryRollingStats::kMaxClusters));
     const int32_t totalRows = numClusters + 1;
     const float topPadding = 36.0f * densityScale;
     const float bottomPadding = 10.0f * densityScale;
@@ -428,7 +508,7 @@ void OverlayBatcher::BuildFrequencyPanel(const TelemetrySnapshot& snapshot, floa
                 panelTop + topPadding + static_cast<float>(slot) * (rowHeight + rowGap);
         const float rowBottom = rowTop + rowHeight;
         const char* clusterName = GetClusterLabel(clusterIndex, numClusters);
-        const ClusterRollingStats& stats = snapshot.clusterStats[clusterIndex];
+        const ClusterRollingStats& stats = rolling.clusterStats[clusterIndex];
 
         char leftLabel[64];
         std::snprintf(leftLabel, sizeof(leftLabel), "%s Freq: %.0f%%", clusterName,
@@ -448,19 +528,19 @@ void OverlayBatcher::BuildFrequencyPanel(const TelemetrySnapshot& snapshot, floa
             panelTop + topPadding + static_cast<float>(numClusters) * (rowHeight + rowGap);
     const float gpuRowBottom = gpuRowTop + rowHeight;
     char gpuLabel[64];
-    if (snapshot.averageGpuFrequencyPercent >= 0.0f) {
+    if (rolling.averageGpuFrequencyPercent >= 0.0f) {
         std::snprintf(gpuLabel, sizeof(gpuLabel), "GPU Freq: %.0f%%",
-                      snapshot.averageGpuFrequencyPercent);
+                      rolling.averageGpuFrequencyPercent);
     } else {
         std::snprintf(gpuLabel, sizeof(gpuLabel), "GPU Freq: N/A");
     }
     drawMeterBar(leftColX, gpuRowTop, leftColWidth, gpuRowBottom,
-                 std::max(0.0f, snapshot.averageGpuFrequencyPercent), gpuFreqFillColor,
-                 snapshot.averageGpuFrequencyPercent > 0.0f, gpuLabel);
+                 std::max(0.0f, rolling.averageGpuFrequencyPercent), gpuFreqFillColor,
+                 rolling.averageGpuFrequencyPercent > 0.0f, gpuLabel);
 }
 
-void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot, float densityScale,
-                                              float margin, float panelTop,
+void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetryHudInput& hud, float swapDurationMs,
+                                              float densityScale, float margin, float panelTop,
                                               float panelHeight) noexcept {
     const float left = margin;
     const float right = mScreenWidth - margin;
@@ -472,7 +552,7 @@ void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot,
     const OverlayColor colorGlGpu = OverlayColor::FromArgb(0xFFFF9100u);
     const OverlayColor colorRealCpu = OverlayColor::FromArgb(0xFFFFDD00u);
     const OverlayColor colorExpected = OverlayColor::FromArgb(0xFFFF2A55u);
-    const OverlayColor colorActiveCadence = OverlayColor::FromArgb(0xFF00FF88u);
+    const OverlayColor colorSwapDuration = OverlayColor::FromArgb(0xFF00FF88u);
     const OverlayColor colorNextTarget = OverlayColor::FromArgb(0xFF00E5FFu);
     const OverlayColor colorInactiveLine = OverlayColor::FromArgb(0xB3D0D8E0u);
     const OverlayColor colorBadgeBg = OverlayColor::FromArgb(0xE612141Au);
@@ -494,18 +574,16 @@ void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot,
 
     const float barAreaLeft = left + 14.0f * densityScale;
     const float barAreaWidth = width - 28.0f * densityScale;
-    const float barSlotWidth =
-            barAreaWidth / static_cast<float>(TelemetrySnapshot::kBufferCapacity);
+    const float barSlotWidth = barAreaWidth / static_cast<float>(TelemetryRingBuffer::kCapacity);
     const float barFillWidth = std::max(2.0f, barSlotWidth - 1.5f * densityScale);
     const float maxValMs = 50.0f;
 
     bool hasPreviousExpected = false;
     float previousExpectedY = 0.0f;
 
-    for (size_t i = 0; i < snapshot.sampleCount; ++i) {
-        const size_t ringIndex =
-                (snapshot.oldestSampleIndex + i) % TelemetrySnapshot::kBufferCapacity;
-        const FrameTelemetrySample& sample = snapshot.samples[ringIndex];
+    const size_t sampleCount = hud.telemetry.sampleCount();
+    for (size_t i = 0; i < sampleCount; ++i) {
+        const FrameTelemetrySample& sample = hud.telemetry.sampleOldestFirst(i);
 
         const float totalMs = static_cast<float>(sample.frameDurationNs) / 1000000.0f;
         const float workMs = sample.realCpuMs + sample.gpuWorkMs;
@@ -549,19 +627,15 @@ void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot,
     const float guidelinePixelScale = std::max(1.0f, std::round(guidelineTextScale));
     const float visibleInkH = 7.0f * guidelinePixelScale;
 
-    for (size_t idx = 0; idx < TelemetrySnapshot::kNumFpsGuidelines; ++idx) {
-        const int32_t fps = TelemetrySnapshot::kFpsGuidelines[idx];
+    for (int32_t fps : hud.supportedFps) {
         const float lineMs = 1000.0f / static_cast<float>(fps);
         if (lineMs > maxValMs) {
             continue;
         }
-        const bool isTarget = std::abs(lineMs - snapshot.activeCadenceMs) < 1.0f;
-        if (!snapshot.supportedFps[idx] && !isTarget) {
-            continue;
-        }
-        const bool isBelowTarget = !isTarget && (lineMs < snapshot.activeCadenceMs);
+        const bool isTarget = std::abs(lineMs - swapDurationMs) < 1.0f;
+        const bool isBelowTarget = !isTarget && (lineMs < swapDurationMs);
         const OverlayColor lineColor = isTarget
-                ? colorActiveCadence
+                ? colorSwapDuration
                 : (isBelowTarget ? colorNextTarget : colorInactiveLine);
 
         const float y = std::round(plotBottom - (lineMs / maxValMs) * plotHeight);
@@ -582,7 +656,8 @@ void OverlayBatcher::BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot,
     }
 }
 
-void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, float densityScale,
+void OverlayBatcher::BuildHistogramPanel(const TelemetryHudInput& hud, float swapDurationMs,
+                                         const Histogram1sData& histogram, float densityScale,
                                          float margin, float panelTop, float panelHeight) noexcept {
     const float left = margin;
     const float right = mScreenWidth - margin;
@@ -593,7 +668,7 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
     const OverlayColor colorGlGpu = OverlayColor::FromArgb(0xFFFF9100u);
     const OverlayColor colorRealCpu = OverlayColor::FromArgb(0xFFFFDD00u);
     const OverlayColor colorExpected = OverlayColor::FromArgb(0xFFFF2A55u);
-    const OverlayColor colorActiveCadence = OverlayColor::FromArgb(0xFF00FF88u);
+    const OverlayColor colorSwapDuration = OverlayColor::FromArgb(0xFF00FF88u);
     const OverlayColor colorNextTarget = OverlayColor::FromArgb(0xFF00E5FFu);
     const OverlayColor colorInactiveLine = OverlayColor::FromArgb(0xB3D0D8E0u);
     const OverlayColor colorBadgeBg = OverlayColor::FromArgb(0xE612141Au);
@@ -615,16 +690,14 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
     const float bannerTextScale = 1.9f * densityScale;
     char line1[128];
     std::snprintf(line1, sizeof(line1), "1s (%df): 60FPS %df | 40FPS %df | 30FPS %df | <30 %df",
-                  snapshot.histogram.windowFrames, snapshot.histogram.frames60,
-                  snapshot.histogram.frames40, snapshot.histogram.frames30,
-                  snapshot.histogram.framesSlow);
+                  histogram.windowFrames, histogram.frames60, histogram.frames40,
+                  histogram.frames30, histogram.framesSlow);
     AddText(left + 18.0f * densityScale, bannerTop + 6.0f * densityScale, bannerTextScale,
             OverlayColor::FromArgb(0xFF00E5FFu), line1);
 
     char line2[128];
     std::snprintf(line2, sizeof(line2), "Exp: %.1fms | CPU: %.1fms (+%.1fms GPU) | Total: %.1fms",
-                  snapshot.histogram.avgExpMs, snapshot.histogram.avgCpuMs,
-                  snapshot.histogram.avgGlMs, snapshot.histogram.avgTotalMs);
+                  histogram.avgExpMs, histogram.avgCpuMs, histogram.avgGlMs, histogram.avgTotalMs);
     AddText(left + 18.0f * densityScale, bannerTop + 24.0f * densityScale, bannerTextScale,
             OverlayColor::FromArgb(0xFFFFDD00u), line2);
 
@@ -638,8 +711,10 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
         return;
     }
 
-    const float scaleMax = snapshot.supportedFps[0] ? 120.0f : 60.0f;
-    const int tickStep = snapshot.supportedFps[0] ? 30 : 15;
+    const bool supports120Fps = std::find(hud.supportedFps.begin(), hud.supportedFps.end(), 120) !=
+            hud.supportedFps.end();
+    const float scaleMax = supports120Fps ? 120.0f : 60.0f;
+    const int tickStep = supports120Fps ? 30 : 15;
     const int maxTick = static_cast<int>(scaleMax);
     for (int tick = tickStep; tick <= maxTick; tick += tickStep) {
         const float gy = plotBottom - (static_cast<float>(tick) / scaleMax) * plotHeight;
@@ -650,14 +725,14 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
                 OverlayColor::FromArgb(0x80FFFFFFu), tickLabel);
     }
 
-    constexpr size_t numBins = TelemetrySnapshot::Histogram1sData::kBinCount;
+    constexpr size_t numBins = Histogram1sData::kBinCount;
     const float binWidth = plotWidth / static_cast<float>(numBins);
     const float barPad = std::max(0.5f, binWidth * 0.08f);
 
     for (size_t b = 0; b < numBins; ++b) {
-        const int32_t tCount = snapshot.histogram.totalBins[b];
-        const int32_t wCount = snapshot.histogram.workBins[b];
-        const int32_t eCount = snapshot.histogram.expBins[b];
+        const int32_t tCount = histogram.totalBins[b];
+        const int32_t wCount = histogram.workBins[b];
+        const int32_t eCount = histogram.expBins[b];
         if (tCount == 0 && wCount == 0 && eCount == 0) continue;
 
         const float binLeft = plotLeft + static_cast<float>(b) * binWidth + barPad;
@@ -674,8 +749,8 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
             AddQuad(binLeft, plotBottom - tHeight, binRight, plotBottom, colorTotal);
         }
         if (wCount > 0) {
-            const float cpuFrac = (snapshot.histogram.workTotalSums[b] > 0.0f)
-                    ? (snapshot.histogram.workCpuSums[b] / snapshot.histogram.workTotalSums[b])
+            const float cpuFrac = (histogram.workTotalSums[b] > 0.0f)
+                    ? (histogram.workCpuSums[b] / histogram.workTotalSums[b])
                     : 1.0f;
             const float workTop = plotBottom - wHeight;
             const float cpuTop = plotBottom - wHeight * std::clamp(cpuFrac, 0.0f, 1.0f);
@@ -689,17 +764,15 @@ void OverlayBatcher::BuildHistogramPanel(const TelemetrySnapshot& snapshot, floa
         }
     }
 
-    constexpr int32_t kGateFps[] = {120, 60, 40, 30};
-    for (int32_t fps : kGateFps) {
-        if (fps == 120 && !snapshot.supportedFps[0]) continue;
+    for (int32_t fps : hud.supportedFps) {
         const float gateMs = 1000.0f / static_cast<float>(fps);
         if (gateMs >= 42.0f) continue;
 
         const float gx = plotLeft + (gateMs / 42.0f) * plotWidth;
-        const bool isTarget = std::abs(gateMs - snapshot.activeCadenceMs) < 1.2f;
-        const bool isBelowTarget = !isTarget && (gateMs < snapshot.activeCadenceMs);
+        const bool isTarget = std::abs(gateMs - swapDurationMs) < 1.2f;
+        const bool isBelowTarget = !isTarget && (gateMs < swapDurationMs);
         const OverlayColor lineColor = isTarget
-                ? colorActiveCadence
+                ? colorSwapDuration
                 : (isBelowTarget ? colorNextTarget : colorInactiveLine);
 
         AddThickHorizontalLine(gx - 1.5f * densityScale, gx + 1.5f * densityScale,

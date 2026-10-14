@@ -39,7 +39,9 @@ add_subdirectory("${ANDROID_GTEST_DIR}" googletest-build)
 enable_testing()
 
 add_executable(swappytest_host_test
+  calibration_stats_test.cpp
   swappytest_host_test.cpp
+  telemetry_ring_buffer_test.cpp
   ../../main/cpp/CalibrationStats.cpp
   ../../main/cpp/Scenario.cpp
   ../../main/cpp/TelemetryRingBuffer.cpp
