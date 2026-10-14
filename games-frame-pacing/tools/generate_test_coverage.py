@@ -28,6 +28,9 @@ GRADLE_TIMEOUT_SECONDS = 600
 ADB_TIMEOUT_SECONDS = 120
 # Timeout in seconds for single-file llvm-cov gcov invocations.
 LLVM_COV_TIMEOUT_SECONDS = 30
+# Byte slice for the 32-bit stamp in GCC/LLVM .gcno and .gcda headers.
+GCOV_STAMP_OFFSET = 8
+GCOV_STAMP_END = 12
 
 
 @dataclass(frozen=True)
@@ -302,29 +305,45 @@ def run_tests(gamesdk_dir: Path) -> None:
         )
 
 
+def _read_gcov_stamp(filepath: Path) -> Optional[bytes]:
+    """Reads the 4-byte stamp from a .gcno or .gcda header."""
+    try:
+        with filepath.open("rb") as f:
+            header = f.read(GCOV_STAMP_END)
+        if len(header) >= GCOV_STAMP_END:
+            return header[GCOV_STAMP_OFFSET:GCOV_STAMP_END]
+    except OSError:
+        pass
+    return None
+
+
 def _sync_pulled_gcda_files(
         gcda_files: List[Path], cxx_dirs: List[Path]
 ) -> int:
-    """Syncs runtime .gcda files to build dir .gcno locations."""
+    """Syncs runtime .gcda files to build dir .gcno locations with matching stamps."""
     synced = 0
     for gcda in gcda_files:
+        gcda_stamp = _read_gcov_stamp(gcda)
+        if gcda_stamp is None:
+            continue
         gcno_filename = gcda.with_suffix(".gcno").name
-        matching_gcno = []
+        candidates: List[Path] = []
         for cxx in cxx_dirs:
             if cxx.exists():
-                matching_gcno.extend(
-                        [
-                                p
-                                for p in cxx.rglob(gcno_filename)
-                                if "arm64-v8a" in p.parts
-                        ]
-                )
-                if not matching_gcno:
-                    matching_gcno.extend(list(cxx.rglob(gcno_filename)))
+                candidates.extend(cxx.rglob(gcno_filename))
+
+        matching_gcno = [
+                c for c in candidates if _read_gcov_stamp(c) == gcda_stamp
+        ]
+        if not matching_gcno:
+            continue
+
+        gcda_bytes = gcda.read_bytes()
         for gcno in matching_gcno:
             dest_gcda = gcno.parent / gcda.name
-            dest_gcda.write_bytes(gcda.read_bytes())
-            synced += 1
+            if dest_gcda.resolve() != gcda.resolve():
+                dest_gcda.write_bytes(gcda_bytes)
+                synced += 1
     return synced
 
 
@@ -459,19 +478,37 @@ def _parse_gcov_file(
 
 def _find_active_gcno_files(cxx_dirs: List[Path]) -> List[Path]:
     """Collects active .gcno files with corresponding .gcda files."""
-    all_gcno = []
+    all_gcno: List[Path] = []
     for cxx in cxx_dirs:
         if cxx.exists():
-            all_gcno.extend(list(cxx.rglob("*.gcno")))
+            all_gcno.extend(cxx.rglob("*.gcno"))
     gcno_files = [
             g
             for g in all_gcno
-            if (g.parent / g.with_suffix(".gcda").name).exists()
-            and (g.parent / g.with_suffix(".gcda").name).stat().st_size > 0
+            if g.with_suffix(".gcda").exists()
+            and g.with_suffix(".gcda").stat().st_size > 0
     ]
     if not gcno_files:
         print("Warning: No .gcno files with active .gcda data found.")
-        gcno_files = all_gcno
+        return all_gcno
+
+    active_names = {g.name for g in gcno_files}
+    active_abis = [
+            abi
+            for abi in ("arm64-v8a", "x86_64")
+            if any(abi in g.parts for g in gcno_files)
+    ]
+    fallback_groups = [
+            [g for g in all_gcno if abi in g.parts]
+            for abi in (active_abis or ["x86_64", "arm64-v8a"])
+    ] + [all_gcno]
+    for group in fallback_groups:
+        if group:
+            for g in group:
+                if g.name not in active_names:
+                    gcno_files.append(g)
+                    active_names.add(g.name)
+            break
     return gcno_files
 
 
