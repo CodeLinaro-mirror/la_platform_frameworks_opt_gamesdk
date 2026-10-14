@@ -14,17 +14,26 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import Dict, List, Optional, Tuple, Type
-from contextlib import ExitStack
+from typing import Dict, List, Optional, Tuple
 
 MODULE_NAME = "games-frame-pacing"
 TEST_PKG = "com.swappy.testapp.test"
 APP_PKG = "com.swappy.testapp"
 
+# Default NDK version matching ndk_version.gradle.
+DEFAULT_NDK_VERSION = "27.0.12077973"
+# Timeout in seconds for Gradle build/test invocations.
+GRADLE_TIMEOUT_SECONDS = 600
+# Timeout in seconds for ADB install/instrument/pull invocations.
+ADB_TIMEOUT_SECONDS = 120
+# Timeout in seconds for single-file llvm-cov gcov invocations.
+LLVM_COV_TIMEOUT_SECONDS = 30
+
 
 @dataclass(frozen=True)
 class CoverageSummary:
     """Summary row of line coverage for a single source file."""
+
     relative_path: str
     total_lines: int
     executed_lines: int
@@ -37,261 +46,92 @@ class CoverageSummary:
         return 0.0
 
 
-class ManagedFileBackup:
-    """Context manager for temporary file modifications.
-
-    Backs up a file on entry and restores original byte content on exit (whether
-    due to normal exit or an exception), ensuring stateless build operations.
-
-    Attributes:
-        filepath: Path to the target file.
-        exists: Whether the file existed prior to entering context.
-        original_content: Raw byte content, or None if non-existent.
-    """
-
-    def __init__(self, filepath: Path) -> None:
-        self.filepath = filepath
-        self.exists = filepath.exists()
-        self.original_content: Optional[bytes] = (
-                filepath.read_bytes() if self.exists else None
-        )
-
-    def __enter__(self) -> "ManagedFileBackup":
-        return self
-
-    def __exit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc_val: Optional[BaseException],
-            exc_tb: Optional[object],
-    ) -> None:
-        if self.exists and self.original_content is not None:
-            self.filepath.write_bytes(self.original_content)
-        elif not self.exists and self.filepath.exists():
-            self.filepath.unlink()
+def _resolve_prebuilts_dir(repo_root: Path) -> Path:
+    """Resolves the prebuilts directory across standalone and AOSP checkouts."""
+    env_prebuilts = os.environ.get("PREBUILTS_DIR")
+    if env_prebuilts:
+        return Path(env_prebuilts)
+    standalone_prebuilts = repo_root / "prebuilts"
+    if standalone_prebuilts.exists():
+        return standalone_prebuilts
+    if len(repo_root.parents) >= 2:
+        aosp_prebuilts = repo_root.parents[1] / "prebuilts"
+        if aosp_prebuilts.exists():
+            return aosp_prebuilts
+    return standalone_prebuilts
 
 
-def _configure_root_gradle(
-        gamesdk_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Injects ndkPath into root build.gradle if needed."""
-    root_gradle = gamesdk_dir / "build.gradle"
-    if root_gradle.exists():
-        stack.enter_context(ManagedFileBackup(root_gradle))
-        content = root_gradle.read_text(encoding="utf-8")
-        if ndk_prebuilt.exists() and "ndkPath" not in content:
-            injection = (
-                    '\n    plugins.withId("com.android.library") {\n'
-                    "        android {\n"
-                    '            ndkPath'
-                    f' file("{ndk_prebuilt.resolve()}").absolutePath\n'
-                    "        }\n"
-                    "    }\n"
-            )
-            content = re.sub(
-                    r"(allprojects\s*\{[^\}]*repositories\s*\{[^\}]*\})",
-                    r"\1" + injection,
-                    content,
-                    count=1,
-            )
-            root_gradle.write_text(content, encoding="utf-8")
+def _resolve_ndk_dir(repo_root: Path) -> Path:
+    """Resolves the prebuilt NDK directory across AOSP and standalone layouts."""
+    ndk_env = os.environ.get("ANDROID_NDK_HOME")
+    if ndk_env and Path(ndk_env).exists():
+        return Path(ndk_env)
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    sdk_ndk = prebuilts_dir / "sdk" / "ndk" / DEFAULT_NDK_VERSION
+    if sys.platform == "darwin":
+        return sdk_ndk
+    for candidate in (
+            prebuilts_dir / "ndk" / "r27",
+            prebuilts_dir / "ndk" / "current",
+            sdk_ndk,
+    ):
+        if candidate.exists():
+            return candidate
+    return sdk_ndk
 
 
-def _configure_module_gradle_files(
-        module_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Injects ndkPath and gcov flags into module Gradle files."""
-    build_gradle = module_dir / "build.gradle"
-    extras_gradle = module_dir / "extras" / "build.gradle"
-
-    for bg in [build_gradle, extras_gradle]:
-        if bg.exists():
-            stack.enter_context(ManagedFileBackup(bg))
-            content = bg.read_text(encoding="utf-8")
-            if "ndkPath" not in content and ndk_prebuilt.exists():
-                content = content.replace(
-                        "android {\n",
-                        f'android {{\n    ndkPath "{ndk_prebuilt.resolve()}"\n',
-                        1,
-                )
-            has_cov = "DCMAKE_CXX_FLAGS=--coverage" in content
-            if bg == build_gradle and not has_cov:
-                coverage_flags = (
-                        'cmakeArgs << "-DCMAKE_CXX_FLAGS=--coverage"\n'
-                        '                    cmakeArgs << "-DCMAKE_SHARED_LINKER_FLAGS=--coverage"'
-                )
-                if 'cmakeArgs << ("-DBUILD_TEST=ON")' in content:
-                    content = content.replace(
-                        'cmakeArgs << ("-DBUILD_TEST=ON")',
-                        (
-                            'cmakeArgs << ("-DBUILD_TEST=ON")\n'
-                            f"                    {coverage_flags}"
-                        ),
-                    )
-                elif "def cmakeArgs = []" in content:
-                    content = content.replace(
-                            "def cmakeArgs = []",
-                            "def cmakeArgs = []\n"
-                            f"                {coverage_flags}",
-                    )
-            bg.write_text(content, encoding="utf-8")
-
-
-def _inject_swappy_flush_hook(module_dir: Path, stack: ExitStack) -> None:
-    """Injects runtime gcov coverage flush hook into SwappyCommon.cpp."""
-    swappy_common_cpp = module_dir / "common" / "SwappyCommon.cpp"
-    if swappy_common_cpp.exists():
-        stack.enter_context(ManagedFileBackup(swappy_common_cpp))
-        flush_hook = (
-                "\nextern \"C\" void __gcov_flush(void)"
-                " __attribute__((weak));\n"
-                "extern \"C\" __attribute__((visibility(\"default\"))) void"
-                " Swappy_flushCoverage() {\n"
-                "    if (__gcov_flush) {\n"
-                "        __gcov_flush();\n"
-                "    }\n"
-                "}\n"
-        )
-        cpp_text = swappy_common_cpp.read_text(encoding="utf-8")
-        if "Swappy_flushCoverage" not in cpp_text:
-            swappy_common_cpp.write_text(
-                cpp_text + flush_hook, encoding="utf-8"
-            )
-
-
-def _configure_testapp_files(
-        gamesdk_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Configures testapp build.gradle, CMakeLists.txt, and local.properties."""
-    repo_root = gamesdk_dir.parent
-    testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
-    testapp_local_props = testapp_dir / "local.properties"
-    stack.enter_context(ManagedFileBackup(testapp_local_props))
-    sdk_dir = repo_root / "prebuilts" / "sdk"
-    cmake_dir = repo_root / "prebuilts" / "cmake" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86")
-    props = (
-            f"sdk.dir={sdk_dir.resolve()}\n"
-            f"android.ndkPath={ndk_prebuilt.resolve()}\n"
-            f"cmake.dir={cmake_dir.resolve()}\n"
-    )
-    testapp_local_props.write_text(props, encoding="utf-8")
-
-    testapp_build_gradle = testapp_dir / "app" / "build.gradle"
-    if testapp_build_gradle.exists():
-        stack.enter_context(ManagedFileBackup(testapp_build_gradle))
-        t_content = testapp_build_gradle.read_text(encoding="utf-8")
-        if "ndkPath" not in t_content:
-            t_content = t_content.replace(
-                    "android {\n",
-                    f'android {{\n    ndkPath "{ndk_prebuilt.resolve()}"\n',
-                    1,
-            )
-        t_content = t_content.replace("compileSdk 35", "compileSdk 31")
-        t_content = t_content.replace("targetSdk 35", "targetSdk 31")
-        testapp_build_gradle.write_text(t_content, encoding="utf-8")
-
-    testapp_cmake = (
-        testapp_dir / "app" / "src" / "main" / "cpp" / "CMakeLists.txt"
-    )
-    if testapp_cmake.exists():
-        stack.enter_context(ManagedFileBackup(testapp_cmake))
-        c_text = testapp_cmake.read_text(encoding="utf-8")
-        if "--coverage" not in c_text:
-            c_flags = (
-                    'set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -g'
-                    ' -Wno-error" )\n'
-                    'set( CMAKE_SHARED_LINKER_FLAGS'
-                    ' "${CMAKE_SHARED_LINKER_FLAGS}'
-                    ' -Wl,-z,max-page-size=16384 --coverage" )\n'
-            )
-            c_text = c_text.replace(
-                    'set( CMAKE_SHARED_LINKER_FLAGS'
-                    ' "${CMAKE_SHARED_LINKER_FLAGS}'
-                    ' -Wl,-z,max-page-size=16384" )',
-                    c_flags,
-            )
-            testapp_cmake.write_text(c_text, encoding="utf-8")
-
-
-def _inject_gcov_flush_environment(gamesdk_dir: Path, stack: ExitStack) -> None:
-    """Registers global GcovFlushEnvironment GTest hook."""
-    swappy_test_cpp = gamesdk_dir / "test" / "swappy" / "swappycommon_test.cpp"
-    if swappy_test_cpp.exists():
-        stack.enter_context(ManagedFileBackup(swappy_test_cpp))
-        st_text = swappy_test_cpp.read_text(encoding="utf-8")
-        if "GcovFlushEnvironment" not in st_text:
-            env_hook = (
-                    "\nextern \"C\" void Swappy_flushCoverage(void)"
-                    " __attribute__((weak));\n"
-                    "extern \"C\" void __gcov_dump(void)"
-                    " __attribute__((weak));\n"
-                    "extern \"C\" void __gcov_flush(void)"
-                    " __attribute__((weak));\n"
-                    "\nclass GcovFlushEnvironment : public"
-                    " ::testing::Environment {\n"
-                    "public:\n"
-                    "    void TearDown() override {\n"
-                    "        setenv(\"GCOV_PREFIX\","
-                    " \"/data/data/com.swappy.testapp/files\", 1);\n"
-                    "        setenv(\"GCOV_PREFIX_STRIP\", \"20\", 1);\n"
-                    "        if (Swappy_flushCoverage) {\n"
-                    "            Swappy_flushCoverage();\n"
-                    "        }\n"
-                    "        if (__gcov_dump) {\n"
-                    "            __gcov_dump();\n"
-                    "        }\n"
-                    "        if (__gcov_flush) {\n"
-                    "            __gcov_flush();\n"
-                    "        }\n"
-                    "    }\n"
-                    "};\n"
-                    "\n::testing::Environment* const g_gcov_flush_env =\n"
-                    "    ::testing::AddGlobalTestEnvironment("
-                    "new GcovFlushEnvironment);\n"
-            )
-            swappy_test_cpp.write_text(st_text + env_hook, encoding="utf-8")
-
-
-def configure_gradle_for_coverage(
-        gamesdk_dir: Path, module_dir: Path, stack: ExitStack
-) -> None:
-    """Injects C++ gcov coverage flags and runtime flush hooks for tests.
-
-    Args:
-        gamesdk_dir: Path to root gamesdk directory.
-        module_dir: Path to specific module directory.
-        stack: ExitStack managing temporary file backups.
-    """
-    repo_root = gamesdk_dir.parent
-    ndk_prebuilt = repo_root / "prebuilts" / "sdk" / "ndk" / "27.0.12077973" if sys.platform == "darwin" else repo_root / "prebuilts" / "ndk" / "r27"
-
-    _configure_root_gradle(gamesdk_dir, ndk_prebuilt, stack)
-
-    for c_path in (module_dir, gamesdk_dir / "test" / "swappy"):
-        if c_path.exists():
-            for cmakelists in c_path.rglob("CMakeLists.txt"):
-                stack.enter_context(ManagedFileBackup(cmakelists))
-                c_content = cmakelists.read_text(encoding="utf-8")
-                if "-Werror" in c_content:
-                    c_content = c_content.replace("-Werror", "-Wno-error")
-                    cmakelists.write_text(c_content, encoding="utf-8")
-
-    for cxx_dir in [
+def _get_cxx_dirs(
+        module_dir: Path, include_workspace_temp: bool = True
+) -> List[Path]:
+    """Returns candidate native build directories containing .gcno/.gcda files."""
+    gamesdk_dir = module_dir.parent
+    cxx_dirs = [
             module_dir / ".cxx",
             gamesdk_dir / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]:
-        if cxx_dir.exists():
-            shutil.rmtree(cxx_dir)
+            gamesdk_dir / "host_cmake",
+    ]
+    if include_workspace_temp:
+        cxx_dirs.append(gamesdk_dir.parent / ".temp" / "host" / ".cmake")
+    return cxx_dirs
 
-    _configure_module_gradle_files(module_dir, ndk_prebuilt, stack)
-    _inject_swappy_flush_hook(module_dir, stack)
-    _configure_testapp_files(gamesdk_dir, ndk_prebuilt, stack)
-    _inject_gcov_flush_environment(gamesdk_dir, stack)
 
+def _ensure_testapp_local_properties(gamesdk_dir: Path) -> None:
+    """Writes untracked local.properties for the standalone testapp build."""
+    repo_root = gamesdk_dir.parent
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
+    local_props = testapp_dir / "local.properties"
+    sdk_dir = prebuilts_dir / "sdk"
+    ndk_dir = _resolve_ndk_dir(repo_root)
+    host_tag = "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    cmake_dir = prebuilts_dir / "cmake" / host_tag
+    lines = []
+    if sdk_dir.exists():
+        lines.append(f"sdk.dir={sdk_dir.resolve()}")
+    if ndk_dir.exists():
+        lines.append(f"ndk.dir={ndk_dir.resolve()}")
+    if cmake_dir.exists():
+        lines.append(f"cmake.dir={cmake_dir.resolve()}")
+    local_props.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _has_adb_device() -> bool:
+    """Returns True if an online ADB device is attached."""
+    try:
+        res = subprocess.run(
+                ["adb", "shell", "getprop", "ro.product.cpu.abi"],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+        )
+        return res.returncode == 0 and bool(res.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def run_tests(gamesdk_dir: Path) -> None:
-    """Builds test APK, installs on device, and executes GTest suite.
+    """Builds host/device tests with coverage enabled and executes GTest suites.
 
     Args:
         gamesdk_dir: Path to root gamesdk directory.
@@ -301,40 +141,80 @@ def run_tests(gamesdk_dir: Path) -> None:
         subprocess.CalledProcessError: If build or ADB commands fail.
     """
     repo_root = gamesdk_dir.parent
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
 
-    print(f"\n[Step 1] Building test APK for '{MODULE_NAME}' with Gradle...")
     env = os.environ.copy()
     if "JAVA_HOME" not in env:
-        java_21_path = Path("/usr/lib/jvm/java-21-openjdk-amd64")
-        if java_21_path.exists():
-            env["JAVA_HOME"] = str(java_21_path)
+        for candidate in (
+                prebuilts_dir / "jdk" / "jdk21" / "linux-x86",
+                prebuilts_dir / "jdk" / "jdk17" / "linux-x86",
+                Path("/usr/lib/jvm/java-21-openjdk-amd64"),
+        ):
+            if candidate.exists():
+                env["JAVA_HOME"] = str(candidate)
+                break
 
-    cmake_bin = repo_root / "prebuilts" / "cmake" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86") / "bin"
-    ninja_bin = repo_root / "prebuilts" / "ninja" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86")
+    host_tag = "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    cmake_bin = prebuilts_dir / "cmake" / host_tag / "bin"
+    ninja_bin = prebuilts_dir / "ninja" / host_tag
     current_path = env.get("PATH", "")
-    new_paths = [
-            str(p) for p in (cmake_bin, ninja_bin) if p.exists()
-    ]
+    new_paths = [str(p) for p in (cmake_bin, ninja_bin) if p.exists()]
     if new_paths:
         env["PATH"] = os.path.pathsep.join(new_paths + [current_path])
 
+    host_cmake_dir = repo_root / ".temp" / "host" / ".cmake"
+    if host_cmake_dir.exists():
+        for stale_gcda in host_cmake_dir.rglob("*.gcda"):
+            stale_gcda.unlink(missing_ok=True)
+
+    print("\n[Step 1] Running host C++ unit tests with coverage enabled...")
+    subprocess.run(
+            [
+                    "./gradlew",
+                    "hostUnitTests",
+                    "-PenableCoverage=true",
+            ],
+            cwd=gamesdk_dir,
+            env=env,
+            check=True,
+            timeout=GRADLE_TIMEOUT_SECONDS,
+    )
+
+    if not _has_adb_device():
+        print(
+                "\nNotice: No attached ADB device detected; using host coverage"
+                " only."
+        )
+        return
+
+    _ensure_testapp_local_properties(gamesdk_dir)
     testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
 
     print(
-            f"\n[Step 1] Building test APKs for '{MODULE_NAME}' (testapp) with"
-            " Gradle..."
+            f"\n[Step 1b] Building test APKs for '{MODULE_NAME}' (testapp) with"
+            " -PenableCoverage=true..."
     )
     subprocess.run(
-            ["./gradlew", "assembleDebug", "assembleDebugAndroidTest"],
+            [
+                    "./gradlew",
+                    "assembleDebug",
+                    "assembleDebugAndroidTest",
+                    "-PenableCoverage=true",
+            ],
             cwd=testapp_dir,
             env=env,
             check=True,
+            timeout=GRADLE_TIMEOUT_SECONDS,
     )
-
     print("\n[Step 2] Installing test APKs on attached device...")
     app_apk = (
             testapp_dir
-            / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+            / "app"
+            / "build"
+            / "outputs"
+            / "apk"
+            / "debug"
+            / "app-debug.apk"
     )
     test_apk = (
             testapp_dir
@@ -350,9 +230,17 @@ def run_tests(gamesdk_dir: Path) -> None:
         raise FileNotFoundError("Test APKs for com.swappy.testapp not found.")
 
     print(f"Installing App APK: {app_apk}")
-    subprocess.run(["adb", "install", "-r", str(app_apk)], check=True)
+    subprocess.run(
+            ["adb", "install", "-r", str(app_apk)],
+            check=True,
+            timeout=ADB_TIMEOUT_SECONDS,
+    )
     print(f"Installing Test APK: {test_apk}")
-    subprocess.run(["adb", "install", "-r", str(test_apk)], check=True)
+    subprocess.run(
+            ["adb", "install", "-r", str(test_apk)],
+            check=True,
+            timeout=ADB_TIMEOUT_SECONDS,
+    )
 
     print(
             "\n[Step 3] Executing GTest suite on device via am instrument"
@@ -371,6 +259,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
     subprocess.run(
             [
@@ -385,6 +274,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     result = subprocess.run(
@@ -399,6 +289,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             capture_output=True,
             text=True,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
     if (
             result.returncode != 0
@@ -406,8 +297,8 @@ def run_tests(gamesdk_dir: Path) -> None:
             or "Process crashed" in result.stdout
     ):
         print(
-            "Warning: Instrumentation test finished with code"
-            f" {result.returncode}.\n{result.stdout}"
+                "Warning: Instrumentation test finished with code"
+                f" {result.returncode}.\n{result.stdout}"
         )
 
 
@@ -423,8 +314,9 @@ def _sync_pulled_gcda_files(
             if cxx.exists():
                 matching_gcno.extend(
                         [
-                            p for p in cxx.rglob(gcno_filename)
-                            if "arm64-v8a" in p.parts
+                                p
+                                for p in cxx.rglob(gcno_filename)
+                                if "arm64-v8a" in p.parts
                         ]
                 )
                 if not matching_gcno:
@@ -468,6 +360,7 @@ def pull_and_sync_device_gcov_data(module_dir: Path, out_dir: Path) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     res = subprocess.run(
@@ -475,23 +368,21 @@ def pull_and_sync_device_gcov_data(module_dir: Path, out_dir: Path) -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     if res.returncode == 0 and res.stdout:
         local_tar.write_bytes(res.stdout)
         try:
             with tarfile.open(local_tar) as tar:
-                tar.extractall(path=temp_pull_dir)
+                tar.extractall(path=temp_pull_dir, filter="data")
         except (tarfile.TarError, OSError) as e:
             print(f"Tar extraction warning: {e}")
 
     gcda_files = list(temp_pull_dir.rglob("*.gcda"))
     print(f"Found {len(gcda_files)} .gcda runtime files pulled from device.")
 
-    cxx_dirs = [
-            module_dir / ".cxx",
-            module_dir.parent / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]
+    cxx_dirs = _get_cxx_dirs(module_dir)
     synced = _sync_pulled_gcda_files(gcda_files, cxx_dirs)
 
     print(f"Synced {synced} .gcda files to build output folders.")
@@ -607,10 +498,11 @@ def _process_gcno_files(
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     check=False,
+                    timeout=LLVM_COV_TIMEOUT_SECONDS,
             )
             for gcov_file in sub_dir.glob("*.gcov"):
                 _parse_gcov_file(
-                    gcov_file, module_dir, target_map, file_executed_lines
+                        gcov_file, module_dir, target_map, file_executed_lines
                 )
 
 
@@ -626,10 +518,7 @@ def generate_gcov_reports(
     Returns:
         List of CoverageSummary items for all source files.
     """
-    cxx_dirs = [
-            module_dir / ".cxx",
-            module_dir.parent / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]
+    cxx_dirs = _get_cxx_dirs(module_dir)
     target_map = discover_source_files(module_dir)
     file_executed_lines: Dict[str, Dict[int, bool]] = {
             str(rel): {} for rel in target_map.values()
@@ -714,11 +603,11 @@ def _render_table_rows(
     rows_html: List[str] = []
     for row_data in summary_rows:
         fill_cls, badge_cls, badge_label = _get_badge_properties(
-            row_data.percentage
+                row_data.percentage
         )
         row = (
                 row_template.replace(
-                    "{{ITEM_NAME_HTML}}", row_data.relative_path
+                        "{{ITEM_NAME_HTML}}", row_data.relative_path
                 )
                 .replace("{{TOTAL_LOC}}", f"{row_data.total_lines:,}")
                 .replace("{{EXEC_LOC}}", f"{row_data.executed_lines:,}")
@@ -782,20 +671,11 @@ def _run_coverage_pipeline(
         llvm_cov_bin: Path,
 ) -> None:
     """Runs the full stateless test coverage and HTML generation pipeline."""
-    root_gradle = gamesdk_dir / "build.gradle"
-    module_gradle = module_dir / "build.gradle"
-    with ExitStack() as stack:
-        stack.enter_context(ManagedFileBackup(root_gradle))
-        stack.enter_context(ManagedFileBackup(module_gradle))
-        for c_path in (module_dir, gamesdk_dir / "test" / "swappy"):
-            if c_path.exists():
-                for cmakelists in c_path.rglob("CMakeLists.txt"):
-                    stack.enter_context(ManagedFileBackup(cmakelists))
-        configure_gradle_for_coverage(gamesdk_dir, module_dir, stack)
-        run_tests(gamesdk_dir)
+    run_tests(gamesdk_dir)
+    if _has_adb_device():
         pull_and_sync_device_gcov_data(module_dir, out_dir)
-        summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
-        generate_html_report(tools_dir, gamesdk_dir, summary_rows)
+    summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
+    generate_html_report(tools_dir, gamesdk_dir, summary_rows)
 
 
 def main() -> None:
@@ -806,11 +686,16 @@ def main() -> None:
     repo_root = gamesdk_dir.parent
 
     out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
-
-    if sys.platform == "darwin":
-        llvm_cov_bin = repo_root / "prebuilts" / "sdk" / "ndk" / "27.0.12077973" / "toolchains" / "llvm" / "prebuilt" / "darwin-x86_64" / "bin" / "llvm-cov"
-    else:
-        llvm_cov_bin = repo_root / "prebuilts" / "ndk" / "r27" / "toolchains" / "llvm" / "prebuilt" / "linux-x86_64" / "bin" / "llvm-cov"
+    host_tag = "darwin-x86_64" if sys.platform == "darwin" else "linux-x86_64"
+    llvm_cov_bin = (
+            _resolve_ndk_dir(repo_root)
+            / "toolchains"
+            / "llvm"
+            / "prebuilt"
+            / host_tag
+            / "bin"
+            / "llvm-cov"
+    )
     if not llvm_cov_bin.exists():
         sys.exit(f"Error: llvm-cov binary not found at {llvm_cov_bin}")
 
