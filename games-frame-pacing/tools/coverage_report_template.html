@@ -264,6 +264,11 @@
             <dd class="stat-subtext">{{DIFF_SUBTEXT}}</dd>
           </div>
           <div class="stat-card">
+            <dt class="stat-label">Java / Kotlin (JaCoCo)</dt>
+            <dd class="stat-value text-green">{{JAVA_PCT}}</dd>
+            <dd class="stat-subtext">{{JAVA_SUBTEXT}}</dd>
+          </div>
+          <div class="stat-card">
             <dt class="stat-label">Discovered Sources</dt>
             <dd class="stat-value text-blue">{{NUM_FILES}}</dd>
             <dd class="stat-subtext">Source and Header Files</dd>
@@ -276,12 +281,14 @@
         <div class="filter-bar" role="group" aria-label="Filter files">
           <button type="button" class="filter-btn active" onclick="filterFiles('all', this)">All Files</button>
           <button type="button" class="filter-btn" onclick="filterFiles('changed', this)">Changed in this CL (&Delta;)</button>
+          <button type="button" class="filter-btn" onclick="filterFiles('cpp', this)">C/C++</button>
+          <button type="button" class="filter-btn" onclick="filterFiles('java', this)">Java / Kotlin</button>
         </div>
         <table>
           <caption class="sr-only">Per-File Code Coverage Breakdown</caption>
           <thead>
             <tr>
-              <th scope="col">Component / C++ Source File</th>
+              <th scope="col">Component / Source File</th>
               <th scope="col">Total Lines</th>
               <th scope="col">Executed Lines</th>
               <th scope="col">Coverage %</th>
@@ -304,6 +311,8 @@
       document.querySelectorAll('#coverage-tbody tr').forEach(function(row) {
         if (mode === 'changed') {
           row.style.display = row.getAttribute('data-changed') === 'true' ? '' : 'none';
+        } else if (mode === 'cpp' || mode === 'java') {
+          row.style.display = row.getAttribute('data-lang') === mode ? '' : 'none';
         } else {
           row.style.display = '';
         }

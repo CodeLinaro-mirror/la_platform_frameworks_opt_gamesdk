@@ -20,6 +20,7 @@ import sys
 import tarfile
 import tempfile
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
+import xml.etree.ElementTree as ET
 import zipfile
 
 MODULE_NAME = "games-frame-pacing"
@@ -673,6 +674,91 @@ def generate_gcov_reports(
     return summary_rows
 
 
+def _discover_jvm_source_files(gamesdk_dir: Path) -> Dict[str, str]:
+    """Maps JaCoCo `<package>/<sourcefile>` keys to repo-relative file paths."""
+    source_map: Dict[str, str] = {}
+    if not gamesdk_dir.exists():
+        return source_map
+    excluded_roots = {".git", "out", "build", ".cxx", "third_party"}
+    for root, dirs, files in os.walk(gamesdk_dir):
+        dirs[:] = [
+                d
+                for d in dirs
+                if d not in excluded_roots and not d.startswith("out_")
+        ]
+        root_path = Path(root)
+        for fname in files:
+            if not (fname.endswith(".java") or fname.endswith(".kt")):
+                continue
+            full_path = root_path / fname
+            rel_repo = full_path.relative_to(gamesdk_dir).as_posix()
+            for marker in ("/src/main/java/", "/src/main/kotlin/"):
+                if marker in f"/{rel_repo}":
+                    pkg_rel = f"/{rel_repo}".split(marker, 1)[1]
+                    source_map.setdefault(pkg_rel, rel_repo)
+                    break
+            source_map.setdefault(fname, rel_repo)
+    return source_map
+
+
+def parse_jacoco_xml_reports(
+        xml_paths: Sequence[Path], gamesdk_dir: Path
+) -> List[CoverageSummary]:
+    """Parses JaCoCo XML reports into CoverageSummary rows (`language='java'`)."""
+    valid_paths = [p for p in xml_paths if p.is_file()]
+    if not valid_paths:
+        return []
+    jvm_source_map = _discover_jvm_source_files(gamesdk_dir)
+    file_line_counts: Dict[str, Dict[int, int]] = {}
+    for xml_path in valid_paths:
+        try:
+            root = ET.parse(xml_path).getroot()
+        except (ET.ParseError, OSError) as err:
+            print(f"Warning: Failed to parse JaCoCo XML {xml_path}: {err}")
+            continue
+        for pkg in root.findall("package"):
+            pkg_name = pkg.attrib.get("name", "").strip("/")
+            for sf in pkg.findall("sourcefile"):
+                sf_name = sf.attrib.get("name", "").strip("/")
+                if not sf_name:
+                    continue
+                pkg_key = f"{pkg_name}/{sf_name}" if pkg_name else sf_name
+                rel_path = (
+                        jvm_source_map.get(pkg_key)
+                        or jvm_source_map.get(sf_name)
+                        or pkg_key
+                )
+                line_dict = file_line_counts.setdefault(rel_path, {})
+                for line_elem in sf.findall("line"):
+                    try:
+                        line_nr = int(line_elem.attrib.get("nr", "0"))
+                        covered_inst = int(line_elem.attrib.get("ci", "0"))
+                    except ValueError:
+                        continue
+                    if line_nr <= 0:
+                        continue
+                    line_dict[line_nr] = (
+                            line_dict.get(line_nr, 0) + covered_inst
+                    )
+
+    rows: List[CoverageSummary] = []
+    for rel_path, line_dict in sorted(file_line_counts.items()):
+        total_lines = len(line_dict)
+        if total_lines == 0:
+            continue
+        executed_lines = sum(1 for v in line_dict.values() if v > 0)
+        rows.append(
+                CoverageSummary(
+                        relative_path=rel_path,
+                        total_lines=total_lines,
+                        executed_lines=executed_lines,
+                        line_counts=dict(line_dict),
+                        language="java",
+                )
+        )
+    return rows
+
+
 _DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
@@ -1028,6 +1114,16 @@ def generate_html_report(
         diff_pct_str = "N/A"
         diff_subtext = "No modified executable lines"
 
+    java_rows = [r for r in summary_rows if r.language != "cpp"]
+    java_total = sum(r.total_lines for r in java_rows)
+    java_exec = sum(r.executed_lines for r in java_rows)
+    if java_total > 0:
+        java_pct_str = f"{java_exec / java_total * 100.0:.1f}%"
+        java_subtext = f"{java_exec:,} / {java_total:,} JVM lines executed"
+    else:
+        java_pct_str = "N/A"
+        java_subtext = "No JaCoCo XML reports ingested"
+
     if total_loc > 0 and exec_loc == 0:
         print(
                 "\nWARNING: No runtime execution data (.gcda) was"
@@ -1042,6 +1138,8 @@ def generate_html_report(
             .replace("{{TOTAL_LOC}}", f"{total_loc:,}")
             .replace("{{DIFF_PCT}}", diff_pct_str)
             .replace("{{DIFF_SUBTEXT}}", diff_subtext)
+            .replace("{{JAVA_PCT}}", java_pct_str)
+            .replace("{{JAVA_SUBTEXT}}", java_subtext)
             .replace("{{NUM_FILES}}", str(len(summary_rows)))
             .replace("{{TABLE_ROWS}}", "\n".join(rows_html))
     )
@@ -1087,12 +1185,15 @@ def _run_coverage_pipeline(
         out_dir: Path,
         llvm_cov_bin: Path,
         diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
 ) -> None:
     """Runs the full stateless test coverage and HTML generation pipeline."""
     run_tests(gamesdk_dir)
     if _has_adb_device():
         pull_and_sync_device_gcov_data(module_dir, out_dir)
     summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
+    if jacoco_xmls:
+        summary_rows.extend(parse_jacoco_xml_reports(jacoco_xmls, gamesdk_dir))
     if diff_base:
         changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
         summary_rows = _attach_diff_lines(summary_rows, changed_map)
@@ -1106,6 +1207,7 @@ def package_gcno_bundle(
         module_dir: Path,
         bundle_path: Path,
         diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
 ) -> Path:
     """Packages compile-time .gcno notes, module sources, and report tooling."""
     bundle_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1139,6 +1241,18 @@ def package_gcno_bundle(
                         tool_path,
                         arcname=f"{MODULE_NAME}/tools/{tool_name}",
                 )
+
+        if jacoco_xmls:
+            for idx, xml_path in enumerate(jacoco_xmls):
+                if xml_path.is_file():
+                    tar.add(
+                            xml_path,
+                            arcname=f"{MODULE_NAME}/tools/jacoco_{idx}.xml",
+                    )
+            for row in parse_jacoco_xml_reports(jacoco_xmls, gamesdk_dir):
+                jvm_src = gamesdk_dir / row.relative_path
+                if jvm_src.is_file():
+                    tar.add(jvm_src, arcname=row.relative_path)
 
         if diff_base:
             changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
@@ -1191,6 +1305,7 @@ def run_report_from_artifacts(
         bundle_path: Optional[Path],
         output_dir: Path,
         diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
 ) -> Path:
     """Generates coverage HTML report from a .gcno bundle and/or .gcda dir.
 
@@ -1228,6 +1343,13 @@ def run_report_from_artifacts(
         summary_rows = generate_gcov_reports(
                 work_module, llvm_cov_bin, cxx_dirs=cxx_dirs
         )
+        effective_jacoco: List[Path] = list(jacoco_xmls or [])
+        if work_tools.exists():
+            effective_jacoco.extend(sorted(work_tools.glob("jacoco_*.xml")))
+        if effective_jacoco:
+            summary_rows.extend(
+                    parse_jacoco_xml_reports(effective_jacoco, work_gamesdk)
+            )
         effective_diff_base = diff_base
         changed_map: Dict[str, Set[int]] = {}
         if diff_base and (gamesdk_dir / ".git").exists():
@@ -1343,6 +1465,14 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             default=None,
             help="Git revision to compute incremental diff coverage against (e.g. HEAD~1).",
     )
+    parser.add_argument(
+            "--jacoco-xml",
+            dest="jacoco_xmls",
+            action="append",
+            type=Path,
+            default=[],
+            help="Path to JaCoCo XML report to merge into the report (repeatable).",
+    )
     return parser.parse_args(argv)
 
 
@@ -1368,6 +1498,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 module_dir,
                 bundle_out,
                 diff_base=args.diff_base,
+                jacoco_xmls=args.jacoco_xmls,
         )
         return
 
@@ -1390,6 +1521,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 bundle_path=args.bundle_path,
                 output_dir=report_out,
                 diff_base=args.diff_base,
+                jacoco_xmls=args.jacoco_xmls,
         )
         return
 
@@ -1400,6 +1532,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             out_dir,
             llvm_cov_bin,
             diff_base=args.diff_base,
+            jacoco_xmls=args.jacoco_xmls,
     )
 
 

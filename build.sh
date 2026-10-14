@@ -247,7 +247,10 @@ then
         -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
     python3 -B -m unittest discover -s games-frame-pacing/tools -p 'test_generate_test_coverage.py'
     python3 games-frame-pacing/tools/generate_test_coverage.py \
-        --mode=report --gcda-dir="../.temp/host/.cmake" --output-dir="$dist_dir/host_coverage"
+        --mode=report --gcda-dir="../.temp/host/.cmake" --output-dir="$dist_dir/host_coverage" \
+        --diff-base=HEAD~1 \
+        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml" \
+        --jacoco-xml="buildSrc/build/reports/jacoco/test/jacocoTestReport.xml"
     exit
 else
     # The default is to build the express zip

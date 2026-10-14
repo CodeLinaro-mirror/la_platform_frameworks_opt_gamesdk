@@ -316,6 +316,82 @@ class GenerateTestCoverageTest(unittest.TestCase):
             self.assertEqual(file_entry["changed_lines"], [1, 2, 3])
             self.assertEqual(file_entry["lines"], {"2": 4, "3": 0})
 
+    def test_parse_jacoco_xml_and_unified_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gamesdk_dir = Path(tmp) / "gamesdk"
+            module_dir = gamesdk_dir / "games-frame-pacing"
+            tools_dir = module_dir / "tools"
+            ga_src_dir = (
+                gamesdk_dir
+                / "game-activity"
+                / "src"
+                / "main"
+                / "java"
+                / "com"
+                / "google"
+                / "androidgamesdk"
+            )
+            tools_dir.mkdir(parents=True)
+            ga_src_dir.mkdir(parents=True)
+
+            real_template = (
+                Path(__file__).resolve().parent / "coverage_report_template.html"
+            )
+            (tools_dir / "coverage_report_template.html").write_text(
+                real_template.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (ga_src_dir / "GameActivity.java").write_text(
+                "package com.google.androidgamesdk;\n"
+                "public class GameActivity {\n"
+                "  public void onCreate() {}\n"
+                "  public void onDestroy() {}\n"
+                "}\n",
+                encoding="utf-8",
+            )
+
+            jacoco_xml = Path(tmp) / "jacocoTestReport.xml"
+            jacoco_xml.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<report name="game-activity">\n'
+                '  <package name="com/google/androidgamesdk">\n'
+                '    <sourcefile name="GameActivity.java">\n'
+                '      <line nr="3" mi="0" ci="4" mb="0" cb="0"/>\n'
+                '      <line nr="4" mi="3" ci="0" mb="0" cb="0"/>\n'
+                "    </sourcefile>\n"
+                "  </package>\n"
+                "</report>\n",
+                encoding="utf-8",
+            )
+
+            java_rows = cov.parse_jacoco_xml_reports([jacoco_xml], gamesdk_dir)
+            self.assertEqual(len(java_rows), 1)
+            self.assertEqual(
+                java_rows[0].relative_path,
+                "game-activity/src/main/java/com/google/androidgamesdk/GameActivity.java",
+            )
+            self.assertEqual(java_rows[0].language, "java")
+            self.assertEqual(java_rows[0].total_lines, 2)
+            self.assertEqual(java_rows[0].executed_lines, 1)
+            self.assertEqual(java_rows[0].line_counts, {3: 4, 4: 0})
+
+            out_dir = Path(tmp) / "report_out"
+            index_html = cov.generate_html_report(
+                tools_dir,
+                gamesdk_dir,
+                java_rows,
+                output_dir=out_dir,
+            )
+            index_text = index_html.read_text(encoding="utf-8")
+            self.assertIn("1 / 2 JVM lines executed", index_text)
+            self.assertIn('data-lang="java"', index_text)
+
+            summary_json = json.loads(
+                (out_dir / "coverage_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(summary_json["java"]["total_lines"], 2)
+            self.assertEqual(summary_json["java"]["executed_lines"], 1)
+            self.assertEqual(summary_json["java"]["pct"], 50.0)
+
 
 if __name__ == "__main__":
     unittest.main()
