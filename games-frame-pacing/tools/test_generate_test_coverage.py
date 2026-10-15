@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import json
+import os
 import shutil
 import tarfile
 import tempfile
@@ -221,6 +222,7 @@ class GenerateTestCoverageTest(unittest.TestCase):
             index_html = cov.generate_html_report(
                 tools_dir, gamesdk_dir, rows, output_dir=out_dir
             )
+            self.assertTrue((out_dir / "index.html").exists())
             index_text = index_html.read_text(encoding="utf-8")
             self.assertIn(
                 'href="sources/common__Settings.cpp.html"', index_text
@@ -420,6 +422,72 @@ class GenerateTestCoverageTest(unittest.TestCase):
                 with_cxx["gamecontroller.cpp"],
                 "games-controller/src/main/cpp/GameController.cpp",
             )
+
+    def test_run_report_from_artifacts_resolves_relative_gcda_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gamesdk_dir = root / "gamesdk"
+            module_dir = gamesdk_dir / "games-frame-pacing"
+            tools_dir = module_dir / "tools"
+            common_dir = module_dir / "common"
+            host_cmake_dir = root / ".temp" / "host" / ".cmake"
+            tools_dir.mkdir(parents=True)
+            common_dir.mkdir(parents=True)
+            host_cmake_dir.mkdir(parents=True)
+
+            src_file = common_dir / "Settings.cpp"
+            src_file.write_text(
+                "int hit() {\n  return 1;\n}\n", encoding="utf-8"
+            )
+            real_template = (
+                Path(__file__).resolve().parent / "coverage_report_template.html"
+            )
+            (tools_dir / "coverage_report_template.html").write_text(
+                real_template.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (host_cmake_dir / "Settings.cpp.gcno").write_bytes(
+                b"oncg*504HOSTxxxx"
+            )
+            (host_cmake_dir / "Settings.cpp.gcda").write_bytes(
+                b"adcg*504HOSTdata"
+            )
+
+            fake_llvm_cov = root / "fake_llvm_cov.py"
+            fake_llvm_cov.write_text(
+                "#!/usr/bin/env python3\n"
+                "from pathlib import Path\n"
+                "import sys\n"
+                "gcno = Path(sys.argv[-1])\n"
+                "if not gcno.exists():\n"
+                "    sys.exit(1)\n"
+                "gcda = gcno.with_suffix('.gcda')\n"
+                "hits = 3 if gcda.exists() else 0\n"
+                f"Path('Settings.cpp.gcov').write_text('file:{src_file}\\nlcount:1,' + str(hits) + '\\n')\n",
+                encoding="utf-8",
+            )
+            fake_llvm_cov.chmod(0o755)
+
+            out_dir = root / "report_out"
+            orig_cwd = Path.cwd()
+            try:
+                os.chdir(gamesdk_dir)
+                cov.run_report_from_artifacts(
+                    gamesdk_dir=gamesdk_dir,
+                    module_dir=module_dir,
+                    tools_dir=tools_dir,
+                    llvm_cov_bin=fake_llvm_cov,
+                    gcda_dir=Path("../.temp/host/.cmake"),
+                    bundle_path=None,
+                    output_dir=out_dir,
+                )
+            finally:
+                os.chdir(orig_cwd)
+
+            summary_json = json.loads(
+                (out_dir / "coverage_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(summary_json["cpp"]["total_lines"], 1)
+            self.assertEqual(summary_json["cpp"]["executed_lines"], 1)
 
 
 if __name__ == "__main__":

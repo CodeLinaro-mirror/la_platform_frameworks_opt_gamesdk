@@ -236,7 +236,7 @@ then
 
     # Package .gcno notes, C++ sources, and report generator for CI post-processing
     python3 games-frame-pacing/tools/generate_test_coverage.py \
-        --mode=package-gcno --dist-dir="$dist_dir"
+        --mode=package-gcno --dist-dir="$dist_dir" --diff-base=HEAD~1
     cp -v "$dist_dir/swappy_coverage_bundle.tar.gz" "$dist_dir/$package_name/swappy_coverage_bundle.tar.gz"
     exit
 elif [[ $1 == "hostUnitTests" ]]
