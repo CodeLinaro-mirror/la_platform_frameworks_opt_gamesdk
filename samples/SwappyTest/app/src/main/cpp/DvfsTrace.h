@@ -16,8 +16,7 @@
 
 #pragma once
 
-// SwappyTest's trace layer: the SWAPPY_TEST_* macros and the ATrace helpers
-// behind them. With tracing compiled out the macros expand to nothing.
+// SwappyTest's ATrace helpers for frame, workload, step, phase, and run slices.
 
 #include <stdint.h>
 #include <stdio.h>
@@ -28,28 +27,7 @@
 
 namespace dvfs {
 
-// Traces the worst CPU headroom as a counter, only when it changed unless
-// forced, so the run-start and run-end samples always land in the trace.
-void trace_cpu_headroom_pct(int pct, bool force);
-
-} // namespace dvfs
-
-#if (defined(TRACE) && TRACE == 0) && !defined(SWAPPY_ENABLE_TRACE)
-#define SWAPPY_TEST_TRACE_FRAME(id)
-#define SWAPPY_TEST_TRACE_CPU_WORK(id)
-#define SWAPPY_TEST_TRACE_GPU_SUBMIT(id)
-#define SWAPPY_TEST_START_RUN(scenario, iter)
-#define SWAPPY_TEST_END_RUN()
-#define SWAPPY_TEST_UPDATE_PHASE(tag)
-#define SWAPPY_TEST_TRACE_ENABLED() false
-#define SWAPPY_TEST_TRACE_INSTANT(...) ((void)0)
-#define SWAPPY_TEST_TRACE_COUNTER(name, value) ((void)0)
-#define SWAPPY_TEST_BEGIN_STEP(...) ((void)0)
-#define SWAPPY_TEST_END_STEP() ((void)0)
-#else
-namespace dvfs {
-
-struct ScopedFormattedTrace {
+struct [[nodiscard]] ScopedFormattedTrace {
     ScopedFormattedTrace(const char* fmt, uint32_t id) {
         if (auto* trace = ::samples::Trace::getInstance()) {
             if (trace->isEnabled()) {
@@ -67,10 +45,26 @@ struct ScopedFormattedTrace {
             }
         }
     }
+    ScopedFormattedTrace(const ScopedFormattedTrace&) = delete;
+    ScopedFormattedTrace& operator=(const ScopedFormattedTrace&) = delete;
     bool mActive = false;
 };
 
-bool is_test_tracing_enabled(void);
+inline ScopedFormattedTrace trace_frame(uint32_t id) {
+    return ScopedFormattedTrace("SwappyTest::Frame|%" PRIu32, id);
+}
+
+inline ScopedFormattedTrace trace_cpu_work(uint32_t id) {
+    return ScopedFormattedTrace("SwappyTest::CpuWork|%" PRIu32, id);
+}
+
+inline ScopedFormattedTrace trace_gpu_submit(uint32_t id) {
+    return ScopedFormattedTrace("SwappyTest::GpuSubmit|%" PRIu32, id);
+}
+
+// Traces the worst CPU headroom as a counter, only when it changed unless
+// forced, so the run-start and run-end samples always land in the trace.
+void trace_cpu_headroom_pct(int pct, bool force);
 
 // A zero-length slice on the calling thread: ATrace has no instant event, and
 // trace_processor imports a begin immediately followed by an end as one.
@@ -78,33 +72,10 @@ void trace_instant(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 void trace_counter(const char* name, int64_t value);
 
-void end_step_trace(void);
-void begin_step_trace(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
-void update_phase_trace(const char* phase_tag);
-void start_run_trace(const char* scenario, int iter);
-void end_run_trace();
+void trace_end_step();
+void trace_begin_step(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+void trace_update_phase(const char* phase_tag);
+void trace_start_run(const char* scenario, int iter);
+void trace_end_run();
 
 } // namespace dvfs
-
-#define SWAPPY_TEST_TRACE_FRAME(id)                                                             \
-    ::dvfs::ScopedFormattedTrace PASTE_HELPER(_ftrace_, __LINE__)("SwappyTest::Frame|%" PRIu32, \
-                                                                  static_cast<uint32_t>(id))
-
-#define SWAPPY_TEST_TRACE_CPU_WORK(id)                                                            \
-    ::dvfs::ScopedFormattedTrace PASTE_HELPER(_ctrace_, __LINE__)("SwappyTest::CpuWork|%" PRIu32, \
-                                                                  static_cast<uint32_t>(id))
-
-#define SWAPPY_TEST_TRACE_GPU_SUBMIT(id)                                                  \
-    ::dvfs::ScopedFormattedTrace PASTE_HELPER(_gtrace_,                                   \
-                                              __LINE__)("SwappyTest::GpuSubmit|%" PRIu32, \
-                                                        static_cast<uint32_t>(id))
-
-#define SWAPPY_TEST_UPDATE_PHASE(tag) ::dvfs::update_phase_trace(tag)
-#define SWAPPY_TEST_START_RUN(scenario, iter) ::dvfs::start_run_trace(scenario, iter)
-#define SWAPPY_TEST_END_RUN() ::dvfs::end_run_trace()
-#define SWAPPY_TEST_TRACE_ENABLED() ::dvfs::is_test_tracing_enabled()
-#define SWAPPY_TEST_TRACE_INSTANT(...) ::dvfs::trace_instant(__VA_ARGS__)
-#define SWAPPY_TEST_TRACE_COUNTER(name, value) ::dvfs::trace_counter(name, value)
-#define SWAPPY_TEST_BEGIN_STEP(...) ::dvfs::begin_step_trace(__VA_ARGS__)
-#define SWAPPY_TEST_END_STEP() ::dvfs::end_step_trace()
-#endif

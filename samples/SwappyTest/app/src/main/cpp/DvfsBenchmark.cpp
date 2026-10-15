@@ -244,8 +244,7 @@ void set_run_iteration(int iteration) {
     s_run.run_iteration = (iteration > 0) ? iteration : 1;
 }
 
-// Only the trace macros use it, and they compile out with tracing disabled.
-[[maybe_unused]] static const char* get_phase_name_for_step(int step_idx, int total_steps) {
+static const char* get_phase_name_for_step(int step_idx, int total_steps) {
     if (step_idx <= 0) return "STEADY_PRE";
     if (step_idx == 1 || (step_idx == 2 && total_steps > 3)) return "SPIKE";
     return "RECOVERY";
@@ -339,7 +338,7 @@ static void mark_run_tainted(const char* reason) {
     if (s_run_tainted) return;
     snprintf(s_run.taint_reason, sizeof(s_run.taint_reason), "%s", reason);
     s_run_tainted.store(true, std::memory_order_release);
-    SWAPPY_TEST_TRACE_INSTANT("SwappyTest::Taint|%s", reason);
+    dvfs::trace_instant("SwappyTest::Taint|%s", reason);
     ALOGI("SwappyTest: run TAINTED: %s", reason);
 }
 
@@ -538,14 +537,11 @@ static void complete_scenario_run(void) {
         if (*c == '|') *c = '/';
     }
 
-    if (SWAPPY_TEST_TRACE_ENABLED()) {
-        SWAPPY_TEST_TRACE_INSTANT("SwappyTest::RunEnd|tainted=%d|run_failed=%d|headroom_end=%d|"
-                                  "reason=%s",
-                                  s_run_tainted.load() ? 1 : 0, s_run.run_failed.load() ? 1 : 0,
-                                  s_headroom_end_pct.load(), reason);
-    }
+    dvfs::trace_instant("SwappyTest::RunEnd|tainted=%d|run_failed=%d|headroom_end=%d|reason=%s",
+                        s_run_tainted.load() ? 1 : 0, s_run.run_failed.load() ? 1 : 0,
+                        s_headroom_end_pct.load(), reason);
 
-    SWAPPY_TEST_END_RUN();
+    dvfs::trace_end_run();
 
     const char* status =
             s_run.run_failed.load() ? "failed" : (s_run_tainted.load() ? "tainted" : "ok");
@@ -794,7 +790,7 @@ static void start_scenario_run(void) {
     s_run.applied_settings = swappy_settings_in_effect(limit_30fps);
     // The first frame opens step 0 and applies its settings.
 
-    SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(0, s_run.scenario_step_count));
+    dvfs::trace_update_phase(get_phase_name_for_step(0, s_run.scenario_step_count));
     s_run.steps_active.store(true, std::memory_order_release);
 }
 
@@ -851,7 +847,7 @@ static void finish_calibration_run(CalibrationSet kinds, const CalibrationResult
     s_ui.calib_at_max_freq = calib.reached_max_freq || (s_device_global_max_freq_mhz <= 0);
     s_calibration_running = false;
     if (!failures.empty()) mark_run_failed(failures.c_str());
-    SWAPPY_TEST_END_RUN();
+    dvfs::trace_end_run();
     s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
 }
 
@@ -895,7 +891,7 @@ void start_benchmark_run(void) {
             }
         }
 
-        SWAPPY_TEST_START_RUN(s_run.selected_scenario.title().c_str(), s_run.run_iteration);
+        dvfs::trace_start_run(s_run.selected_scenario.title().c_str(), s_run.run_iteration);
 
         populate_active_scenario_steps();
         s_run.steps_active = false;
@@ -1057,10 +1053,9 @@ static std::string scenario_step_name(const Scenario& scenario, int step_idx) {
 // actual ones, s_run.applied_settings, after the step's changes (pipeline
 // off|on|auto, fps 0 = Swappy's auto rate). Called under s_test_mutex.
 static void trace_step_begin(int step_idx, const ScenarioEngine::Frame& frame) {
-    if (!SWAPPY_TEST_TRACE_ENABLED()) return;
     const std::string step_name = scenario_step_name(s_run.scenario_engine.scenario(), step_idx);
     // The same clamp dispatch_gpu_workload() applies on every frame.
-    [[maybe_unused]] bool gpu_clamped = false;
+    bool gpu_clamped = false;
     (void)compute_gpu_iterations_for_target_ms(static_cast<double>(frame.gpu_ms),
                                                s_run.calibrated_gpu_iters_per_ms.load(
                                                        std::memory_order_relaxed),
@@ -1073,10 +1068,9 @@ static void trace_step_begin(int step_idx, const ScenarioEngine::Frame& frame) {
     for (char* c = name; *c != '\0'; ++c) {
         if (*c == ';' || *c == '|') *c = '/';
     }
-    [[maybe_unused]] const SwappySettings& settings = s_run.applied_settings;
-    [[maybe_unused]] const double target_ms =
-            frame.gpu_ms > frame.cpu_ms ? frame.gpu_ms : frame.cpu_ms;
-    SWAPPY_TEST_BEGIN_STEP("SwappyTest::Step;%d;name=%s;tgt=%g;cpu=%g;gpu=%g;pipeline=%s;fps=%d"
+    const SwappySettings& settings = s_run.applied_settings;
+    const double target_ms = frame.gpu_ms > frame.cpu_ms ? frame.gpu_ms : frame.cpu_ms;
+    dvfs::trace_begin_step("SwappyTest::Step;%d;name=%s;tgt=%g;cpu=%g;gpu=%g;pipeline=%s;fps=%d"
                            ";auto_swap=%d;stuff_fix=%d;reset=%d;boost=%d;gpu_clamped=%d;phase=%s",
                            step_idx, name, target_ms, frame.cpu_ms, frame.gpu_ms,
                            pipeline_mode_name(settings.pipeline), (int)settings.fps,
@@ -1090,49 +1084,44 @@ static void trace_step_begin(int step_idx, const ScenarioEngine::Frame& frame) {
 // once Swappy is up and the scenario is staged. Swappy traces its own
 // projection and clock settings.
 static void trace_run_settings(void) {
-    if (!SWAPPY_TEST_TRACE_ENABLED()) return;
     // '|' separates marker fields, so it must not appear in the description.
     std::string desc = s_run.selected_scenario.description();
     for (char& c : desc) {
         if (c == '|') c = '/';
     }
-    SWAPPY_TEST_TRACE_INSTANT("SwappyTest::Settings|scenario=%s|api=%s|pacing=%s|iter=%d"
-                              "|uses_gpu=%d|explicit_30fps=%d"
-                              "|user_30fps=%d|steps=%d|refresh_ns=%llu|device_max_mhz=%d|headroom_"
-                              "start=%d"
-                              "|desc=%s",
-                              s_run.selected_scenario.title().c_str(), get_active_render_api_name(),
-                              swappy_backend_get_pacing_strategy_name(), s_run.run_iteration,
-                              s_active_scenario_uses_gpu ? 1 : 0,
-                              s_run.active_scenario_explicit_30fps ? 1 : 0,
-                              s_run.user_30fps_limit ? 1 : 0, s_run.scenario_step_count.load(),
-                              (unsigned long long)get_display_refresh_period_ns(),
-                              s_device_global_max_freq_mhz.load(), s_headroom_start_pct.load(),
-                              desc.c_str());
+    dvfs::trace_instant("SwappyTest::Settings|scenario=%s|api=%s|pacing=%s|iter=%d"
+                        "|uses_gpu=%d|explicit_30fps=%d"
+                        "|user_30fps=%d|steps=%d|refresh_ns=%llu|device_max_mhz=%d|headroom_"
+                        "start=%d"
+                        "|desc=%s",
+                        s_run.selected_scenario.title().c_str(), get_active_render_api_name(),
+                        swappy_backend_get_pacing_strategy_name(), s_run.run_iteration,
+                        s_active_scenario_uses_gpu ? 1 : 0,
+                        s_run.active_scenario_explicit_30fps ? 1 : 0,
+                        s_run.user_30fps_limit ? 1 : 0, s_run.scenario_step_count.load(),
+                        (unsigned long long)get_display_refresh_period_ns(),
+                        s_device_global_max_freq_mhz.load(), s_headroom_start_pct.load(),
+                        desc.c_str());
 
     const int64_t gpu_pixels =
             static_cast<int64_t>(s_render_surface_width.load()) * s_render_surface_height.load();
-    SWAPPY_TEST_TRACE_INSTANT("SwappyTest::Calibration|cpu_iters_per_ms=%llu|calib_core=%d|calib_"
-                              "freq_mhz=%d"
-                              "|cpu_mode=%s|cpu_r2=%.6f|cpu_rme95=%.2f|cpu_mean_err=%.2f|cpu_"
-                              "chunks=%d"
-                              "|gpu_iters_per_ms=%.4f|gpu_fixed_ms=%.4f|gpu_timer=%s|gpu_pixels="
-                              "%" PRId64
-                              "|gpu_r2=%.6f|gpu_rme95=%.2f|gpu_mean_err=%.2f|gpu_samples=%d",
-                              (unsigned long long)s_run.calibrated_iters_per_ms.load(),
-                              s_ui.calib_core.load(), s_ui.calib_freq_mhz.load(),
-                              s_cpu_calibration_result.mode.c_str(),
-                              s_cpu_calibration_result.r_squared,
-                              s_cpu_calibration_result.rme95_pct,
-                              s_cpu_calibration_result.mean_error_pct,
-                              s_cpu_calibration_result.accepted_chunks,
-                              s_run.calibrated_gpu_iters_per_ms.load(),
-                              s_run.calibrated_gpu_fixed_ms.load(),
-                              s_gpu_calibration_result.timer.c_str(), gpu_pixels,
-                              s_gpu_calibration_result.r_squared,
-                              s_gpu_calibration_result.rme95_pct,
-                              s_gpu_calibration_result.mean_error_pct,
-                              s_gpu_calibration_result.accepted_samples);
+    dvfs::trace_instant("SwappyTest::Calibration|cpu_iters_per_ms=%llu|calib_core=%d|calib_"
+                        "freq_mhz=%d"
+                        "|cpu_mode=%s|cpu_r2=%.6f|cpu_rme95=%.2f|cpu_mean_err=%.2f|cpu_"
+                        "chunks=%d"
+                        "|gpu_iters_per_ms=%.4f|gpu_fixed_ms=%.4f|gpu_timer=%s|gpu_pixels="
+                        "%" PRId64 "|gpu_r2=%.6f|gpu_rme95=%.2f|gpu_mean_err=%.2f|gpu_samples=%d",
+                        (unsigned long long)s_run.calibrated_iters_per_ms.load(),
+                        s_ui.calib_core.load(), s_ui.calib_freq_mhz.load(),
+                        s_cpu_calibration_result.mode.c_str(), s_cpu_calibration_result.r_squared,
+                        s_cpu_calibration_result.rme95_pct, s_cpu_calibration_result.mean_error_pct,
+                        s_cpu_calibration_result.accepted_chunks,
+                        s_run.calibrated_gpu_iters_per_ms.load(),
+                        s_run.calibrated_gpu_fixed_ms.load(),
+                        s_gpu_calibration_result.timer.c_str(), gpu_pixels,
+                        s_gpu_calibration_result.r_squared, s_gpu_calibration_result.rme95_pct,
+                        s_gpu_calibration_result.mean_error_pct,
+                        s_gpu_calibration_result.accepted_samples);
 }
 
 // Drops the workload to a 1 ms CPU load with no GPU work once no step runs.
@@ -1157,11 +1146,11 @@ static void begin_scenario_step(const ScenarioEngine::Frame& frame, uint64_t now
     const int step_idx = frame.step_index;
     const int step_count = s_run.scenario_step_count.load();
     const std::string step_name = scenario_step_name(s_run.scenario_engine.scenario(), step_idx);
-    SWAPPY_TEST_END_STEP();
+    dvfs::trace_end_step();
     s_run.current_step_index = step_idx;
     s_run.current_step_start_ns = now_ns;
     s_run.test_phase = TEST_PHASE_RUNNING;
-    SWAPPY_TEST_UPDATE_PHASE(get_phase_name_for_step(step_idx, step_count));
+    dvfs::trace_update_phase(get_phase_name_for_step(step_idx, step_count));
     // The builder puts a step's Swappy settings on its first frame.
     apply_swappy_settings(frame);
     if (step_idx == 0) trace_run_settings();
@@ -1185,7 +1174,7 @@ static void fire_frame_actions(const ScenarioEngine::Frame& frame, uint64_t now_
 // Completes the run once the scenario has no frame left. Called under
 // s_test_mutex.
 static void finish_scenario_run(void) {
-    SWAPPY_TEST_END_STEP();
+    dvfs::trace_end_step();
     set_idle_targets();
     complete_scenario_run();
     // Release-publishes the run state to the UI thread, which reads it
@@ -1220,7 +1209,7 @@ static void run_scenario_frame(uint64_t now_ns) {
 // Publishes this frame's fragment shader iteration count and samples the GPU
 // time Swappy reported for the previous frame.
 static void dispatch_gpu_workload(void) {
-    SWAPPY_TEST_TRACE_GPU_SUBMIT(s_run.run_frame_count);
+    const auto trace = dvfs::trace_gpu_submit(s_run.run_frame_count);
 
     const int32_t gpu_workload =
             compute_gpu_iterations_for_target_ms(static_cast<double>(
@@ -1245,7 +1234,7 @@ static void dispatch_gpu_workload(void) {
 // Burns the calibrated iteration count for frame_cpu_ms and updates the UI
 // workload telemetry.
 static void execute_frame_cpu_workload(float frame_cpu_ms) {
-    SWAPPY_TEST_TRACE_CPU_WORK(s_run.run_frame_count);
+    const auto trace = dvfs::trace_cpu_work(s_run.run_frame_count);
 
     uint64_t cpu_dur_ns = 0;
     if (frame_cpu_ms > 0.0f) {
@@ -1345,7 +1334,7 @@ void run_frame_swappy_test_workload(void) {
     }
     s_run.last_frame_stamp_ns = now_ns;
 
-    SWAPPY_TEST_TRACE_FRAME(s_run.run_frame_count);
+    const auto trace = dvfs::trace_frame(s_run.run_frame_count);
 
     if (steps_active) {
         run_scenario_frame(now_ns);
