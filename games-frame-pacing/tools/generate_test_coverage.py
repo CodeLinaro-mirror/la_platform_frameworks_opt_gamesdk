@@ -5,7 +5,12 @@ Usage:
         python3 games-frame-pacing/tools/generate_test_coverage.py
 """
 
-from dataclasses import dataclass
+import argparse
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
+import html
+import io
+import json
 import os
 from pathlib import Path
 import re
@@ -14,20 +19,47 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import Dict, List, Optional, Tuple, Type
-from contextlib import ExitStack
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
+import xml.etree.ElementTree as ET
+import zipfile
 
 MODULE_NAME = "games-frame-pacing"
 TEST_PKG = "com.swappy.testapp.test"
 APP_PKG = "com.swappy.testapp"
 
+# Default NDK version matching ndk_version.gradle.
+DEFAULT_NDK_VERSION = "27.0.12077973"
+# Timeout in seconds for Gradle build/test invocations.
+GRADLE_TIMEOUT_SECONDS = 600
+# Timeout in seconds for ADB install/instrument/pull invocations.
+ADB_TIMEOUT_SECONDS = 120
+# Timeout in seconds for single-file llvm-cov gcov invocations.
+LLVM_COV_TIMEOUT_SECONDS = 30
+# Byte slice for the 32-bit stamp in GCC/LLVM .gcno and .gcda headers.
+GCOV_STAMP_OFFSET = 8
+GCOV_STAMP_END = 12
+
 
 @dataclass(frozen=True)
 class CoverageSummary:
     """Summary row of line coverage for a single source file."""
+
     relative_path: str
     total_lines: int
     executed_lines: int
+    line_counts: Dict[int, int] = field(default_factory=dict)
+    changed_lines: FrozenSet[int] = field(default_factory=frozenset)
+    language: str = "cpp"
+
+    @property
+    def detail_html_filename(self) -> str:
+        """Returns relative HTML filename for per-file source view."""
+        sanitized = (
+                self.relative_path.replace("/", "__")
+                .replace("\\", "__")
+                .replace("..", "_")
+        )
+        return f"sources/{sanitized}.html"
 
     @property
     def percentage(self) -> float:
@@ -36,262 +68,118 @@ class CoverageSummary:
             return self.executed_lines / self.total_lines * 100.0
         return 0.0
 
+    @property
+    def diff_total_lines(self) -> int:
+        """Returns count of executable lines modified in the active diff."""
+        return sum(1 for ln in self.changed_lines if ln in self.line_counts)
 
-class ManagedFileBackup:
-    """Context manager for temporary file modifications.
-
-    Backs up a file on entry and restores original byte content on exit (whether
-    due to normal exit or an exception), ensuring stateless build operations.
-
-    Attributes:
-        filepath: Path to the target file.
-        exists: Whether the file existed prior to entering context.
-        original_content: Raw byte content, or None if non-existent.
-    """
-
-    def __init__(self, filepath: Path) -> None:
-        self.filepath = filepath
-        self.exists = filepath.exists()
-        self.original_content: Optional[bytes] = (
-                filepath.read_bytes() if self.exists else None
+    @property
+    def diff_executed_lines(self) -> int:
+        """Returns count of executed lines modified in the active diff."""
+        return sum(
+                1
+                for ln in self.changed_lines
+                if self.line_counts.get(ln, 0) > 0
         )
 
-    def __enter__(self) -> "ManagedFileBackup":
-        return self
-
-    def __exit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc_val: Optional[BaseException],
-            exc_tb: Optional[object],
-    ) -> None:
-        if self.exists and self.original_content is not None:
-            self.filepath.write_bytes(self.original_content)
-        elif not self.exists and self.filepath.exists():
-            self.filepath.unlink()
+    @property
+    def diff_percentage(self) -> Optional[float]:
+        """Calculates incremental diff line coverage percentage, if applicable."""
+        diff_total = self.diff_total_lines
+        if diff_total > 0:
+            return self.diff_executed_lines / diff_total * 100.0
+        return None
 
 
-def _configure_root_gradle(
-        gamesdk_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Injects ndkPath into root build.gradle if needed."""
-    root_gradle = gamesdk_dir / "build.gradle"
-    if root_gradle.exists():
-        stack.enter_context(ManagedFileBackup(root_gradle))
-        content = root_gradle.read_text(encoding="utf-8")
-        if ndk_prebuilt.exists() and "ndkPath" not in content:
-            injection = (
-                    '\n    plugins.withId("com.android.library") {\n'
-                    "        android {\n"
-                    '            ndkPath'
-                    f' file("{ndk_prebuilt.resolve()}").absolutePath\n'
-                    "        }\n"
-                    "    }\n"
-            )
-            content = re.sub(
-                    r"(allprojects\s*\{[^\}]*repositories\s*\{[^\}]*\})",
-                    r"\1" + injection,
-                    content,
-                    count=1,
-            )
-            root_gradle.write_text(content, encoding="utf-8")
+def _resolve_prebuilts_dir(repo_root: Path) -> Path:
+    """Resolves the prebuilts directory across standalone and AOSP checkouts."""
+    env_prebuilts = os.environ.get("PREBUILTS_DIR")
+    if env_prebuilts:
+        return Path(env_prebuilts)
+    standalone_prebuilts = repo_root / "prebuilts"
+    if standalone_prebuilts.exists():
+        return standalone_prebuilts
+    if len(repo_root.parents) >= 2:
+        aosp_prebuilts = repo_root.parents[1] / "prebuilts"
+        if aosp_prebuilts.exists():
+            return aosp_prebuilts
+    return standalone_prebuilts
 
 
-def _configure_module_gradle_files(
-        module_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Injects ndkPath and gcov flags into module Gradle files."""
-    build_gradle = module_dir / "build.gradle"
-    extras_gradle = module_dir / "extras" / "build.gradle"
-
-    for bg in [build_gradle, extras_gradle]:
-        if bg.exists():
-            stack.enter_context(ManagedFileBackup(bg))
-            content = bg.read_text(encoding="utf-8")
-            if "ndkPath" not in content and ndk_prebuilt.exists():
-                content = content.replace(
-                        "android {\n",
-                        f'android {{\n    ndkPath "{ndk_prebuilt.resolve()}"\n',
-                        1,
-                )
-            has_cov = "DCMAKE_CXX_FLAGS=--coverage" in content
-            if bg == build_gradle and not has_cov:
-                coverage_flags = (
-                        'cmakeArgs << "-DCMAKE_CXX_FLAGS=--coverage"\n'
-                        '                    cmakeArgs << "-DCMAKE_SHARED_LINKER_FLAGS=--coverage"'
-                )
-                if 'cmakeArgs << ("-DBUILD_TEST=ON")' in content:
-                    content = content.replace(
-                        'cmakeArgs << ("-DBUILD_TEST=ON")',
-                        (
-                            'cmakeArgs << ("-DBUILD_TEST=ON")\n'
-                            f"                    {coverage_flags}"
-                        ),
-                    )
-                elif "def cmakeArgs = []" in content:
-                    content = content.replace(
-                            "def cmakeArgs = []",
-                            "def cmakeArgs = []\n"
-                            f"                {coverage_flags}",
-                    )
-            bg.write_text(content, encoding="utf-8")
+def _resolve_ndk_dir(repo_root: Path) -> Path:
+    """Resolves the prebuilt NDK directory across AOSP and standalone layouts."""
+    ndk_env = os.environ.get("ANDROID_NDK_HOME")
+    if ndk_env and Path(ndk_env).exists():
+        return Path(ndk_env)
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    sdk_ndk = prebuilts_dir / "sdk" / "ndk" / DEFAULT_NDK_VERSION
+    if sys.platform == "darwin":
+        return sdk_ndk
+    for candidate in (
+            prebuilts_dir / "ndk" / "r27",
+            prebuilts_dir / "ndk" / "current",
+            sdk_ndk,
+    ):
+        if candidate.exists():
+            return candidate
+    return sdk_ndk
 
 
-def _inject_swappy_flush_hook(module_dir: Path, stack: ExitStack) -> None:
-    """Injects runtime gcov coverage flush hook into SwappyCommon.cpp."""
-    swappy_common_cpp = module_dir / "common" / "SwappyCommon.cpp"
-    if swappy_common_cpp.exists():
-        stack.enter_context(ManagedFileBackup(swappy_common_cpp))
-        flush_hook = (
-                "\nextern \"C\" void __gcov_flush(void)"
-                " __attribute__((weak));\n"
-                "extern \"C\" __attribute__((visibility(\"default\"))) void"
-                " Swappy_flushCoverage() {\n"
-                "    if (__gcov_flush) {\n"
-                "        __gcov_flush();\n"
-                "    }\n"
-                "}\n"
-        )
-        cpp_text = swappy_common_cpp.read_text(encoding="utf-8")
-        if "Swappy_flushCoverage" not in cpp_text:
-            swappy_common_cpp.write_text(
-                cpp_text + flush_hook, encoding="utf-8"
-            )
-
-
-def _configure_testapp_files(
-        gamesdk_dir: Path, ndk_prebuilt: Path, stack: ExitStack
-) -> None:
-    """Configures testapp build.gradle, CMakeLists.txt, and local.properties."""
-    repo_root = gamesdk_dir.parent
-    testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
-    testapp_local_props = testapp_dir / "local.properties"
-    stack.enter_context(ManagedFileBackup(testapp_local_props))
-    sdk_dir = repo_root / "prebuilts" / "sdk"
-    cmake_dir = repo_root / "prebuilts" / "cmake" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86")
-    props = (
-            f"sdk.dir={sdk_dir.resolve()}\n"
-            f"android.ndkPath={ndk_prebuilt.resolve()}\n"
-            f"cmake.dir={cmake_dir.resolve()}\n"
-    )
-    testapp_local_props.write_text(props, encoding="utf-8")
-
-    testapp_build_gradle = testapp_dir / "app" / "build.gradle"
-    if testapp_build_gradle.exists():
-        stack.enter_context(ManagedFileBackup(testapp_build_gradle))
-        t_content = testapp_build_gradle.read_text(encoding="utf-8")
-        if "ndkPath" not in t_content:
-            t_content = t_content.replace(
-                    "android {\n",
-                    f'android {{\n    ndkPath "{ndk_prebuilt.resolve()}"\n',
-                    1,
-            )
-        t_content = t_content.replace("compileSdk 35", "compileSdk 31")
-        t_content = t_content.replace("targetSdk 35", "targetSdk 31")
-        testapp_build_gradle.write_text(t_content, encoding="utf-8")
-
-    testapp_cmake = (
-        testapp_dir / "app" / "src" / "main" / "cpp" / "CMakeLists.txt"
-    )
-    if testapp_cmake.exists():
-        stack.enter_context(ManagedFileBackup(testapp_cmake))
-        c_text = testapp_cmake.read_text(encoding="utf-8")
-        if "--coverage" not in c_text:
-            c_flags = (
-                    'set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -g'
-                    ' -Wno-error" )\n'
-                    'set( CMAKE_SHARED_LINKER_FLAGS'
-                    ' "${CMAKE_SHARED_LINKER_FLAGS}'
-                    ' -Wl,-z,max-page-size=16384 --coverage" )\n'
-            )
-            c_text = c_text.replace(
-                    'set( CMAKE_SHARED_LINKER_FLAGS'
-                    ' "${CMAKE_SHARED_LINKER_FLAGS}'
-                    ' -Wl,-z,max-page-size=16384" )',
-                    c_flags,
-            )
-            testapp_cmake.write_text(c_text, encoding="utf-8")
-
-
-def _inject_gcov_flush_environment(gamesdk_dir: Path, stack: ExitStack) -> None:
-    """Registers global GcovFlushEnvironment GTest hook."""
-    swappy_test_cpp = gamesdk_dir / "test" / "swappy" / "swappycommon_test.cpp"
-    if swappy_test_cpp.exists():
-        stack.enter_context(ManagedFileBackup(swappy_test_cpp))
-        st_text = swappy_test_cpp.read_text(encoding="utf-8")
-        if "GcovFlushEnvironment" not in st_text:
-            env_hook = (
-                    "\nextern \"C\" void Swappy_flushCoverage(void)"
-                    " __attribute__((weak));\n"
-                    "extern \"C\" void __gcov_dump(void)"
-                    " __attribute__((weak));\n"
-                    "extern \"C\" void __gcov_flush(void)"
-                    " __attribute__((weak));\n"
-                    "\nclass GcovFlushEnvironment : public"
-                    " ::testing::Environment {\n"
-                    "public:\n"
-                    "    void TearDown() override {\n"
-                    "        setenv(\"GCOV_PREFIX\","
-                    " \"/data/data/com.swappy.testapp/files\", 1);\n"
-                    "        setenv(\"GCOV_PREFIX_STRIP\", \"20\", 1);\n"
-                    "        if (Swappy_flushCoverage) {\n"
-                    "            Swappy_flushCoverage();\n"
-                    "        }\n"
-                    "        if (__gcov_dump) {\n"
-                    "            __gcov_dump();\n"
-                    "        }\n"
-                    "        if (__gcov_flush) {\n"
-                    "            __gcov_flush();\n"
-                    "        }\n"
-                    "    }\n"
-                    "};\n"
-                    "\n::testing::Environment* const g_gcov_flush_env =\n"
-                    "    ::testing::AddGlobalTestEnvironment("
-                    "new GcovFlushEnvironment);\n"
-            )
-            swappy_test_cpp.write_text(st_text + env_hook, encoding="utf-8")
-
-
-def configure_gradle_for_coverage(
-        gamesdk_dir: Path, module_dir: Path, stack: ExitStack
-) -> None:
-    """Injects C++ gcov coverage flags and runtime flush hooks for tests.
-
-    Args:
-        gamesdk_dir: Path to root gamesdk directory.
-        module_dir: Path to specific module directory.
-        stack: ExitStack managing temporary file backups.
-    """
-    repo_root = gamesdk_dir.parent
-    ndk_prebuilt = repo_root / "prebuilts" / "sdk" / "ndk" / "27.0.12077973" if sys.platform == "darwin" else repo_root / "prebuilts" / "ndk" / "r27"
-
-    _configure_root_gradle(gamesdk_dir, ndk_prebuilt, stack)
-
-    for c_path in (module_dir, gamesdk_dir / "test" / "swappy"):
-        if c_path.exists():
-            for cmakelists in c_path.rglob("CMakeLists.txt"):
-                stack.enter_context(ManagedFileBackup(cmakelists))
-                c_content = cmakelists.read_text(encoding="utf-8")
-                if "-Werror" in c_content:
-                    c_content = c_content.replace("-Werror", "-Wno-error")
-                    cmakelists.write_text(c_content, encoding="utf-8")
-
-    for cxx_dir in [
+def _get_cxx_dirs(
+        module_dir: Path, include_workspace_temp: bool = True
+) -> List[Path]:
+    """Returns candidate native build directories containing .gcno/.gcda files."""
+    gamesdk_dir = module_dir.parent
+    cxx_dirs = [
             module_dir / ".cxx",
+            gamesdk_dir / "games-controller" / ".cxx",
+            gamesdk_dir / "game-activity" / ".cxx",
+            gamesdk_dir / "game-text-input" / ".cxx",
             gamesdk_dir / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]:
-        if cxx_dir.exists():
-            shutil.rmtree(cxx_dir)
+            gamesdk_dir / "host_cmake",
+    ]
+    if include_workspace_temp:
+        cxx_dirs.append(gamesdk_dir.parent / ".temp" / "host" / ".cmake")
+    return cxx_dirs
 
-    _configure_module_gradle_files(module_dir, ndk_prebuilt, stack)
-    _inject_swappy_flush_hook(module_dir, stack)
-    _configure_testapp_files(gamesdk_dir, ndk_prebuilt, stack)
-    _inject_gcov_flush_environment(gamesdk_dir, stack)
 
+def _ensure_testapp_local_properties(gamesdk_dir: Path) -> None:
+    """Writes untracked local.properties for the standalone testapp build."""
+    repo_root = gamesdk_dir.parent
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
+    local_props = testapp_dir / "local.properties"
+    sdk_dir = prebuilts_dir / "sdk"
+    ndk_dir = _resolve_ndk_dir(repo_root)
+    host_tag = "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    cmake_dir = prebuilts_dir / "cmake" / host_tag
+    lines = []
+    if sdk_dir.exists():
+        lines.append(f"sdk.dir={sdk_dir.resolve()}")
+    if ndk_dir.exists():
+        lines.append(f"ndk.dir={ndk_dir.resolve()}")
+    if cmake_dir.exists():
+        lines.append(f"cmake.dir={cmake_dir.resolve()}")
+    local_props.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _has_adb_device() -> bool:
+    """Returns True if an online ADB device is attached."""
+    try:
+        res = subprocess.run(
+                ["adb", "shell", "getprop", "ro.product.cpu.abi"],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=5,
+        )
+        return res.returncode == 0 and bool(res.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def run_tests(gamesdk_dir: Path) -> None:
-    """Builds test APK, installs on device, and executes GTest suite.
+    """Builds host/device tests with coverage enabled and executes GTest suites.
 
     Args:
         gamesdk_dir: Path to root gamesdk directory.
@@ -301,40 +189,80 @@ def run_tests(gamesdk_dir: Path) -> None:
         subprocess.CalledProcessError: If build or ADB commands fail.
     """
     repo_root = gamesdk_dir.parent
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
 
-    print(f"\n[Step 1] Building test APK for '{MODULE_NAME}' with Gradle...")
     env = os.environ.copy()
     if "JAVA_HOME" not in env:
-        java_21_path = Path("/usr/lib/jvm/java-21-openjdk-amd64")
-        if java_21_path.exists():
-            env["JAVA_HOME"] = str(java_21_path)
+        for candidate in (
+                prebuilts_dir / "jdk" / "jdk21" / "linux-x86",
+                prebuilts_dir / "jdk" / "jdk17" / "linux-x86",
+                Path("/usr/lib/jvm/java-21-openjdk-amd64"),
+        ):
+            if candidate.exists():
+                env["JAVA_HOME"] = str(candidate)
+                break
 
-    cmake_bin = repo_root / "prebuilts" / "cmake" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86") / "bin"
-    ninja_bin = repo_root / "prebuilts" / "ninja" / ("darwin-x86" if sys.platform == "darwin" else "linux-x86")
+    host_tag = "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    cmake_bin = prebuilts_dir / "cmake" / host_tag / "bin"
+    ninja_bin = prebuilts_dir / "ninja" / host_tag
     current_path = env.get("PATH", "")
-    new_paths = [
-            str(p) for p in (cmake_bin, ninja_bin) if p.exists()
-    ]
+    new_paths = [str(p) for p in (cmake_bin, ninja_bin) if p.exists()]
     if new_paths:
         env["PATH"] = os.path.pathsep.join(new_paths + [current_path])
 
+    host_cmake_dir = repo_root / ".temp" / "host" / ".cmake"
+    if host_cmake_dir.exists():
+        for stale_gcda in host_cmake_dir.rglob("*.gcda"):
+            stale_gcda.unlink(missing_ok=True)
+
+    print("\n[Step 1] Running host C++ unit tests with coverage enabled...")
+    subprocess.run(
+            [
+                    "./gradlew",
+                    "hostUnitTests",
+                    "-PenableCoverage=true",
+            ],
+            cwd=gamesdk_dir,
+            env=env,
+            check=True,
+            timeout=GRADLE_TIMEOUT_SECONDS,
+    )
+
+    if not _has_adb_device():
+        print(
+                "\nNotice: No attached ADB device detected; using host coverage"
+                " only."
+        )
+        return
+
+    _ensure_testapp_local_properties(gamesdk_dir)
     testapp_dir = gamesdk_dir / "test" / "swappy" / "testapp"
 
     print(
-            f"\n[Step 1] Building test APKs for '{MODULE_NAME}' (testapp) with"
-            " Gradle..."
+            f"\n[Step 1b] Building test APKs for '{MODULE_NAME}' (testapp) with"
+            " -PenableCoverage=true..."
     )
     subprocess.run(
-            ["./gradlew", "assembleDebug", "assembleDebugAndroidTest"],
+            [
+                    "./gradlew",
+                    "assembleDebug",
+                    "assembleDebugAndroidTest",
+                    "-PenableCoverage=true",
+            ],
             cwd=testapp_dir,
             env=env,
             check=True,
+            timeout=GRADLE_TIMEOUT_SECONDS,
     )
-
     print("\n[Step 2] Installing test APKs on attached device...")
     app_apk = (
             testapp_dir
-            / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+            / "app"
+            / "build"
+            / "outputs"
+            / "apk"
+            / "debug"
+            / "app-debug.apk"
     )
     test_apk = (
             testapp_dir
@@ -350,9 +278,17 @@ def run_tests(gamesdk_dir: Path) -> None:
         raise FileNotFoundError("Test APKs for com.swappy.testapp not found.")
 
     print(f"Installing App APK: {app_apk}")
-    subprocess.run(["adb", "install", "-r", str(app_apk)], check=True)
+    subprocess.run(
+            ["adb", "install", "-r", str(app_apk)],
+            check=True,
+            timeout=ADB_TIMEOUT_SECONDS,
+    )
     print(f"Installing Test APK: {test_apk}")
-    subprocess.run(["adb", "install", "-r", str(test_apk)], check=True)
+    subprocess.run(
+            ["adb", "install", "-r", str(test_apk)],
+            check=True,
+            timeout=ADB_TIMEOUT_SECONDS,
+    )
 
     print(
             "\n[Step 3] Executing GTest suite on device via am instrument"
@@ -371,6 +307,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
     subprocess.run(
             [
@@ -385,6 +322,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     result = subprocess.run(
@@ -399,6 +337,7 @@ def run_tests(gamesdk_dir: Path) -> None:
             capture_output=True,
             text=True,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
     if (
             result.returncode != 0
@@ -406,33 +345,50 @@ def run_tests(gamesdk_dir: Path) -> None:
             or "Process crashed" in result.stdout
     ):
         print(
-            "Warning: Instrumentation test finished with code"
-            f" {result.returncode}.\n{result.stdout}"
+                "Warning: Instrumentation test finished with code"
+                f" {result.returncode}.\n{result.stdout}"
         )
+
+
+def _read_gcov_stamp(filepath: Path) -> Optional[bytes]:
+    """Reads the 4-byte stamp from a .gcno or .gcda header."""
+    try:
+        with filepath.open("rb") as f:
+            header = f.read(GCOV_STAMP_END)
+        if len(header) >= GCOV_STAMP_END:
+            return header[GCOV_STAMP_OFFSET:GCOV_STAMP_END]
+    except OSError:
+        pass
+    return None
 
 
 def _sync_pulled_gcda_files(
         gcda_files: List[Path], cxx_dirs: List[Path]
 ) -> int:
-    """Syncs runtime .gcda files to build dir .gcno locations."""
+    """Syncs runtime .gcda files to build dir .gcno locations with matching stamps."""
     synced = 0
     for gcda in gcda_files:
+        gcda_stamp = _read_gcov_stamp(gcda)
+        if gcda_stamp is None:
+            continue
         gcno_filename = gcda.with_suffix(".gcno").name
-        matching_gcno = []
+        candidates: List[Path] = []
         for cxx in cxx_dirs:
             if cxx.exists():
-                matching_gcno.extend(
-                        [
-                            p for p in cxx.rglob(gcno_filename)
-                            if "arm64-v8a" in p.parts
-                        ]
-                )
-                if not matching_gcno:
-                    matching_gcno.extend(list(cxx.rglob(gcno_filename)))
+                candidates.extend(cxx.rglob(gcno_filename))
+
+        matching_gcno = [
+                c for c in candidates if _read_gcov_stamp(c) == gcda_stamp
+        ]
+        if not matching_gcno:
+            continue
+
+        gcda_bytes = gcda.read_bytes()
         for gcno in matching_gcno:
             dest_gcda = gcno.parent / gcda.name
-            dest_gcda.write_bytes(gcda.read_bytes())
-            synced += 1
+            if dest_gcda.resolve() != gcda.resolve():
+                dest_gcda.write_bytes(gcda_bytes)
+                synced += 1
     return synced
 
 
@@ -468,6 +424,7 @@ def pull_and_sync_device_gcov_data(module_dir: Path, out_dir: Path) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     res = subprocess.run(
@@ -475,33 +432,34 @@ def pull_and_sync_device_gcov_data(module_dir: Path, out_dir: Path) -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             check=False,
+            timeout=ADB_TIMEOUT_SECONDS,
     )
 
     if res.returncode == 0 and res.stdout:
         local_tar.write_bytes(res.stdout)
         try:
             with tarfile.open(local_tar) as tar:
-                tar.extractall(path=temp_pull_dir)
+                tar.extractall(path=temp_pull_dir, filter="data")
         except (tarfile.TarError, OSError) as e:
             print(f"Tar extraction warning: {e}")
 
     gcda_files = list(temp_pull_dir.rglob("*.gcda"))
     print(f"Found {len(gcda_files)} .gcda runtime files pulled from device.")
 
-    cxx_dirs = [
-            module_dir / ".cxx",
-            module_dir.parent / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]
+    cxx_dirs = _get_cxx_dirs(module_dir)
     synced = _sync_pulled_gcda_files(gcda_files, cxx_dirs)
 
     print(f"Synced {synced} .gcda files to build output folders.")
 
 
+EXTRA_NATIVE_MODULES = ("games-controller", "game-text-input", "game-activity")
+
+
 def discover_source_files(module_dir: Path) -> Dict[str, str]:
-    """Maps source file lower-case names to module-relative paths.
+    """Maps source file lower-case names to module-relative or repo-relative paths.
 
     Args:
-        module_dir: Root directory of module.
+        module_dir: Root directory of primary module.
 
     Returns:
         Dict mapping filename (lowercase) to relative path string.
@@ -512,41 +470,105 @@ def discover_source_files(module_dir: Path) -> Dict[str, str]:
         for src in module_dir.rglob(ext):
             if any(part in src.parts for part in ignore_dirs):
                 continue
-            rel_path = src.relative_to(module_dir)
-            target_map[src.name.lower()] = str(rel_path)
+            rel_path = src.relative_to(module_dir).as_posix()
+            target_map[src.name.lower()] = rel_path
+    gamesdk_dir = module_dir.parent
+    for extra_mod in EXTRA_NATIVE_MODULES:
+        extra_dir = gamesdk_dir / extra_mod
+        if not (extra_dir / ".cxx").exists():
+            continue
+        for ext in ("*.cpp", "*.c", "*.h", "*.hpp"):
+            for src in extra_dir.rglob(ext):
+                if any(part in src.parts for part in ignore_dirs):
+                    continue
+                rel_repo = src.relative_to(gamesdk_dir).as_posix()
+                target_map.setdefault(src.name.lower(), rel_repo)
     return target_map
+
+
+def _resolve_module_relative_path(
+        source_str: str,
+        module_dir: Path,
+        target_map: Dict[str, str],
+) -> Optional[str]:
+    """Resolves a compile-time source path from gcov to a tracked relative path."""
+    normalized = os.path.normpath(source_str.strip()).replace("\\", "/")
+    module_norm = os.path.normpath(str(module_dir)).replace("\\", "/")
+    gamesdk_norm = os.path.normpath(str(module_dir.parent)).replace("\\", "/")
+    valid_rels = set(target_map.values())
+    if normalized.startswith(module_norm + "/"):
+        rel = normalized[len(module_norm) + 1 :]
+        if rel in valid_rels:
+            return rel
+    if normalized.startswith(gamesdk_norm + "/"):
+        rel = normalized[len(gamesdk_norm) + 1 :]
+        if rel in valid_rels:
+            return rel
+
+    marker = f"/{MODULE_NAME}/"
+    if marker in normalized:
+        rel = normalized.split(marker, 1)[1]
+        if rel in valid_rels:
+            return rel
+    for extra_mod in EXTRA_NATIVE_MODULES:
+        extra_marker = f"/{extra_mod}/"
+        if extra_marker in normalized:
+            rel = f"{extra_mod}/{normalized.split(extra_marker, 1)[1]}"
+            if rel in valid_rels:
+                return rel
+            return target_map.get(Path(normalized).name.lower())
+
+    if "/" not in normalized:
+        return target_map.get(Path(normalized).name.lower())
+    return None
 
 
 def _parse_gcov_file(
         gcov_file: Path,
         module_dir: Path,
         target_map: Dict[str, str],
-        file_executed_lines: Dict[str, Dict[int, bool]],
+        file_executed_lines: Dict[str, Dict[int, int]],
 ) -> None:
-    """Parses a .gcov output file and updates line execution dictionary."""
+    """Parses a standard or intermediate (-i) .gcov file into line counts."""
     lines = gcov_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+    gcov_file.unlink(missing_ok=True)
     if not lines:
-        gcov_file.unlink()
+        return
+
+    if any(line.startswith("file:") for line in lines[:5]):
+        current_rel: Optional[str] = None
+        for line in lines:
+            if line.startswith("file:"):
+                current_rel = _resolve_module_relative_path(
+                        line.split("file:", 1)[1], module_dir, target_map
+                )
+            elif line.startswith("lcount:") and current_rel in file_executed_lines:
+                parts = line.split("lcount:", 1)[1].split(",")
+                if len(parts) >= 2 and parts[0].isdigit():
+                    l_idx = int(parts[0])
+                    hit_count = int(parts[1]) if parts[1].isdigit() else 0
+                    if l_idx > 0:
+                        file_executed_lines[current_rel][l_idx] = (
+                                file_executed_lines[current_rel].get(l_idx, 0)
+                                + hit_count
+                        )
         return
 
     source_rel: Optional[str] = None
+    has_source_header = False
     for line in lines[:15]:
         if "0:Source:" in line:
-            source_str = line.split("0:Source:", 1)[1].strip()
-            try:
-                s_path = Path(source_str)
-                if s_path.is_absolute() and module_dir in s_path.parents:
-                    source_rel = str(s_path.relative_to(module_dir))
-            except ValueError:
-                pass
+            has_source_header = True
+            source_rel = _resolve_module_relative_path(
+                    line.split("0:Source:", 1)[1], module_dir, target_map
+            )
             break
 
-    if not source_rel:
-        stem = gcov_file.name.replace(".gcov", "").lower()
+    if not source_rel and not has_source_header:
+        stem = gcov_file.name.removesuffix(".gcov").lower()
         source_rel = target_map.get(stem)
 
     if not source_rel or source_rel not in file_executed_lines:
-        gcov_file.unlink()
         return
 
     for line in lines:
@@ -558,29 +580,46 @@ def _parse_gcov_file(
                 continue
             l_idx = int(line_no)
             if count != "-":
-                is_exec = count.isdigit() and int(count) > 0
+                hit_count = int(count) if count.isdigit() else 0
                 file_executed_lines[source_rel][l_idx] = (
-                        file_executed_lines[source_rel].get(l_idx, False)
-                        or is_exec
+                        file_executed_lines[source_rel].get(l_idx, 0)
+                        + hit_count
                 )
-    gcov_file.unlink()
 
 
 def _find_active_gcno_files(cxx_dirs: List[Path]) -> List[Path]:
     """Collects active .gcno files with corresponding .gcda files."""
-    all_gcno = []
+    all_gcno: List[Path] = []
     for cxx in cxx_dirs:
         if cxx.exists():
-            all_gcno.extend(list(cxx.rglob("*.gcno")))
+            all_gcno.extend(cxx.rglob("*.gcno"))
     gcno_files = [
             g
             for g in all_gcno
-            if (g.parent / g.with_suffix(".gcda").name).exists()
-            and (g.parent / g.with_suffix(".gcda").name).stat().st_size > 0
+            if g.with_suffix(".gcda").exists()
+            and g.with_suffix(".gcda").stat().st_size > 0
     ]
     if not gcno_files:
         print("Warning: No .gcno files with active .gcda data found.")
-        gcno_files = all_gcno
+        return all_gcno
+
+    active_names = {g.name for g in gcno_files}
+    active_abis = [
+            abi
+            for abi in ("arm64-v8a", "x86_64")
+            if any(abi in g.parts for g in gcno_files)
+    ]
+    fallback_groups = [
+            [g for g in all_gcno if abi in g.parts]
+            for abi in (active_abis or ["x86_64", "arm64-v8a"])
+    ] + [all_gcno]
+    for group in fallback_groups:
+        if group:
+            for g in group:
+                if g.name not in active_names:
+                    gcno_files.append(g)
+                    active_names.add(g.name)
+            break
     return gcno_files
 
 
@@ -589,7 +628,7 @@ def _process_gcno_files(
         llvm_cov_bin: Path,
         module_dir: Path,
         target_map: Dict[str, str],
-        file_executed_lines: Dict[str, Dict[int, bool]],
+        file_executed_lines: Dict[str, Dict[int, int]],
 ) -> None:
     """Runs llvm-cov gcov on .gcno files and parses resulting .gcov outputs."""
     print(
@@ -602,40 +641,43 @@ def _process_gcno_files(
             sub_dir = temp_dir_path / f"target_{idx}"
             sub_dir.mkdir(exist_ok=True)
             subprocess.run(
-                    [str(llvm_cov_bin), "gcov", str(gcno)],
+                    [str(llvm_cov_bin), "gcov", "-i", str(gcno)],
                     cwd=sub_dir,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     check=False,
+                    timeout=LLVM_COV_TIMEOUT_SECONDS,
             )
             for gcov_file in sub_dir.glob("*.gcov"):
                 _parse_gcov_file(
-                    gcov_file, module_dir, target_map, file_executed_lines
+                        gcov_file, module_dir, target_map, file_executed_lines
                 )
 
 
 def generate_gcov_reports(
-        module_dir: Path, llvm_cov_bin: Path
+        module_dir: Path,
+        llvm_cov_bin: Path,
+        cxx_dirs: Optional[List[Path]] = None,
 ) -> List[CoverageSummary]:
     """Executes llvm-cov gcov and parses line-by-line execution results.
 
     Args:
         module_dir: Path to module directory.
         llvm_cov_bin: Path to llvm-cov binary.
+        cxx_dirs: Optional override list of native build directories.
 
     Returns:
         List of CoverageSummary items for all source files.
     """
-    cxx_dirs = [
-            module_dir / ".cxx",
-            module_dir.parent / "test" / "swappy" / "testapp" / "app" / ".cxx",
-    ]
+    resolved_cxx_dirs = (
+            cxx_dirs if cxx_dirs is not None else _get_cxx_dirs(module_dir)
+    )
     target_map = discover_source_files(module_dir)
-    file_executed_lines: Dict[str, Dict[int, bool]] = {
+    file_executed_lines: Dict[str, Dict[int, int]] = {
             str(rel): {} for rel in target_map.values()
     }
 
-    gcno_files = _find_active_gcno_files(cxx_dirs)
+    gcno_files = _find_active_gcno_files(resolved_cxx_dirs)
     _process_gcno_files(
             gcno_files,
             llvm_cov_bin,
@@ -647,17 +689,256 @@ def generate_gcov_reports(
     summary_rows: List[CoverageSummary] = []
     for rel_path, line_dict in sorted(file_executed_lines.items()):
         total_lines = len(line_dict)
-        executed_lines = sum(1 for v in line_dict.values() if v)
+        executed_lines = sum(1 for v in line_dict.values() if v > 0)
         if total_lines > 0:
             summary_rows.append(
                     CoverageSummary(
                             relative_path=rel_path,
                             total_lines=total_lines,
                             executed_lines=executed_lines,
+                            line_counts=dict(line_dict),
                     )
             )
 
     return summary_rows
+
+
+def _discover_jvm_source_files(gamesdk_dir: Path) -> Dict[str, str]:
+    """Maps JaCoCo `<package>/<sourcefile>` keys to repo-relative file paths."""
+    source_map: Dict[str, str] = {}
+    if not gamesdk_dir.exists():
+        return source_map
+    excluded_roots = {".git", "out", "build", ".cxx", "third_party"}
+    for root, dirs, files in os.walk(gamesdk_dir):
+        dirs[:] = [
+                d
+                for d in dirs
+                if d not in excluded_roots and not d.startswith("out_")
+        ]
+        root_path = Path(root)
+        for fname in files:
+            if not (fname.endswith(".java") or fname.endswith(".kt")):
+                continue
+            full_path = root_path / fname
+            rel_repo = full_path.relative_to(gamesdk_dir).as_posix()
+            for marker in ("/src/main/java/", "/src/main/kotlin/"):
+                if marker in f"/{rel_repo}":
+                    pkg_rel = f"/{rel_repo}".split(marker, 1)[1]
+                    source_map.setdefault(pkg_rel, rel_repo)
+                    break
+            source_map.setdefault(fname, rel_repo)
+    return source_map
+
+
+def parse_jacoco_xml_reports(
+        xml_paths: Sequence[Path], gamesdk_dir: Path
+) -> List[CoverageSummary]:
+    """Parses JaCoCo XML reports into CoverageSummary rows (`language='java'`)."""
+    valid_paths = [p for p in xml_paths if p.is_file()]
+    if not valid_paths:
+        return []
+    jvm_source_map = _discover_jvm_source_files(gamesdk_dir)
+    file_line_counts: Dict[str, Dict[int, int]] = {}
+    for xml_path in valid_paths:
+        try:
+            root = ET.parse(xml_path).getroot()
+        except (ET.ParseError, OSError) as err:
+            print(f"Warning: Failed to parse JaCoCo XML {xml_path}: {err}")
+            continue
+        for pkg in root.findall("package"):
+            pkg_name = pkg.attrib.get("name", "").strip("/")
+            for sf in pkg.findall("sourcefile"):
+                sf_name = sf.attrib.get("name", "").strip("/")
+                if not sf_name:
+                    continue
+                pkg_key = f"{pkg_name}/{sf_name}" if pkg_name else sf_name
+                rel_path = (
+                        jvm_source_map.get(pkg_key)
+                        or jvm_source_map.get(sf_name)
+                        or pkg_key
+                )
+                line_dict = file_line_counts.setdefault(rel_path, {})
+                for line_elem in sf.findall("line"):
+                    try:
+                        line_nr = int(line_elem.attrib.get("nr", "0"))
+                        covered_inst = int(line_elem.attrib.get("ci", "0"))
+                    except ValueError:
+                        continue
+                    if line_nr <= 0:
+                        continue
+                    line_dict[line_nr] = (
+                            line_dict.get(line_nr, 0) + covered_inst
+                    )
+
+    rows: List[CoverageSummary] = []
+    for rel_path, line_dict in sorted(file_line_counts.items()):
+        total_lines = len(line_dict)
+        if total_lines == 0:
+            continue
+        executed_lines = sum(1 for v in line_dict.values() if v > 0)
+        rows.append(
+                CoverageSummary(
+                        relative_path=rel_path,
+                        total_lines=total_lines,
+                        executed_lines=executed_lines,
+                        line_counts=dict(line_dict),
+                        language="java",
+                )
+        )
+    return rows
+
+
+_DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def _parse_git_diff_output(diff_text: str) -> Dict[str, Set[int]]:
+    """Parses `git diff --unified=0` output into {repo_rel_path: {line_numbers}}."""
+    changed_by_file: Dict[str, Set[int]] = {}
+    current_file: Optional[str] = None
+    for raw_line in diff_text.splitlines():
+        if raw_line.startswith("+++ "):
+            target = raw_line[4:].strip()
+            if target == "/dev/null":
+                current_file = None
+            elif target.startswith("b/"):
+                current_file = target[2:]
+            else:
+                current_file = target
+            continue
+        if current_file is None:
+            continue
+        match = _DIFF_HUNK_RE.match(raw_line)
+        if not match:
+            continue
+        start_line = int(match.group(1))
+        line_count = int(match.group(2)) if match.group(2) is not None else 1
+        if line_count <= 0:
+            continue
+        file_lines = changed_by_file.setdefault(current_file, set())
+        file_lines.update(range(start_line, start_line + line_count))
+    return changed_by_file
+
+
+def _get_git_changed_lines(
+        gamesdk_dir: Path, diff_base: str
+) -> Dict[str, Set[int]]:
+    """Runs `git diff --unified=0 <diff_base>` and returns modified line numbers."""
+    try:
+        res = subprocess.run(
+                ["git", "-C", str(gamesdk_dir), "diff", "--unified=0", diff_base],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=LLVM_COV_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as err:
+        print(f"Warning: Failed to compute git diff against {diff_base}: {err}")
+        return {}
+    return _parse_git_diff_output(res.stdout)
+
+
+def _resolve_changed_lines_for_path(
+        changed_map: Dict[str, Set[int]], relative_path: str
+) -> FrozenSet[int]:
+    """Resolves changed line numbers for a module-relative or repo-relative path."""
+    normalized = relative_path.replace("\\", "/")
+    candidates = (normalized, f"{MODULE_NAME}/{normalized}")
+    for candidate in candidates:
+        if candidate in changed_map:
+            return frozenset(changed_map[candidate])
+    return frozenset()
+
+
+def _attach_diff_lines(
+        summary_rows: Sequence[CoverageSummary],
+        changed_map: Dict[str, Set[int]],
+) -> List[CoverageSummary]:
+    """Returns summary rows annotated with `changed_lines` from `changed_map`."""
+    if not changed_map:
+        return list(summary_rows)
+    return [
+            replace(
+                    row,
+                    changed_lines=_resolve_changed_lines_for_path(
+                            changed_map, row.relative_path
+                    ),
+            )
+            for row in summary_rows
+    ]
+
+
+def _compute_group_metrics(
+        rows: Sequence[CoverageSummary],
+) -> Dict[str, Any]:
+    """Computes aggregate total and incremental diff metrics for a group of rows."""
+    total_lines = sum(r.total_lines for r in rows)
+    executed_lines = sum(r.executed_lines for r in rows)
+    pct = (
+            round(executed_lines / total_lines * 100.0, 2)
+            if total_lines > 0
+            else 0.0
+    )
+    diff_total = sum(r.diff_total_lines for r in rows)
+    diff_exec = sum(r.diff_executed_lines for r in rows)
+    diff_pct = (
+            round(diff_exec / diff_total * 100.0, 2)
+            if diff_total > 0
+            else None
+    )
+    return {
+            "total_lines": total_lines,
+            "executed_lines": executed_lines,
+            "pct": pct,
+            "diff_total_lines": diff_total,
+            "diff_executed_lines": diff_exec,
+            "diff_pct": diff_pct,
+    }
+
+
+def write_coverage_summary_json(
+        summary_rows: Sequence[CoverageSummary],
+        output_path: Path,
+        diff_base: Optional[str] = None,
+) -> Path:
+    """Writes machine-readable coverage_summary.json for CI and Gerrit analyzers."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cpp_rows = [r for r in summary_rows if r.language == "cpp"]
+    java_rows = [r for r in summary_rows if r.language != "cpp"]
+
+    files_payload: Dict[str, Any] = {}
+    for row in summary_rows:
+        files_payload[row.relative_path] = {
+                "language": row.language,
+                "total_lines": row.total_lines,
+                "executed_lines": row.executed_lines,
+                "pct": round(row.percentage, 2),
+                "diff_total_lines": row.diff_total_lines,
+                "diff_executed_lines": row.diff_executed_lines,
+                "diff_pct": (
+                        round(row.diff_percentage, 2)
+                        if row.diff_percentage is not None
+                        else None
+                ),
+                "changed_lines": sorted(row.changed_lines),
+                "lines": {
+                        str(ln): cnt
+                        for ln, cnt in sorted(row.line_counts.items())
+                },
+        }
+
+    payload: Dict[str, Any] = {
+            "module": MODULE_NAME,
+            "diff_base": diff_base,
+            "overall": _compute_group_metrics(summary_rows),
+            "cpp": _compute_group_metrics(cpp_rows),
+            "java": _compute_group_metrics(java_rows),
+            "files": files_payload,
+    }
+    output_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+    )
+    return output_path
 
 
 def load_report_template(tools_dir: Path) -> Tuple[str, str]:
@@ -708,21 +989,36 @@ def _get_badge_properties(pct: float) -> Tuple[str, str, str]:
 
 
 def _render_table_rows(
-        summary_rows: List[CoverageSummary], row_template: str
+        summary_rows: Sequence[CoverageSummary], row_template: str
 ) -> List[str]:
     """Renders individual HTML table rows for each file coverage summary."""
     rows_html: List[str] = []
     for row_data in summary_rows:
         fill_cls, badge_cls, badge_label = _get_badge_properties(
-            row_data.percentage
+                row_data.percentage
         )
+        escaped_path = html.escape(row_data.relative_path)
+        escaped_href = html.escape(row_data.detail_html_filename, quote=True)
+        item_link = f'<a href="{escaped_href}">{escaped_path}</a>'
+        diff_pct = row_data.diff_percentage
+        if diff_pct is not None:
+            diff_cell = (
+                    f"<strong>{diff_pct:.1f}%</strong> "
+                    f"({row_data.diff_executed_lines}/{row_data.diff_total_lines})"
+            )
+        elif row_data.changed_lines:
+            diff_cell = "N/A (non-exec)"
+        else:
+            diff_cell = "&mdash;"
+        data_changed = "true" if row_data.changed_lines else "false"
         row = (
-                row_template.replace(
-                    "{{ITEM_NAME_HTML}}", row_data.relative_path
-                )
+                row_template.replace("{{ITEM_NAME_HTML}}", item_link)
                 .replace("{{TOTAL_LOC}}", f"{row_data.total_lines:,}")
                 .replace("{{EXEC_LOC}}", f"{row_data.executed_lines:,}")
                 .replace("{{COVERAGE_PCT}}", f"{row_data.percentage:.1f}")
+                .replace("{{DIFF_COVERAGE_CELL}}", diff_cell)
+                .replace("{{DATA_CHANGED}}", data_changed)
+                .replace("{{DATA_LANG}}", html.escape(row_data.language, quote=True))
                 .replace("{{FILL_CLASS}}", fill_cls)
                 .replace("{{BADGE_CLASS}}", badge_cls)
                 .replace("{{BADGE_LABEL}}", badge_label)
@@ -731,17 +1027,104 @@ def _render_table_rows(
     return rows_html
 
 
+def _render_source_coverage_html(
+        row_data: CoverageSummary, source_text: str
+) -> str:
+    """Renders standalone dark-mode HTML view for a single source file."""
+    escaped_title = html.escape(row_data.relative_path)
+    line_rows: List[str] = []
+    for idx, raw_line in enumerate(source_text.splitlines(), start=1):
+        escaped_code = html.escape(raw_line)
+        count = row_data.line_counts.get(idx)
+        if count is None:
+            row_cls = "line-neutral"
+            count_str = ""
+        elif count > 0:
+            row_cls = "line-covered"
+            count_str = f"{count}x"
+        else:
+            row_cls = "line-missed"
+            count_str = "0x"
+        is_changed = idx in row_data.changed_lines
+        if is_changed:
+            row_cls = f"{row_cls} line-changed"
+        delta_marker = "&Delta; " if is_changed else ""
+        line_rows.append(
+                f'<tr class="{row_cls}" data-changed="{"true" if is_changed else "false"}">'
+                f'<td class="ln">{delta_marker}{idx}</td>'
+                f'<td class="cnt">{count_str}</td>'
+                f'<td class="code"><pre>{escaped_code}</pre></td>'
+                "</tr>"
+        )
+    rows_joined = "\n".join(line_rows)
+    diff_meta = ""
+    if row_data.diff_percentage is not None:
+        diff_meta = (
+                f" &middot; CL Diff (&Delta;): <strong>{row_data.diff_percentage:.1f}%</strong> "
+                f"({row_data.diff_executed_lines:,} / {row_data.diff_total_lines:,} lines)"
+        )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{escaped_title} - Coverage</title>
+  <style>
+    body {{ background:#0f172a; color:#f8fafc; font-family:ui-monospace,monospace; margin:0; padding:24px; }}
+    a {{ color:#38bdf8; text-decoration:none; }}
+    .header {{ margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #334155; }}
+    .meta {{ color:#94a3b8; font-size:13px; margin-top:6px; }}
+    table {{ width:100%; border-collapse:collapse; font-size:12px; background:#1e293b; }}
+    td {{ padding:2px 8px; vertical-align:top; }}
+    td.ln {{ width:64px; text-align:right; color:#64748b; user-select:none; border-right:1px solid #334155; }}
+    td.cnt {{ width:56px; text-align:right; color:#94a3b8; user-select:none; border-right:1px solid #334155; font-weight:600; }}
+    td.code pre {{ margin:0; white-space:pre-wrap; word-break:break-all; }}
+    tr.line-covered {{ background:rgba(34, 197, 94, 0.14); }}
+    tr.line-covered td.cnt {{ color:#4ade80; }}
+    tr.line-missed {{ background:rgba(239, 68, 68, 0.18); }}
+    tr.line-missed td.cnt {{ color:#f87171; }}
+    tr.line-changed td.ln {{ color:#38bdf8; font-weight:700; border-left:3px solid #38bdf8; }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div><a href="../{MODULE_NAME}_coverage.html">&larr; Back to {MODULE_NAME} Summary</a></div>
+    <h1 style="font-size:18px;margin:8px 0 0 0;">{escaped_title}</h1>
+    <div class="meta">Coverage: <strong>{row_data.percentage:.1f}%</strong> ({row_data.executed_lines:,} / {row_data.total_lines:,} executable lines){diff_meta}</div>
+  </div>
+  <table>
+    <tbody>
+{rows_joined}
+    </tbody>
+  </table>
+</body>
+</html>
+"""
+
+
 def generate_html_report(
-        tools_dir: Path, gamesdk_dir: Path, summary_rows: List[CoverageSummary]
-) -> None:
-    """Generates single-page HTML coverage report from template.
+        tools_dir: Path,
+        gamesdk_dir: Path,
+        summary_rows: Sequence[CoverageSummary],
+        output_dir: Optional[Path] = None,
+        diff_base: Optional[str] = None,
+) -> Path:
+    """Generates single-page HTML coverage report and coverage_summary.json.
 
     Args:
         tools_dir: Path to tools directory containing template.
         gamesdk_dir: Root gamesdk directory for report output.
-        summary_rows: List of CoverageSummary objects.
+        summary_rows: Sequence of CoverageSummary objects.
+        output_dir: Optional custom output directory for reports.
+        diff_base: Optional git revision used for incremental diff coverage.
+
+    Returns:
+        Path to the generated index HTML report.
     """
-    reports_dir = gamesdk_dir / "out" / "reports" / "cxx_coverage"
+    reports_dir = (
+            output_dir
+            if output_dir is not None
+            else (gamesdk_dir / "out" / "reports" / "cxx_coverage")
+    )
     reports_dir.mkdir(parents=True, exist_ok=True)
     html_file = reports_dir / f"{MODULE_NAME}_coverage.html"
 
@@ -750,6 +1133,25 @@ def generate_html_report(
     total_loc = sum(r.total_lines for r in summary_rows)
     exec_loc = sum(r.executed_lines for r in summary_rows)
     overall_pct = (exec_loc / total_loc * 100.0) if total_loc > 0 else 0.0
+
+    diff_total = sum(r.diff_total_lines for r in summary_rows)
+    diff_exec = sum(r.diff_executed_lines for r in summary_rows)
+    if diff_total > 0:
+        diff_pct_str = f"{diff_exec / diff_total * 100.0:.1f}%"
+        diff_subtext = f"{diff_exec:,} / {diff_total:,} modified lines executed"
+    else:
+        diff_pct_str = "N/A"
+        diff_subtext = "No modified executable lines"
+
+    java_rows = [r for r in summary_rows if r.language != "cpp"]
+    java_total = sum(r.total_lines for r in java_rows)
+    java_exec = sum(r.executed_lines for r in java_rows)
+    if java_total > 0:
+        java_pct_str = f"{java_exec / java_total * 100.0:.1f}%"
+        java_subtext = f"{java_exec:,} / {java_total:,} JVM lines executed"
+    else:
+        java_pct_str = "N/A"
+        java_subtext = "No JaCoCo XML reports ingested"
 
     if total_loc > 0 and exec_loc == 0:
         print(
@@ -763,15 +1165,46 @@ def generate_html_report(
             main_template.replace("{{OVERALL_PCT}}", f"{overall_pct:.1f}")
             .replace("{{EXEC_LOC}}", f"{exec_loc:,}")
             .replace("{{TOTAL_LOC}}", f"{total_loc:,}")
+            .replace("{{DIFF_PCT}}", diff_pct_str)
+            .replace("{{DIFF_SUBTEXT}}", diff_subtext)
+            .replace("{{JAVA_PCT}}", java_pct_str)
+            .replace("{{JAVA_SUBTEXT}}", java_subtext)
             .replace("{{NUM_FILES}}", str(len(summary_rows)))
             .replace("{{TABLE_ROWS}}", "\n".join(rows_html))
     )
 
     html_file.write_text(html_content, encoding="utf-8")
+
+    module_dir = gamesdk_dir / MODULE_NAME
+    sources_dir = reports_dir / "sources"
+    sources_dir.mkdir(parents=True, exist_ok=True)
+    for row_data in summary_rows:
+        src_file = module_dir / row_data.relative_path
+        if not src_file.exists():
+            repo_candidate = gamesdk_dir / row_data.relative_path
+            if repo_candidate.exists():
+                src_file = repo_candidate
+        if src_file.exists():
+            src_text = src_file.read_text(encoding="utf-8", errors="replace")
+        else:
+            print(f"Warning: Source file not found for detail view: {src_file}")
+            src_text = f"// Source file not found at {src_file}\n"
+        detail_file = reports_dir / row_data.detail_html_filename
+        detail_file.parent.mkdir(parents=True, exist_ok=True)
+        detail_file.write_text(
+                _render_source_coverage_html(row_data, src_text),
+                encoding="utf-8",
+        )
+    write_coverage_summary_json(
+            summary_rows,
+            reports_dir / "coverage_summary.json",
+            diff_base=diff_base,
+    )
     print(
             "\n[Step 6] HTML Coverage Report written to:\n"
             f"  file://{html_file.resolve()}\n"
     )
+    return html_file
 
 
 def _run_coverage_pipeline(
@@ -780,42 +1213,360 @@ def _run_coverage_pipeline(
         tools_dir: Path,
         out_dir: Path,
         llvm_cov_bin: Path,
+        diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
 ) -> None:
     """Runs the full stateless test coverage and HTML generation pipeline."""
-    root_gradle = gamesdk_dir / "build.gradle"
-    module_gradle = module_dir / "build.gradle"
-    with ExitStack() as stack:
-        stack.enter_context(ManagedFileBackup(root_gradle))
-        stack.enter_context(ManagedFileBackup(module_gradle))
-        for c_path in (module_dir, gamesdk_dir / "test" / "swappy"):
-            if c_path.exists():
-                for cmakelists in c_path.rglob("CMakeLists.txt"):
-                    stack.enter_context(ManagedFileBackup(cmakelists))
-        configure_gradle_for_coverage(gamesdk_dir, module_dir, stack)
-        run_tests(gamesdk_dir)
+    run_tests(gamesdk_dir)
+    if _has_adb_device():
         pull_and_sync_device_gcov_data(module_dir, out_dir)
-        summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
-        generate_html_report(tools_dir, gamesdk_dir, summary_rows)
+    summary_rows = generate_gcov_reports(module_dir, llvm_cov_bin)
+    if jacoco_xmls:
+        summary_rows.extend(parse_jacoco_xml_reports(jacoco_xmls, gamesdk_dir))
+    if diff_base:
+        changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+        summary_rows = _attach_diff_lines(summary_rows, changed_map)
+    generate_html_report(
+            tools_dir, gamesdk_dir, summary_rows, diff_base=diff_base
+    )
 
 
-def main() -> None:
+def package_gcno_bundle(
+        gamesdk_dir: Path,
+        module_dir: Path,
+        bundle_path: Path,
+        diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
+) -> Path:
+    """Packages compile-time .gcno notes, module sources, and report tooling."""
+    bundle_path.parent.mkdir(parents=True, exist_ok=True)
+    cxx_dirs = _get_cxx_dirs(module_dir)
+    gcno_count = 0
+    with tarfile.open(bundle_path, "w:gz") as tar:
+        for cxx in cxx_dirs:
+            if not cxx.exists():
+                continue
+            for gcno in cxx.rglob("*.gcno"):
+                try:
+                    rel = gcno.relative_to(gamesdk_dir)
+                except ValueError:
+                    rel = Path("host_cmake") / gcno.relative_to(cxx)
+                tar.add(gcno, arcname=str(rel))
+                gcno_count += 1
+
+        target_map = discover_source_files(module_dir)
+        for rel_src in target_map.values():
+            if rel_src.startswith(tuple(f"{m}/" for m in EXTRA_NATIVE_MODULES)):
+                src_path = gamesdk_dir / rel_src
+                arc_path = rel_src
+            else:
+                src_path = module_dir / rel_src
+                arc_path = f"{MODULE_NAME}/{rel_src}"
+            if src_path.exists():
+                tar.add(src_path, arcname=arc_path)
+
+        for tool_name in (
+                "coverage_report_template.html",
+                "generate_test_coverage.py",
+        ):
+            tool_path = module_dir / "tools" / tool_name
+            if tool_path.exists():
+                tar.add(
+                        tool_path,
+                        arcname=f"{MODULE_NAME}/tools/{tool_name}",
+                )
+
+        if jacoco_xmls:
+            for idx, xml_path in enumerate(jacoco_xmls):
+                if xml_path.is_file():
+                    tar.add(
+                            xml_path,
+                            arcname=f"{MODULE_NAME}/tools/jacoco_{idx}.xml",
+                    )
+            for row in parse_jacoco_xml_reports(jacoco_xmls, gamesdk_dir):
+                jvm_src = gamesdk_dir / row.relative_path
+                if jvm_src.is_file():
+                    tar.add(jvm_src, arcname=row.relative_path)
+
+        if diff_base:
+            changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+            diff_payload = json.dumps(
+                    {
+                            "diff_base": diff_base,
+                            "changed_lines": {
+                                    k: sorted(v) for k, v in changed_map.items()
+                            },
+                    },
+                    indent=2,
+                    sort_keys=True,
+            ).encode("utf-8")
+            info = tarfile.TarInfo(
+                    name=f"{MODULE_NAME}/tools/git_changed_lines.json"
+            )
+            info.size = len(diff_payload)
+            tar.addfile(info, io.BytesIO(diff_payload))
+
+    print(f"Packaged {gcno_count} .gcno files into {bundle_path}")
+    return bundle_path
+
+
+def _collect_gcda_files(gcda_dir: Path, scratch_dir: Path) -> List[Path]:
+    """Collects .gcda files from a directory and any nested TradeFed .zip archives."""
+    gcda_files = list(gcda_dir.rglob("*.gcda"))
+    for idx, zip_path in enumerate(gcda_dir.rglob("*.zip")):
+        extract_dir = scratch_dir / f"zip_{idx}"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                for member in zf.infolist():
+                    member_path = Path(member.filename)
+                    if ".." in member_path.parts or member_path.is_absolute():
+                        continue
+                    if member.filename.endswith(".gcda"):
+                        zf.extract(member, path=extract_dir)
+            gcda_files.extend(extract_dir.rglob("*.gcda"))
+        except (zipfile.BadZipFile, OSError) as e:
+            print(f"Warning: Failed to extract {zip_path}: {e}")
+    return gcda_files
+
+
+def run_report_from_artifacts(
+        gamesdk_dir: Path,
+        module_dir: Path,
+        tools_dir: Path,
+        llvm_cov_bin: Path,
+        gcda_dir: Optional[Path],
+        bundle_path: Optional[Path],
+        output_dir: Path,
+        diff_base: Optional[str] = None,
+        jacoco_xmls: Optional[Sequence[Path]] = None,
+) -> Path:
+    """Generates coverage HTML report from a .gcno bundle and/or .gcda dir.
+
+    Raises:
+        FileNotFoundError: If a specified bundle_path or gcda_dir does not exist.
+    """
+    if bundle_path is not None and not bundle_path.is_file():
+        raise FileNotFoundError(f"Coverage bundle not found: {bundle_path}")
+    if gcda_dir is not None and not gcda_dir.exists():
+        raise FileNotFoundError(f"gcda directory not found: {gcda_dir}")
+
+    with tempfile.TemporaryDirectory() as tmp_str:
+        tmp_root = Path(tmp_str)
+        work_gamesdk = gamesdk_dir
+        work_module = module_dir
+        work_tools = tools_dir
+
+        if bundle_path is not None:
+            work_gamesdk = tmp_root / "bundle_root"
+            work_gamesdk.mkdir(parents=True, exist_ok=True)
+            with tarfile.open(bundle_path, "r:*") as tar:
+                tar.extractall(path=work_gamesdk, filter="data")
+            work_module = work_gamesdk / MODULE_NAME
+            work_tools = work_module / "tools"
+            cxx_dirs = _get_cxx_dirs(work_module, include_workspace_temp=False)
+        elif gcda_dir is not None and any(gcda_dir.rglob("*.gcno")):
+            cxx_dirs = [gcda_dir]
+        else:
+            cxx_dirs = _get_cxx_dirs(work_module)
+
+        if gcda_dir is not None:
+            pulled_gcda = _collect_gcda_files(gcda_dir, tmp_root / "unzipped")
+            _sync_pulled_gcda_files(pulled_gcda, cxx_dirs)
+
+        summary_rows = generate_gcov_reports(
+                work_module, llvm_cov_bin, cxx_dirs=cxx_dirs
+        )
+        effective_jacoco: List[Path] = list(jacoco_xmls or [])
+        if work_tools.exists():
+            effective_jacoco.extend(sorted(work_tools.glob("jacoco_*.xml")))
+        if effective_jacoco:
+            summary_rows.extend(
+                    parse_jacoco_xml_reports(effective_jacoco, work_gamesdk)
+            )
+        effective_diff_base = diff_base
+        changed_map: Dict[str, Set[int]] = {}
+        if diff_base and (gamesdk_dir / ".git").exists():
+            changed_map = _get_git_changed_lines(gamesdk_dir, diff_base)
+        elif (work_tools / "git_changed_lines.json").exists():
+            bundled_diff = json.loads(
+                    (work_tools / "git_changed_lines.json").read_text(
+                            encoding="utf-8"
+                    )
+            )
+            effective_diff_base = effective_diff_base or bundled_diff.get(
+                    "diff_base"
+            )
+            changed_map = {
+                    k: set(v)
+                    for k, v in bundled_diff.get("changed_lines", {}).items()
+            }
+        if changed_map:
+            summary_rows = _attach_diff_lines(summary_rows, changed_map)
+        return generate_html_report(
+                work_tools,
+                work_gamesdk,
+                summary_rows,
+                output_dir=output_dir,
+                diff_base=effective_diff_base,
+        )
+
+
+def _find_llvm_cov_binary(
+        repo_root: Path, explicit_path: Optional[Path] = None
+) -> Path:
+    """Locates llvm-cov from explicit CLI arg, NDK/Clang prebuilts, or PATH."""
+    if explicit_path is not None:
+        if not explicit_path.exists():
+            raise FileNotFoundError(
+                    f"llvm-cov binary not found at {explicit_path}"
+            )
+        return explicit_path
+
+    host_tag = "darwin-x86_64" if sys.platform == "darwin" else "linux-x86_64"
+    candidates: List[Path] = []
+    if cc_env := os.environ.get("CC"):
+        candidates.append(Path(cc_env).with_name("llvm-cov"))
+    candidates.append(
+            _resolve_ndk_dir(repo_root)
+            / "toolchains"
+            / "llvm"
+            / "prebuilt"
+            / host_tag
+            / "bin"
+            / "llvm-cov"
+    )
+    prebuilts_dir = _resolve_prebuilts_dir(repo_root)
+    clang_host = prebuilts_dir / "clang" / "host" / (
+            "darwin-x86" if sys.platform == "darwin" else "linux-x86"
+    )
+    if clang_host.exists():
+        for clang_dir in sorted(clang_host.glob("clang-r*"), reverse=True):
+            candidates.append(clang_dir / "bin" / "llvm-cov")
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    if which_cov := shutil.which("llvm-cov"):
+        return Path(which_cov)
+    raise FileNotFoundError(
+            "llvm-cov binary not found in prebuilts or PATH; pass --llvm-cov."
+    )
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parses command-line arguments."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+            "--mode",
+            choices=("local", "package-gcno", "report"),
+            default="local",
+            help="Execution mode (default: local).",
+    )
+    parser.add_argument(
+            "--bundle-path",
+            type=Path,
+            default=None,
+            help="Path to swappy_coverage_bundle.tar.gz.",
+    )
+    parser.add_argument(
+            "--dist-dir",
+            type=Path,
+            default=None,
+            help="Distribution directory for swappy_coverage_bundle.tar.gz.",
+    )
+    parser.add_argument(
+            "--gcda-dir",
+            type=Path,
+            default=None,
+            help="Directory containing runtime .gcda files or TradeFed .zip archives.",
+    )
+    parser.add_argument(
+            "--output-dir",
+            type=Path,
+            default=None,
+            help="Output directory for HTML coverage reports.",
+    )
+    parser.add_argument(
+            "--llvm-cov",
+            type=Path,
+            default=None,
+            help="Explicit path to llvm-cov binary.",
+    )
+    parser.add_argument(
+            "--diff-base",
+            type=str,
+            default=None,
+            help="Git revision to compute incremental diff coverage against (e.g. HEAD~1).",
+    )
+    parser.add_argument(
+            "--jacoco-xml",
+            dest="jacoco_xmls",
+            action="append",
+            type=Path,
+            default=[],
+            help="Path to JaCoCo XML report to merge into the report (repeatable).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[List[str]] = None) -> None:
     """Main entry point for coverage generation script."""
+    args = parse_args(argv)
     tools_dir = Path(__file__).resolve().parent
     module_dir = tools_dir.parent
     gamesdk_dir = module_dir.parent
     repo_root = gamesdk_dir.parent
 
-    out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
+    if args.mode == "package-gcno":
+        if args.bundle_path:
+            bundle_out = args.bundle_path
+        elif args.dist_dir:
+            bundle_out = args.dist_dir / "swappy_coverage_bundle.tar.gz"
+        else:
+            bundle_out = (
+                    gamesdk_dir / "out" / "dist" / "swappy_coverage_bundle.tar.gz"
+            )
+        package_gcno_bundle(
+                gamesdk_dir,
+                module_dir,
+                bundle_out,
+                diff_base=args.diff_base,
+                jacoco_xmls=args.jacoco_xmls,
+        )
+        return
 
-    if sys.platform == "darwin":
-        llvm_cov_bin = repo_root / "prebuilts" / "sdk" / "ndk" / "27.0.12077973" / "toolchains" / "llvm" / "prebuilt" / "darwin-x86_64" / "bin" / "llvm-cov"
-    else:
-        llvm_cov_bin = repo_root / "prebuilts" / "ndk" / "r27" / "toolchains" / "llvm" / "prebuilt" / "linux-x86_64" / "bin" / "llvm-cov"
-    if not llvm_cov_bin.exists():
-        sys.exit(f"Error: llvm-cov binary not found at {llvm_cov_bin}")
+    out_dir = gamesdk_dir / "out" / "coverage" / MODULE_NAME
+    try:
+        llvm_cov_bin = _find_llvm_cov_binary(repo_root, args.llvm_cov)
+    except FileNotFoundError as err:
+        sys.exit(f"Error: {err}")
+
+    if args.mode == "report":
+        report_out = args.output_dir or (
+                gamesdk_dir / "out" / "reports" / "cxx_coverage"
+        )
+        run_report_from_artifacts(
+                gamesdk_dir=gamesdk_dir,
+                module_dir=module_dir,
+                tools_dir=tools_dir,
+                llvm_cov_bin=llvm_cov_bin,
+                gcda_dir=args.gcda_dir,
+                bundle_path=args.bundle_path,
+                output_dir=report_out,
+                diff_base=args.diff_base,
+                jacoco_xmls=args.jacoco_xmls,
+        )
+        return
 
     _run_coverage_pipeline(
-            gamesdk_dir, module_dir, tools_dir, out_dir, llvm_cov_bin
+            gamesdk_dir,
+            module_dir,
+            tools_dir,
+            out_dir,
+            llvm_cov_bin,
+            diff_base=args.diff_base,
+            jacoco_xmls=args.jacoco_xmls,
     )
 
 

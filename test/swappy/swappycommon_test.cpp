@@ -23,6 +23,7 @@
 #include <thread>
 #include <vector>
 
+#include "GcovFlushEnvironment.h"
 #include "common/CPUTracer.h"
 #include "common/CpuInfo.h"
 #include "common/FrameStatistics.h"

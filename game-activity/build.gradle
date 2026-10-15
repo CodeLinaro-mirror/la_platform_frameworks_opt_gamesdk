@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id 'jacoco'
 }
 
 buildDir = "../../out_game_activity"
@@ -21,11 +22,16 @@ android {
         consumerProguardFiles "consumer-rules.pro"
         externalNativeBuild {
             cmake {
+                def cmakeArgs = []
                 if (project.hasProperty("stl")) {
-                    arguments '-DANDROID_STL='+ project.stl
+                    cmakeArgs << ('-DANDROID_STL='+ project.stl)
                 } else {
-                    arguments '-DANDROID_STL=c++_shared'
+                    cmakeArgs << ('-DANDROID_STL=c++_shared')
                 }
+                def enableCoverage = project.findProperty("enableCoverage")
+                    ?.toString()?.toBoolean() == true
+                cmakeArgs << ("-DAGDK_ENABLE_COVERAGE=" + (enableCoverage ? "ON" : "OFF"))
+                arguments(*cmakeArgs)
             }
         }
     }
@@ -52,6 +58,12 @@ android {
     testOptions {
         unitTests {
             includeAndroidResources = true
+            all {
+                jacoco {
+                    includeNoLocationClasses = true
+                    excludes = ['jdk.internal.*']
+                }
+            }
         }
     }
 
@@ -111,4 +123,24 @@ dependencies {
 repositories {
     google()
     mavenCentral()
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    sourceDirectories.setFrom(files('src/main/java'))
+    classDirectories.setFrom(fileTree(
+        dir: "$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+        excludes: ['**/R.class', '**/R$*.class', '**/BuildConfig.*']
+    ))
+    executionData.setFrom(fileTree(
+        dir: buildDir,
+        includes: [
+            'outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec',
+            'jacoco/testDebugUnitTest.exec',
+        ]
+    ))
 }

@@ -23,6 +23,9 @@
 #include "../../main/cpp/GameControllerMappingUtils.h"
 #include "paddleboat.h"
 
+#define AGDK_GCOV_PREFIX "/data/data/com.google.android.games.paddleboat.test/files"
+#include "../../../../test/swappy/GcovFlushEnvironment.h"
+
 using namespace paddleboat;
 using namespace std;
 

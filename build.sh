@@ -148,6 +148,18 @@ else
     echo "Skipping sdkmanager invocation (AOSP prebuilts detected at $PREBUILTS_DIR)."
 fi
 
+# Prepend the NDK's hermetic Python 3.11 and LLVM tools to PATH so CI containers
+# with older system Python (e.g. Ubuntu 14.04 Python 3.4) run coverage scripts cleanly.
+for ndk_llvm_dir in \
+    "$ANDROID_HOME/ndk/$AGDK_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64" \
+    "$PREBUILTS_DIR/ndk/r27/toolchains/llvm/prebuilt/linux-x86_64" \
+    "$PREBUILTS_DIR/ndk/current/toolchains/llvm/prebuilt/linux-x86_64"; do
+    if [ -d "$ndk_llvm_dir/python3/bin" ]; then
+        export PATH="$ndk_llvm_dir/python3/bin:$ndk_llvm_dir/bin:$PATH"
+        break
+    fi
+done
+
 # Use the distribution path given to the script by the build bot in DIST_DIR. Otherwise,
 # build in the default location.
 if [[ -z $DIST_DIR ]]
@@ -206,10 +218,11 @@ then
               :game-text-input:assembleAndroidTest :game-text-input:assembleDebug \
               -Plibraries=paddleboat,game_activity,game_text_input \
               -PincludeSampleSources -PincludeSampleArtifacts \
+              -PenableCoverage=true \
               -PdistPath="$dist_dir" -PpackageName=$package_name
 
     pushd test/swappy/testapp
-    ../../../gradlew :app:assembleDebug :app:assembleAndroidTest
+    ../../../gradlew :app:assembleDebug :app:assembleAndroidTest -PenableCoverage=true
     popd
 
     find ../out_* -path "*/outputs/apk/*/*.apk" -exec cp -v {} "$dist_dir/$package_name/apks/test/" \;
@@ -220,10 +233,25 @@ then
     cp -v test/tradefed/*.config "$dist_dir/$package_name/apks/test/"
     (cd "$dist_dir/$package_name/apks/test" && zip -j "$dist_dir/androidTest.zip" *.apk *.config)
     cp -v "$dist_dir/androidTest.zip" "$dist_dir/$package_name/androidTest.zip"
+
+    # Package .gcno notes, C++ sources, and report generator for CI post-processing
+    python3 games-frame-pacing/tools/generate_test_coverage.py \
+        --mode=package-gcno --dist-dir="$dist_dir"
+    cp -v "$dist_dir/swappy_coverage_bundle.tar.gz" "$dist_dir/$package_name/swappy_coverage_bundle.tar.gz"
     exit
 elif [[ $1 == "hostUnitTests" ]]
 then
-    ./gradlew hostUnitTests -Pndk=$AGDK_NDK_VERSION --stacktrace
+    find ../.temp/host/.cmake -name "*.gcda" -delete 2>/dev/null || true
+    ./gradlew hostUnitTests \
+        :game-activity:testDebugUnitTest :game-activity:jacocoTestReport \
+        :buildSrc:test :buildSrc:jacocoTestReport \
+        -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
+    python3 -B -m unittest discover -s games-frame-pacing/tools -p 'test_generate_test_coverage.py'
+    python3 games-frame-pacing/tools/generate_test_coverage.py \
+        --mode=report --gcda-dir="../.temp/host/.cmake" --output-dir="$dist_dir/host_coverage" \
+        --diff-base=HEAD~1 \
+        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml" \
+        --jacoco-xml="buildSrc/build/reports/jacoco/test/jacocoTestReport.xml"
     exit
 else
     # The default is to build the express zip

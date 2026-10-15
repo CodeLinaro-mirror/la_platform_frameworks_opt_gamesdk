@@ -195,6 +195,38 @@
       font-size: 13px;
     }
 
+    .item-name a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    .item-name a:hover {
+      text-decoration: underline;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+    }
+
+    .filter-btn.active {
+      background-color: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
     .sr-only {
       border: 0;
       clip: rect(0, 0, 0, 0);
@@ -227,6 +259,16 @@
             <dd class="stat-subtext">{{EXEC_LOC}} / {{TOTAL_LOC}} lines executed</dd>
           </div>
           <div class="stat-card">
+            <dt class="stat-label">Incremental CL Diff (&Delta;) Coverage</dt>
+            <dd class="stat-value text-blue">{{DIFF_PCT}}</dd>
+            <dd class="stat-subtext">{{DIFF_SUBTEXT}}</dd>
+          </div>
+          <div class="stat-card">
+            <dt class="stat-label">Java / Kotlin (JaCoCo)</dt>
+            <dd class="stat-value text-green">{{JAVA_PCT}}</dd>
+            <dd class="stat-subtext">{{JAVA_SUBTEXT}}</dd>
+          </div>
+          <div class="stat-card">
             <dt class="stat-label">Discovered Sources</dt>
             <dd class="stat-value text-blue">{{NUM_FILES}}</dd>
             <dd class="stat-subtext">Source and Header Files</dd>
@@ -236,32 +278,57 @@
 
       <section aria-labelledby="breakdown-heading">
         <h2 id="breakdown-heading">Per-File Code Coverage Breakdown</h2>
+        <div class="filter-bar" role="group" aria-label="Filter files">
+          <button type="button" class="filter-btn active" onclick="filterFiles('all', this)">All Files</button>
+          <button type="button" class="filter-btn" onclick="filterFiles('changed', this)">Changed in this CL (&Delta;)</button>
+          <button type="button" class="filter-btn" onclick="filterFiles('cpp', this)">C/C++</button>
+          <button type="button" class="filter-btn" onclick="filterFiles('java', this)">Java / Kotlin</button>
+        </div>
         <table>
           <caption class="sr-only">Per-File Code Coverage Breakdown</caption>
           <thead>
             <tr>
-              <th scope="col">Component / C++ Source File</th>
+              <th scope="col">Component / Source File</th>
               <th scope="col">Total Lines</th>
               <th scope="col">Executed Lines</th>
               <th scope="col">Coverage %</th>
+              <th scope="col">&Delta; Coverage</th>
               <th scope="col">Visual Coverage</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="coverage-tbody">
 {{TABLE_ROWS}}          </tbody>
         </table>
       </section>
     </main>
   </div>
+  <script>
+    function filterFiles(mode, btn) {
+      document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      document.querySelectorAll('#coverage-tbody tr').forEach(function(row) {
+        if (mode === 'changed') {
+          row.style.display = row.getAttribute('data-changed') === 'true' ? '' : 'none';
+        } else if (mode === 'cpp' || mode === 'java') {
+          row.style.display = row.getAttribute('data-lang') === mode ? '' : 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+    }
+  </script>
 </body>
 </html>
 
 <!-- TABLE_ROW_TEMPLATE_START
-        <tr>
-          <td class="file-path">{{ITEM_NAME_HTML}}</td>
+        <tr data-changed="{{DATA_CHANGED}}" data-lang="{{DATA_LANG}}">
+          <td class="file-path item-name">{{ITEM_NAME_HTML}}</td>
           <td>{{TOTAL_LOC}}</td>
           <td>{{EXEC_LOC}}</td>
           <td style="font-weight: 700;">{{COVERAGE_PCT}}%</td>
+          <td>{{DIFF_COVERAGE_CELL}}</td>
           <td>
             <div class="progress-bar" role="progressbar" aria-valuenow="{{COVERAGE_PCT}}" aria-valuemin="0" aria-valuemax="100" aria-label="Coverage: {{COVERAGE_PCT}}%">
               <div class="progress-fill {{FILL_CLASS}}" style="width: {{COVERAGE_PCT}}%;"></div>

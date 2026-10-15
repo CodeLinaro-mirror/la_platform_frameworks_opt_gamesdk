@@ -1,4 +1,5 @@
 apply plugin: 'java-library'
+apply plugin: 'jacoco'
 apply plugin: 'com.google.protobuf'
 
 repositories {
@@ -58,4 +59,12 @@ task createJar(type: Jar) {
         }
     }
     with jar
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }
