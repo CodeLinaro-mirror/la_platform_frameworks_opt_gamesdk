@@ -641,7 +641,7 @@ def _process_gcno_files(
             sub_dir = temp_dir_path / f"target_{idx}"
             sub_dir.mkdir(exist_ok=True)
             subprocess.run(
-                    [str(llvm_cov_bin), "gcov", "-i", str(gcno)],
+                    [str(llvm_cov_bin), "gcov", "-i", str(gcno.resolve())],
                     cwd=sub_dir,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -1174,6 +1174,7 @@ def generate_html_report(
     )
 
     html_file.write_text(html_content, encoding="utf-8")
+    (reports_dir / "index.html").write_text(html_content, encoding="utf-8")
 
     module_dir = gamesdk_dir / MODULE_NAME
     sources_dir = reports_dir / "sources"
@@ -1346,10 +1347,15 @@ def run_report_from_artifacts(
     Raises:
         FileNotFoundError: If a specified bundle_path or gcda_dir does not exist.
     """
-    if bundle_path is not None and not bundle_path.is_file():
-        raise FileNotFoundError(f"Coverage bundle not found: {bundle_path}")
-    if gcda_dir is not None and not gcda_dir.exists():
-        raise FileNotFoundError(f"gcda directory not found: {gcda_dir}")
+    if bundle_path is not None:
+        bundle_path = bundle_path.resolve()
+        if not bundle_path.is_file():
+            raise FileNotFoundError(f"Coverage bundle not found: {bundle_path}")
+    if gcda_dir is not None:
+        gcda_dir = gcda_dir.resolve()
+        if not gcda_dir.exists():
+            raise FileNotFoundError(f"gcda directory not found: {gcda_dir}")
+    output_dir = output_dir.resolve()
 
     with tempfile.TemporaryDirectory() as tmp_str:
         tmp_root = Path(tmp_str)
