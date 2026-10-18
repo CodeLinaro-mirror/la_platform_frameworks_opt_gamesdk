@@ -50,6 +50,7 @@
 #include "Scenario.h"
 #include "ScenarioCatalog.h"
 #include "ScenarioEngine.h"
+#include "ScenarioParser.h"
 #include "Trace.h"
 #include "swappy/swappy_common.h"
 
@@ -137,6 +138,10 @@ struct RunState {
     // and the frame-time window.
     Scenario selected_scenario = ScenarioCatalog::scenario_at(0);
     char output_directory[512] = "/sdcard/Android/data/com.samples.swappytest/files";
+    // Why selected_scenario cannot run, as returned by
+    // parse_custom_scenario(); empty when it can. start_scenario_run() fails
+    // the run with it.
+    std::string scenario_failure;
     int run_iteration = 1;
     ScenarioEngine scenario_engine;
     // The Swappy settings in effect for the run: what start_scenario_run()
@@ -498,6 +503,7 @@ static void populate_active_scenario_steps(void) {
 void set_test_scenario(Scenario scenario) {
     std::lock_guard<std::mutex> lock(s_test_mutex);
     s_run.selected_scenario = std::move(scenario);
+    s_run.scenario_failure.clear();
 }
 
 void select_scenario(int index) {
@@ -516,6 +522,14 @@ void set_test_scenario(const char* scenario_name) {
         scenario = &ScenarioCatalog::scenario_at(0);
     }
     set_test_scenario(*scenario);
+}
+
+void set_custom_scenario(const char* spec) {
+    Scenario scenario;
+    std::string failure = dvfs::parse_custom_scenario(spec, &scenario);
+    std::lock_guard<std::mutex> lock(s_test_mutex);
+    s_run.selected_scenario = std::move(scenario);
+    s_run.scenario_failure = std::move(failure);
 }
 
 // A file in s_run.output_directory. Called under s_test_mutex.
@@ -725,6 +739,15 @@ static bool run_fresh_calibration(CalibrationSet kinds, CalibrationResult* calib
 // it needs; the missing kinds follow, as in "no_calibration:cpu,vulkan".
 static constexpr char kNoCalibrationReason[] = "no_calibration";
 
+// Fails a scenario run before its workload runs: SCENARIO_RESULT reports
+// reason and the run completes. Called under s_test_mutex.
+static void fail_run_locked(const char* reason) {
+    mark_run_failed(reason);
+    complete_scenario_run();
+    // Release-publishes the run state, as finish_scenario_run() does.
+    s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
+}
+
 // Fails a scenario run started without valid caches of the calibrations in
 // missing: the workload never runs and SCENARIO_RESULT reports the failure.
 static void fail_run_without_calibration(CalibrationSet missing) {
@@ -738,15 +761,23 @@ static void fail_run_without_calibration(CalibrationSet missing) {
     s_run.missing_calibrations = missing;
     char reason[64];
     snprintf(reason, sizeof(reason), "%s:%s", kNoCalibrationReason, kinds.c_str());
-    mark_run_failed(reason);
-    complete_scenario_run();
-    // Release-publishes the run state, as finish_scenario_run() does.
-    s_run.test_phase.store(TEST_PHASE_COMPLETE, std::memory_order_release);
+    fail_run_locked(reason);
 }
 
-// Loads the stored calibrations, fails the run if any calibration the
-// scenario needs is missing or invalid, and otherwise stages step 0.
+// Fails the run if the staged scenario cannot run, then loads the stored
+// calibrations, fails the run if any calibration the scenario needs is
+// missing or invalid, and otherwise stages step 0.
 static void start_scenario_run(void) {
+    {
+        std::lock_guard<std::mutex> lock(s_test_mutex);
+        if (!s_run.scenario_failure.empty()) {
+            ALOGE("SwappyTest: scenario %s not run: %s", s_run.selected_scenario.title().c_str(),
+                  s_run.scenario_failure.c_str());
+            fail_run_locked(s_run.scenario_failure.c_str());
+            return;
+        }
+    }
+
     CalibrationResult calib;
     const CalibrationSet valid = load_calibration_caches(&calib);
     const CalibrationSet missing = s_run.required_calibrations.load() & ~valid;

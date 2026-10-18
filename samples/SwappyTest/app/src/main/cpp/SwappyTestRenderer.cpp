@@ -1423,6 +1423,17 @@ JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSelectSce
     select_scenario(scenarioIndex);
 }
 
+JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetCustomScenario(
+        JNIEnv* env, jobject /* this */, jstring scenarioSpec) {
+    if (!scenarioSpec) {
+        set_custom_scenario("");
+        return;
+    }
+    const char* str = env->GetStringUTFChars(scenarioSpec, nullptr);
+    set_custom_scenario(str);
+    env->ReleaseStringUTFChars(scenarioSpec, str);
+}
+
 JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetRunIteration(
         JNIEnv* /* env */, jobject /* this */, jint iter) {
     set_run_iteration(iter);

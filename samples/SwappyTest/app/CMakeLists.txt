@@ -9,6 +9,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size
 
 include_directories(../../common/include)
 include_directories(src/main/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party)
 
 add_library(${CMAKE_PROJECT_NAME}
             SHARED
@@ -23,6 +24,8 @@ add_library(${CMAKE_PROJECT_NAME}
             src/main/cpp/Scenario.cpp
             src/main/cpp/ScenarioBuilder.cpp
             src/main/cpp/ScenarioEngine.cpp
+            src/main/cpp/ScenarioParser.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/json11/json11.cpp
             src/main/cpp/SwappyTestRenderer.cpp
             src/main/cpp/TelemetryRingBuffer.cpp
             src/main/cpp/scenarios/H1.cpp

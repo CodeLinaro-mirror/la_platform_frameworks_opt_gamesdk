@@ -108,6 +108,7 @@ int get_current_step_index(void);
 // Scenario engine & run record (T7, T8, T9)
 void set_test_scenario(const char* scenario_name);
 void select_scenario(int index);
+void set_custom_scenario(const char* spec);
 int get_scenario_count(void);
 const char* get_scenario_id_by_index(int index);
 const char* get_scenario_description_by_index(int index);

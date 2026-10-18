@@ -112,6 +112,9 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
 
     private var mScenarios: Array<ScenarioItem> = emptyArray()
     private var mActiveScenarioId: String = "S1"
+    private var mCustomScenarioActive: Boolean = false
+    private var mCustomScenarioSpinnerPos: Int = 0
+    private var mCustomScenarioDescription: String = "CUSTOM"
     private var mActiveRenderApi: Int = RENDER_API_GLES
     private var mActivePacingStrategy: Int = PACING_CLASSIC
     private var mActivePipelineMode: String = "auto"
@@ -260,7 +263,12 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
                     position: Int,
                     id: Long
                 ) {
-                    updateScenarioDescription(position)
+                    if (mCustomScenarioActive && position != mCustomScenarioSpinnerPos) {
+                        mCustomScenarioActive = false
+                    }
+                    if (!mCustomScenarioActive) {
+                        updateScenarioDescription(position)
+                    }
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -365,8 +373,13 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         mMainHandler.removeCallbacks(mFinishAfterAutomatedRun)
         mIsFinishingAfterAutomatedRun = false
 
+        val customScenarioSpec = extractCustomScenarioSpec(intent)
+
         val hasScenarioExtra =
-            intent != null && (intent.hasExtra("scenario") || intent.hasExtra("SCENARIO"))
+            intent != null &&
+                (intent.hasExtra("scenario") ||
+                    intent.hasExtra("SCENARIO") ||
+                    customScenarioSpec != null)
         val autoExitExtra = intent != null && getBooleanOption(intent, "auto_exit", false)
         val requestedApi = extractRenderApi(intent)
         val calibrationKinds =
@@ -388,6 +401,9 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
             if (scenario == null) {
                 scenario = getStringOption(intent, "SCENARIO", null)
             }
+            if (scenario.isNullOrEmpty() && customScenarioSpec != null) {
+                scenario = "CUSTOM"
+            }
             if (!scenario.isNullOrEmpty()) {
                 selectedScenario = scenario
             }
@@ -400,13 +416,26 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
             nSetRunIteration(runIdx)
         }
 
-        mActiveScenarioId = selectedScenario
+        val isCustomScenario =
+            customScenarioSpec != null || "CUSTOM".equals(selectedScenario, ignoreCase = true)
+        mCustomScenarioActive = isCustomScenario
+        mActiveScenarioId = if (isCustomScenario) "CUSTOM" else selectedScenario
         mActiveRenderApi = nGetRenderApi()
-        nSetTestScenario(selectedScenario)
+        if (isCustomScenario) {
+            val spec = customScenarioSpec ?: ""
+            nSetCustomScenario(spec)
+            val compactSpec = spec.trim().replace('\n', ';')
+            mCustomScenarioDescription =
+                if (compactSpec.isEmpty()) "CUSTOM" else "CUSTOM ($compactSpec)"
+            mCustomScenarioSpinnerPos = mSpinnerTestSelection?.selectedItemPosition ?: 0
+            mTextScenarioDescription?.text = mCustomScenarioDescription
+        } else {
+            nSetTestScenario(selectedScenario)
+            selectScenarioById(selectedScenario)
+        }
         nSetOptions(swappy, set30Fps)
         queueCalibrations(calibrationKinds, mActiveRenderApi)
 
-        selectScenarioById(selectedScenario)
         selectRenderApi(nGetRenderApi())
         selectPacingStrategy(mActivePacingStrategy)
         selectPipelineMode(mActivePipelineMode)
@@ -507,7 +536,13 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
             (mSpinnerTestSelection?.selectedItemPosition ?: 0)
                 .coerceIn(0, maxOf(0, mScenarios.size - 1))
         val scenarioId =
-            if (scenarioIndex in mScenarios.indices) mScenarios[scenarioIndex].id else "S1"
+            if (mCustomScenarioActive) {
+                "CUSTOM"
+            } else if (scenarioIndex in mScenarios.indices) {
+                mScenarios[scenarioIndex].id
+            } else {
+                "S1"
+            }
         mActiveScenarioId = scenarioId
 
         val renderApi = selectedRenderApi()
@@ -526,7 +561,9 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         nSetPacingStrategy(pacingStrategy)
         nSetPipelineMode(pipelineMode)
         queueCalibrations(calibrationKinds, renderApi)
-        nSelectScenario(scenarioIndex)
+        if (!mCustomScenarioActive) {
+            nSelectScenario(scenarioIndex)
+        }
         mCheckboxShowOverlay?.let {
             nSetOverlayEnabled(it.isChecked)
         }
@@ -845,6 +882,9 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun getScenarioDisplayName(scenarioId: String?): String {
+        if (mCustomScenarioActive || "CUSTOM".equals(scenarioId, ignoreCase = true)) {
+            return mCustomScenarioDescription
+        }
         if (scenarioId != null) {
             for (item in mScenarios) {
                 if (item.id.equals(scenarioId, ignoreCase = true)) {
@@ -1072,6 +1112,11 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
         }
     }
 
+    private fun extractCustomScenarioSpec(intent: Intent?): String? {
+        if (intent == null || !intent.hasExtra("custom")) return null
+        return getStringOption(intent, "custom", null) ?: ""
+    }
+
     private fun hideSystemUI() {
         val decorView = window.peekDecorView() ?: window.decorView ?: return
 
@@ -1253,6 +1298,9 @@ class SwappyTestActivity : Activity(), SurfaceHolder.Callback {
 
         @JvmStatic
         external fun nSelectScenario(scenarioIndex: Int)
+
+        @JvmStatic
+        external fun nSetCustomScenario(spec: String)
 
         @JvmStatic
         external fun nSetRunIteration(iteration: Int)

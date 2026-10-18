@@ -43,6 +43,7 @@ add_executable(swappytest_host_test
   scenario_builder_test.cpp
   scenario_catalog_test.cpp
   scenario_engine_test.cpp
+  scenario_parser_test.cpp
   swappytest_host_test.cpp
   telemetry_ring_buffer_test.cpp
   ../../main/cpp/CalibrationStats.cpp
@@ -50,6 +51,8 @@ add_executable(swappytest_host_test
   ../../main/cpp/Scenario.cpp
   ../../main/cpp/ScenarioBuilder.cpp
   ../../main/cpp/ScenarioEngine.cpp
+  ../../main/cpp/ScenarioParser.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party/json11/json11.cpp
   ../../main/cpp/scenarios/H1.cpp
   ../../main/cpp/scenarios/H10.cpp
   ../../main/cpp/scenarios/H2.cpp
@@ -75,6 +78,7 @@ target_include_directories(swappytest_host_test PRIVATE
   include
   ../../main/cpp
   ../../../../../common/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party
 )
 
 target_include_directories(swappytest_host_test SYSTEM PRIVATE
