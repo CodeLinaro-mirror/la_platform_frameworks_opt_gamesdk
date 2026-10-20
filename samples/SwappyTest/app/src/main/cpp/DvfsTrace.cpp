@@ -30,10 +30,9 @@ void trace_cpu_headroom_pct(int pct, bool force) {
     static std::atomic<int> s_traced_headroom_pct{-1};
     if (pct < 0) return;
     if (s_traced_headroom_pct.exchange(pct, std::memory_order_relaxed) == pct && !force) return;
-    SWAPPY_TEST_TRACE_COUNTER("SwappyTest.CpuHeadroomPct", pct);
+    trace_counter("SwappyTest.CpuHeadroomPct", pct);
 }
 
-#if !((defined(TRACE) && TRACE == 0) && !defined(SWAPPY_ENABLE_TRACE))
 // Async section cookies, one per concurrently open SwappyTest async track.
 // Async section names separate their fields with ';', never '|': ATrace
 // writes them as "S|<pid>|<name>|<cookie>", so trace_processor would take
@@ -41,11 +40,6 @@ void trace_cpu_headroom_pct(int pct, bool force) {
 static constexpr int32_t kRunTraceCookie = 0;
 static constexpr int32_t kPhaseTraceCookie = 1;
 static constexpr int32_t kStepTraceCookie = 2;
-
-bool is_test_tracing_enabled(void) {
-    auto* trace = samples::Trace::getInstance();
-    return trace != nullptr && trace->isEnabled();
-}
 
 // The shared body of the printf-style trace helpers.
 static std::string vformat(const char* fmt, va_list args) {
@@ -57,19 +51,20 @@ static std::string vformat(const char* fmt, va_list args) {
 // A zero-length slice on the calling thread: ATrace has no instant event, and
 // trace_processor imports a begin immediately followed by an end as one.
 void trace_instant(const char* fmt, ...) {
-    if (!is_test_tracing_enabled()) return;
     va_list args;
     va_start(args, fmt);
     const std::string name = vformat(fmt, args);
     va_end(args);
-    auto* trace = samples::Trace::getInstance();
-    trace->beginSection(name.c_str());
-    trace->endSection();
+    if (auto* trace = samples::Trace::getInstance()) {
+        trace->beginSection(name.c_str());
+        trace->endSection();
+    }
 }
 
 void trace_counter(const char* name, int64_t value) {
-    if (!is_test_tracing_enabled()) return;
-    samples::Trace::getInstance()->setCounter(name, value);
+    if (auto* trace = samples::Trace::getInstance()) {
+        trace->setCounter(name, value);
+    }
 }
 
 // One async trace track: at most one open section, named by name.
@@ -102,27 +97,25 @@ static AsyncTrack s_run_track{kRunTraceCookie};
 static AsyncTrack s_phase_track{kPhaseTraceCookie};
 static AsyncTrack s_step_track{kStepTraceCookie};
 
-void end_step_trace(void) {
+void trace_end_step() {
     s_step_track.end();
 }
 
-void begin_step_trace(const char* fmt, ...) {
-    s_step_track.end();
-    if (!is_test_tracing_enabled()) return;
+void trace_begin_step(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     s_step_track.begin(vformat(fmt, args));
     va_end(args);
 }
 
-void update_phase_trace(const char* phase_tag) {
+void trace_update_phase(const char* phase_tag) {
     s_phase_track.end();
     if (phase_tag && phase_tag[0] != '\0') {
         s_phase_track.begin(std::string("SwappyTest::Phase;") + phase_tag);
     }
 }
 
-void start_run_trace(const char* scenario, int iter) {
+void trace_start_run(const char* scenario, int iter) {
     s_step_track.end();
     s_phase_track.end();
     const char* pacing_str = swappy_backend_get_pacing_strategy_name();
@@ -131,11 +124,10 @@ void start_run_trace(const char* scenario, int iter) {
     s_run_track.begin(run_name);
 }
 
-void end_run_trace() {
+void trace_end_run() {
     s_step_track.end();
     s_phase_track.end();
     s_run_track.end();
 }
-#endif
 
 } // namespace dvfs

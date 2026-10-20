@@ -18,29 +18,17 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
-#include <cstdio>
-#include <cstring>
 
 #include "DvfsBenchmark.h"
 
 namespace samples {
 
-void TelemetryRingBuffer::Reset() noexcept {
+void TelemetryRingBuffer::reset() noexcept {
     mHead = 0;
     mCount = 0;
-    mActiveCadenceMs = 16.67f;
-    mClusterStats.fill({});
-    mAverageGpuFrequencyPercent = -1.0f;
-    mLineExpectedFps.fill('\0');
-    mLineRealFps.fill('\0');
-    mLineCpuFrequency.fill('\0');
-    mLineTestStatus.fill('\0');
 }
 
-void TelemetryRingBuffer::RecordFrame(
-        uint64_t frameDurationNs, float gpuWorkMs, const char* pacingStrategyName,
-        const std::array<bool, TelemetrySnapshot::kNumFpsGuidelines>& supportedFps) noexcept {
+void TelemetryRingBuffer::recordFrame(uint64_t frameDurationNs, float gpuWorkMs) noexcept {
     DvfsUiSnapshot ui;
     get_ui_snapshot(&ui);
 
@@ -57,62 +45,76 @@ void TelemetryRingBuffer::RecordFrame(
     sample.cpuClusterIndex = ui.current_cpu_cluster;
 
     const int32_t detectedClusters = ui.cpu_cluster_count;
-    if (detectedClusters >= 1 &&
-        detectedClusters <= static_cast<int32_t>(TelemetrySnapshot::kMaxClusters)) {
+    if (detectedClusters >= 1 && detectedClusters <= static_cast<int32_t>(kMaxClusters)) {
         mClusterCount = detectedClusters;
     }
 
-    mSupportedFps = supportedFps;
     mHead = (mHead + 1) % kCapacity;
     if (mCount < kCapacity) {
         ++mCount;
     }
-
-    UpdateRollingStatsAndText(ui, pacingStrategyName);
 }
 
-void TelemetryRingBuffer::UpdateRollingStatsAndText(const DvfsUiSnapshot& ui,
-                                                    const char* pacingStrategyName) noexcept {
-    if (mCount == 0) {
-        mActiveCadenceMs = 16.67f;
-    } else {
-        const size_t cadenceWindow = std::min(mCount, kActiveCadenceWindowFrames);
-        uint64_t durationSumNs = 0;
-        for (size_t i = 0; i < cadenceWindow; ++i) {
-            const size_t sampleIndex = (mHead + kCapacity - 1 - i) % kCapacity;
-            durationSumNs += mSamples[sampleIndex].frameDurationNs;
-        }
-        const float averageDurationMs =
-                (static_cast<float>(durationSumNs) / static_cast<float>(cadenceWindow)) /
-                1000000.0f;
-        if (averageDurationMs <= 20.0f) {
-            mActiveCadenceMs = 16.67f;
-        } else if (averageDurationMs <= 29.0f) {
-            mActiveCadenceMs = 25.00f;
-        } else if (averageDurationMs <= 42.0f) {
-            mActiveCadenceMs = 33.33f;
-        } else if (averageDurationMs <= 58.0f) {
-            mActiveCadenceMs = 50.00f;
-        } else {
-            mActiveCadenceMs = 66.67f;
-        }
-    }
+const FrameTelemetrySample& TelemetryRingBuffer::sampleOldestFirst(size_t index) const noexcept {
+    assert(index < mCount);
+    const size_t oldestIndex = (mCount < kCapacity) ? 0 : mHead;
+    return mSamples[(oldestIndex + index) % kCapacity];
+}
 
-    std::array<int32_t, TelemetrySnapshot::kMaxClusters> clusterFrameCounts{};
-    std::array<float, TelemetrySnapshot::kMaxClusters> clusterFrequencySums{};
+const FrameTelemetrySample* TelemetryRingBuffer::latestSample() const noexcept {
+    return (mCount > 0) ? &sampleNewestFirst(0) : nullptr;
+}
+
+const FrameTelemetrySample& TelemetryRingBuffer::sampleNewestFirst(size_t age) const noexcept {
+    assert(age < mCount);
+    return mSamples[(mHead + kCapacity - 1 - age) % kCapacity];
+}
+
+float TelemetryRingBuffer::computeSwapDurationMs() const noexcept {
+    if (mCount == 0) {
+        return 16.67f;
+    }
+    const size_t swapDurationWindow = std::min(mCount, kSwapDurationWindowFrames);
+    uint64_t durationSumNs = 0;
+    for (size_t i = 0; i < swapDurationWindow; ++i) {
+        durationSumNs += sampleNewestFirst(i).frameDurationNs;
+    }
+    const float averageDurationMs =
+            (static_cast<float>(durationSumNs) / static_cast<float>(swapDurationWindow)) /
+            1000000.0f;
+    if (averageDurationMs <= 20.0f) {
+        return 16.67f;
+    }
+    if (averageDurationMs <= 29.0f) {
+        return 25.00f;
+    }
+    if (averageDurationMs <= 42.0f) {
+        return 33.33f;
+    }
+    if (averageDurationMs <= 58.0f) {
+        return 50.00f;
+    }
+    return 66.67f;
+}
+
+TelemetryRollingStats TelemetryRingBuffer::computeRollingStats() const noexcept {
+    TelemetryRollingStats rolling{};
+    rolling.swapDurationMs = computeSwapDurationMs();
+    rolling.clusterCount = mClusterCount;
+
+    std::array<int32_t, kMaxClusters> clusterFrameCounts{};
+    std::array<float, kMaxClusters> clusterFrequencySums{};
     int32_t validCoreSamples = 0;
     float gpuFrequencySum = 0.0f;
     int32_t validGpuSamples = 0;
     int32_t latestClusterIndex = -1;
 
     if (mCount > 0) {
-        const size_t latestIndex = (mHead + kCapacity - 1) % kCapacity;
-        latestClusterIndex = mSamples[latestIndex].cpuClusterIndex;
+        latestClusterIndex = sampleNewestFirst(0).cpuClusterIndex;
 
         const size_t rollingWindow = std::min(mCount, kRollingFrequencyWindowFrames);
         for (size_t i = 0; i < rollingWindow; ++i) {
-            const size_t sampleIndex = (mHead + kCapacity - 1 - i) % kCapacity;
-            const FrameTelemetrySample& sample = mSamples[sampleIndex];
+            const FrameTelemetrySample& sample = sampleNewestFirst(i);
             if (sample.cpuClusterIndex >= 0 && sample.cpuClusterIndex < mClusterCount) {
                 clusterFrameCounts[sample.cpuClusterIndex]++;
                 clusterFrequencySums[sample.cpuClusterIndex] += sample.cpuFrequencyPercent;
@@ -125,8 +127,8 @@ void TelemetryRingBuffer::UpdateRollingStatsAndText(const DvfsUiSnapshot& ui,
         }
     }
 
-    for (size_t clusterIndex = 0; clusterIndex < TelemetrySnapshot::kMaxClusters; ++clusterIndex) {
-        ClusterRollingStats& stats = mClusterStats[clusterIndex];
+    for (size_t clusterIndex = 0; clusterIndex < kMaxClusters; ++clusterIndex) {
+        ClusterRollingStats& stats = rolling.clusterStats[clusterIndex];
         const int32_t framesInCluster = clusterFrameCounts[clusterIndex];
         stats.averageFrequencyPercent = (framesInCluster > 0)
                 ? (clusterFrequencySums[clusterIndex] / static_cast<float>(framesInCluster))
@@ -137,125 +139,13 @@ void TelemetryRingBuffer::UpdateRollingStatsAndText(const DvfsUiSnapshot& ui,
                 : 0.0f;
         stats.isActiveCluster = (static_cast<int32_t>(clusterIndex) == latestClusterIndex);
     }
-    mAverageGpuFrequencyPercent =
+    rolling.averageGpuFrequencyPercent =
             (validGpuSamples > 0) ? (gpuFrequencySum / static_cast<float>(validGpuSamples)) : -1.0f;
-
-    const int32_t phase = ui.test_phase;
-    const char* apiName = get_active_render_api_name();
-    const char* scenarioName = ui.test_scenario;
-    const float expectedFps = ui.expected_fps;
-    const float realFps = ui.measured_real_fps;
-    const size_t latestIndex = (mCount > 0) ? ((mHead + kCapacity - 1) % kCapacity) : 0;
-    const float latestCpuMs = (mCount > 0) ? mSamples[latestIndex].realCpuMs : 0.0f;
-    const float latestGpuMs = (mCount > 0) ? mSamples[latestIndex].gpuWorkMs : 0.0f;
-
-    if (phase == TEST_PHASE_READY) {
-        std::snprintf(mLineExpectedFps.data(), mLineExpectedFps.size(), "[%s] Exp: Ready [%s]",
-                      apiName, scenarioName);
-    } else if (phase == TEST_PHASE_COOLDOWN) {
-        std::snprintf(mLineExpectedFps.data(), mLineExpectedFps.size(), "[%s] Exp: Cooldown [%s]",
-                      apiName, scenarioName);
-    } else {
-        std::snprintf(mLineExpectedFps.data(), mLineExpectedFps.size(), "[%s] Exp: %.1f FPS [%s]",
-                      apiName, expectedFps, scenarioName);
-    }
-
-    const bool runningScenarioSteps =
-            (phase == TEST_PHASE_SPIKE_27MS || phase == TEST_PHASE_RAMP_DOWN);
-    if (runningScenarioSteps && (latestCpuMs > 0.0f || latestGpuMs > 0.0f)) {
-        std::snprintf(mLineRealFps.data(), mLineRealFps.size(),
-                      "Real: %.1f FPS (%.1f+%.1fms) | Pacing: %s", realFps, latestCpuMs,
-                      latestGpuMs, pacingStrategyName ? pacingStrategyName : "auto");
-    } else {
-        std::snprintf(mLineRealFps.data(), mLineRealFps.size(), "Real: %.1f FPS | Pacing: %s",
-                      realFps, pacingStrategyName ? pacingStrategyName : "auto");
-    }
-
-    const int32_t cpuCore = ui.current_cpu_core;
-    const int32_t cpuFreqMhz = ui.current_cpu_freq_mhz;
-    const int32_t cpuMaxFreqMhz = ui.current_cpu_max_freq_mhz;
-    const int32_t deviceMaxMhz = ui.device_global_max_freq_mhz;
-    const int32_t calibFreqMhz = ui.calib_freq_mhz;
-    const bool calibAtMax = ui.calib_at_max_freq;
-    const bool runTainted = ui.run_tainted;
-
-    char calibTag[48];
-    if (runTainted) {
-        std::snprintf(calibTag, sizeof(calibTag), " [TAINTED]");
-    } else if (runningScenarioSteps && !calibAtMax && deviceMaxMhz > 0) {
-        std::snprintf(calibTag, sizeof(calibTag), " [THROTTLED %d/%d]", calibFreqMhz, deviceMaxMhz);
-    } else {
-        std::snprintf(calibTag, sizeof(calibTag), " [Calib OK]");
-    }
-
-    if (cpuFreqMhz > 0) {
-        const int32_t referenceMaxMhz = std::max(cpuMaxFreqMhz, cpuFreqMhz);
-        const float clockPercent = (referenceMaxMhz > 0)
-                ? (static_cast<float>(cpuFreqMhz) * 100.0f / static_cast<float>(referenceMaxMhz))
-                : 0.0f;
-        std::snprintf(mLineCpuFrequency.data(), mLineCpuFrequency.size(),
-                      "CPU: Core %d @ %d/%d MHz (%.0f%%)%s", cpuCore, cpuFreqMhz, referenceMaxMhz,
-                      clockPercent, calibTag);
-    } else {
-        std::snprintf(mLineCpuFrequency.data(), mLineCpuFrequency.size(),
-                      "CPU: Core %d (eff %.0f%%)%s", cpuCore,
-                      std::min(100.0f, ui.cpu_freq_ratio_pct), calibTag);
-    }
-
-    const int32_t stepIndex = ui.current_step_index;
-    const int32_t stepCount = ui.scenario_step_count;
-    char stepPrefix[32] = "";
-    if (stepIndex >= 0 && stepCount > 0) {
-        std::snprintf(stepPrefix, sizeof(stepPrefix), "Step %d/%d: ", stepIndex + 1, stepCount);
-    }
-
-    switch (phase) {
-        case TEST_PHASE_READY:
-            std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(), "Status: Ready");
-            break;
-        case TEST_PHASE_COOLDOWN:
-            std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(),
-                          "Cooldown: %d%% headroom (%.1fs)", ui.cooldown_headroom_pct,
-                          ui.cooldown_progress_sec);
-            break;
-        case TEST_PHASE_SPIKE_27MS:
-            std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(),
-                          "%sSpike 27 ms (%.1fs left)", stepPrefix, ui.step_time_remaining_sec);
-            break;
-        case TEST_PHASE_RAMP_DOWN:
-            std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(),
-                          "%sTarget: %.0f ms (%.1fs left)%s", stepPrefix, ui.target_workload_ms,
-                          ui.step_time_remaining_sec, ui.fps_diverged ? " [DIVERGED]" : "");
-            break;
-        case TEST_PHASE_COMPLETE:
-        default: {
-            if (ui.run_tainted) {
-                std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(),
-                              "Complete: TAINTED (%s)", ui.taint_reason);
-            } else {
-                std::snprintf(mLineTestStatus.data(), mLineTestStatus.size(), "Complete");
-            }
-            break;
-        }
-    }
+    return rolling;
 }
 
-void TelemetryRingBuffer::CaptureSnapshot(TelemetrySnapshot* outSnapshot) const noexcept {
-    assert(outSnapshot != nullptr);
-    outSnapshot->samples = mSamples;
-    outSnapshot->sampleCount = mCount;
-    outSnapshot->oldestSampleIndex = (mCount < kCapacity) ? 0 : mHead;
-    outSnapshot->activeCadenceMs = mActiveCadenceMs;
-    outSnapshot->supportedFps = mSupportedFps;
-    outSnapshot->clusterCount = mClusterCount;
-    outSnapshot->clusterStats = mClusterStats;
-    outSnapshot->averageGpuFrequencyPercent = mAverageGpuFrequencyPercent;
-    outSnapshot->lineExpectedFps = mLineExpectedFps;
-    outSnapshot->lineRealFps = mLineRealFps;
-    outSnapshot->lineCpuFrequency = mLineCpuFrequency;
-    outSnapshot->lineTestStatus = mLineTestStatus;
-
-    TelemetrySnapshot::Histogram1sData hist{};
+Histogram1sData TelemetryRingBuffer::computeHistogram1s() const noexcept {
+    Histogram1sData hist{};
     int64_t windowElapsedNs = 0;
     float sumExp = 0.0f;
     float sumCpu = 0.0f;
@@ -263,9 +153,10 @@ void TelemetryRingBuffer::CaptureSnapshot(TelemetrySnapshot* outSnapshot) const 
     float sumTot = 0.0f;
 
     for (size_t i = 0; i < mCount; ++i) {
-        const size_t idx = (mHead + kCapacity - 1 - i) % kCapacity;
-        const FrameTelemetrySample& s = mSamples[idx];
-        if (s.frameDurationNs == 0) continue;
+        const FrameTelemetrySample& s = sampleNewestFirst(i);
+        if (s.frameDurationNs == 0) {
+            continue;
+        }
 
         windowElapsedNs += static_cast<int64_t>(s.frameDurationNs);
         hist.windowFrames++;
@@ -291,13 +182,13 @@ void TelemetryRingBuffer::CaptureSnapshot(TelemetrySnapshot* outSnapshot) const 
             hist.framesSlow++;
         }
 
-        const size_t tBin = std::clamp(static_cast<size_t>(totalMs), size_t{0},
-                                       TelemetrySnapshot::Histogram1sData::kBinCount - 1);
+        const size_t tBin =
+                std::clamp(static_cast<size_t>(totalMs), size_t{0}, Histogram1sData::kBinCount - 1);
         hist.totalBins[tBin]++;
 
         if (workMs > 0.05f) {
             const size_t wBin = std::clamp(static_cast<size_t>(workMs), size_t{0},
-                                           TelemetrySnapshot::Histogram1sData::kBinCount - 1);
+                                           Histogram1sData::kBinCount - 1);
             hist.workBins[wBin]++;
             hist.workCpuSums[wBin] += cpuMs;
             hist.workTotalSums[wBin] += workMs;
@@ -305,7 +196,7 @@ void TelemetryRingBuffer::CaptureSnapshot(TelemetrySnapshot* outSnapshot) const 
 
         if (expMs > 0.05f) {
             const size_t eBin = std::clamp(static_cast<size_t>(expMs), size_t{0},
-                                           TelemetrySnapshot::Histogram1sData::kBinCount - 1);
+                                           Histogram1sData::kBinCount - 1);
             hist.expBins[eBin]++;
         }
 
@@ -321,7 +212,7 @@ void TelemetryRingBuffer::CaptureSnapshot(TelemetrySnapshot* outSnapshot) const 
         hist.avgGlMs = sumGl / countF;
         hist.avgTotalMs = sumTot / countF;
     }
-    outSnapshot->histogram = hist;
+    return hist;
 }
 
 } // namespace samples

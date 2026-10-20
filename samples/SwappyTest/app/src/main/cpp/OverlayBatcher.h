@@ -20,10 +20,20 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <vector>
 
+#include "DvfsBenchmark.h"
 #include "TelemetryRingBuffer.h"
 
 namespace samples {
+
+struct TelemetryHudInput {
+    const TelemetryRingBuffer& telemetry;
+    DvfsUiSnapshot ui{};
+    const char* pacingStrategyName = nullptr;
+    std::vector<int32_t> supportedFps = {60, 40, 30, 15};
+    bool histogramMode = false;
+};
 
 struct OverlayVertex {
     float x;
@@ -81,7 +91,7 @@ public:
     void AddText(float x, float y, float scale, OverlayColor color, const char* text) noexcept;
     [[nodiscard]] static float MeasureTextWidth(const char* text, float scale) noexcept;
 
-    void BuildTelemetryHud(const TelemetrySnapshot& snapshot) noexcept;
+    void BuildTelemetryHud(const TelemetryHudInput& hud) noexcept;
 
     [[nodiscard]] std::span<const OverlayVertex> GetTriangleVertices() const noexcept {
         return std::span<const OverlayVertex>(mTriangleVertices.data(), mTriangleVertexCount);
@@ -96,13 +106,15 @@ public:
 private:
     void DrawGraphHeaderAndLegend(float left, float right, float panelTop, float densityScale,
                                   const char* title, const char* expText) noexcept;
-    void BuildLiveTextPanel(const TelemetrySnapshot& snapshot, float densityScale, float margin,
+    void BuildLiveTextPanel(const TelemetryHudInput& hud, float densityScale, float margin,
                             float panelTop, float panelHeight) noexcept;
-    void BuildFrequencyPanel(const TelemetrySnapshot& snapshot, float densityScale, float margin,
+    void BuildFrequencyPanel(const TelemetryRollingStats& rolling, float densityScale, float margin,
                              float panelTop, float panelHeight) noexcept;
-    void BuildFrameTimeGraphPanel(const TelemetrySnapshot& snapshot, float densityScale,
-                                  float margin, float panelTop, float panelHeight) noexcept;
-    void BuildHistogramPanel(const TelemetrySnapshot& snapshot, float densityScale, float margin,
+    void BuildFrameTimeGraphPanel(const TelemetryHudInput& hud, float swapDurationMs,
+                                  float densityScale, float margin, float panelTop,
+                                  float panelHeight) noexcept;
+    void BuildHistogramPanel(const TelemetryHudInput& hud, float swapDurationMs,
+                             const Histogram1sData& histogram, float densityScale, float margin,
                              float panelTop, float panelHeight) noexcept;
 
     std::array<OverlayVertex, kMaxTriangleVertices> mTriangleVertices{};

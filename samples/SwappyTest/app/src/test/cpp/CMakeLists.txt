@@ -39,9 +39,38 @@ add_subdirectory("${ANDROID_GTEST_DIR}" googletest-build)
 enable_testing()
 
 add_executable(swappytest_host_test
+  calibration_stats_test.cpp
+  scenario_builder_test.cpp
+  scenario_catalog_test.cpp
+  scenario_engine_test.cpp
+  scenario_parser_test.cpp
   swappytest_host_test.cpp
+  telemetry_ring_buffer_test.cpp
   ../../main/cpp/CalibrationStats.cpp
+  ../../main/cpp/OverlayBatcher.cpp
   ../../main/cpp/Scenario.cpp
+  ../../main/cpp/ScenarioBuilder.cpp
+  ../../main/cpp/ScenarioEngine.cpp
+  ../../main/cpp/ScenarioParser.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party/json11/json11.cpp
+  ../../main/cpp/scenarios/H1.cpp
+  ../../main/cpp/scenarios/H10.cpp
+  ../../main/cpp/scenarios/H2.cpp
+  ../../main/cpp/scenarios/H3.cpp
+  ../../main/cpp/scenarios/H4.cpp
+  ../../main/cpp/scenarios/H6.cpp
+  ../../main/cpp/scenarios/H7.cpp
+  ../../main/cpp/scenarios/H8.cpp
+  ../../main/cpp/scenarios/H9.cpp
+  ../../main/cpp/scenarios/S1.cpp
+  ../../main/cpp/scenarios/S10.cpp
+  ../../main/cpp/scenarios/S11.cpp
+  ../../main/cpp/scenarios/S2.cpp
+  ../../main/cpp/scenarios/S3.cpp
+  ../../main/cpp/scenarios/S4.cpp
+  ../../main/cpp/scenarios/S5.cpp
+  ../../main/cpp/scenarios/S7.cpp
+  ../../main/cpp/scenarios/ScenarioCatalog.cpp
   ../../main/cpp/TelemetryRingBuffer.cpp
 )
 
@@ -49,6 +78,7 @@ target_include_directories(swappytest_host_test PRIVATE
   include
   ../../main/cpp
   ../../../../../common/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party
 )
 
 target_include_directories(swappytest_host_test SYSTEM PRIVATE

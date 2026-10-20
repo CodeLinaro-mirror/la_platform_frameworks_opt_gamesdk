@@ -434,7 +434,7 @@ public:
         return isNoSwappy() ? "no_swappy" : "classic";
     }
 
-    void start(ANativeWindow* window, int32_t width, int32_t height, bool autoStart = false) {
+    void start(ANativeWindow* window, int32_t width, int32_t height) {
         stop();
         if (!window) return;
 
@@ -443,9 +443,7 @@ public:
                        height > 0 ? height : ANativeWindow_getHeight(window));
         mRunning.store(true);
 
-        if (autoStart) {
-            start_calibration_thread();
-        }
+        start_benchmark_run();
         mRenderThread = std::thread(&SwappyTestRenderer::renderLoop, this);
     }
 
@@ -454,7 +452,7 @@ public:
         if (mRenderThread.joinable()) {
             mRenderThread.join();
         }
-        stop_calibration_thread();
+        stop_benchmark_run();
         if (mWindow) {
             SwappyGL_setWindow(nullptr);
             ANativeWindow_release(mWindow);
@@ -479,6 +477,17 @@ public:
                 ? mVkCurrentSwapIntervalNs.load()
                 : SwappyGL_getSwapIntervalNS();
         return ns == static_cast<uint64_t>(-1) ? 0 : ns;
+    }
+
+    // The pipeline and buffer stuffing options the app last applied, which a
+    // scenario run starts from: auto pipeline mode on or off, and the stuffing
+    // fix wait in frames, -1 while never set (Swappy's default, 0, applies).
+    bool getAutoPipelineMode() const {
+        return mAutoPipelineMode.load();
+    }
+
+    int32_t getBufferStuffingFixWait() const {
+        return mBufferStuffingFixWait.load();
     }
 
     uint64_t getRefreshDurationNs() const {
@@ -540,12 +549,15 @@ public:
         return false;
     }
 
-    std::array<bool, samples::TelemetrySnapshot::kNumFpsGuidelines> getSupportedFpsFlags() const {
-        std::array<bool, samples::TelemetrySnapshot::kNumFpsGuidelines> flags{};
-        for (size_t i = 0; i < samples::TelemetrySnapshot::kNumFpsGuidelines; ++i) {
-            flags[i] = isFpsSupported(samples::TelemetrySnapshot::kFpsGuidelines[i]);
+    std::vector<int32_t> getSupportedFps() const {
+        static constexpr int32_t kCandidateFps[] = {120, 60, 40, 30, 15};
+        std::vector<int32_t> supported;
+        for (int32_t fps : kCandidateFps) {
+            if (isFpsSupported(fps)) {
+                supported.push_back(fps);
+            }
         }
-        return flags;
+        return supported;
     }
 
 private:
@@ -880,10 +892,7 @@ private:
         const float aspect = extent.height > 0
                 ? static_cast<float>(extent.width) / static_cast<float>(extent.height)
                 : 1.0f;
-        const bool diverged = get_is_fps_diverged();
-        const samples::Circle::Color ballColor = diverged
-                ? samples::Circle::Color{1.0f, 0.35f, 0.25f}
-                : samples::Circle::Color{0.0f, 0.9f, 0.75f};
+        const samples::Circle::Color ballColor{0.0f, 0.9f, 0.75f};
         const int32_t gpuWork = get_current_gpu_workload();
         const float drawRadius = (gpuWork > 0) ? 0.65f : 0.12f;
         const float drawX = (gpuWork > 0) ? 0.0f : ball.x;
@@ -893,19 +902,30 @@ private:
         mCurrentCircleRadius.store(drawRadius);
         const std::vector<samples::Circle> circles = {{ballColor, drawRadius, drawX, drawY}};
 
-        if (mOverlayEnabled.load()) {
-            mTelemetry.CaptureSnapshot(&mTelemetrySnapshot);
-            mTelemetrySnapshot.histogramMode = mTouchDrag.histogramMode.load();
-            mOverlayBatcher.BeginFrame(static_cast<float>(extent.width),
-                                       static_cast<float>(extent.height));
-            mOverlayBatcher.BuildTelemetryHud(mTelemetrySnapshot);
-        }
+        buildTelemetryOverlay(static_cast<float>(extent.width), static_cast<float>(extent.height));
 
         vk.circleRenderer.RecordDraw(cmd, imageIndex, extent, aspect, circles, gpuWork,
                                      mOverlayEnabled.load() ? &vk.overlayRenderer : nullptr,
                                      frameCounter,
                                      mOverlayEnabled.load() ? &mOverlayBatcher : nullptr);
         return {drawX, drawY};
+    }
+
+    void buildTelemetryOverlay(float width, float height) {
+        if (!mOverlayEnabled.load()) {
+            return;
+        }
+        DvfsUiSnapshot ui{};
+        get_ui_snapshot(&ui);
+        const samples::TelemetryHudInput hud{
+                .telemetry = mTelemetry,
+                .ui = ui,
+                .pacingStrategyName = getPacingStrategyName(),
+                .supportedFps = getSupportedFps(),
+                .histogramMode = mTouchDrag.histogramMode.load(),
+        };
+        mOverlayBatcher.BeginFrame(width, height);
+        mOverlayBatcher.BuildTelemetryHud(hud);
     }
 
     // Closes the pending input-latency async trace section, if any, and logs the circle
@@ -970,8 +990,7 @@ private:
         const uint64_t frameDurNs = static_cast<uint64_t>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(frameEnd - prevFrameEnd)
                         .count());
-        mTelemetry.RecordFrame(frameDurNs, frameMs, getPacingStrategyName(),
-                               getSupportedFpsFlags());
+        mTelemetry.recordFrame(frameDurNs, frameMs);
         prevFrameEnd = frameEnd;
     }
 
@@ -1004,7 +1023,7 @@ private:
         bool wasTracing = false;
         int prevStepIndex = -2;
         uint64_t frameCounter = 0;
-        mTelemetry.Reset();
+        mTelemetry.reset();
 
         while (mRunning.load()) {
             switch (poll_calibration_hold()) {
@@ -1119,9 +1138,7 @@ private:
     CirclePosition drawGlesFrame(GlesRenderState& gl, const BallMotionState& ball) {
         const SurfaceSize size = mSurfaceSize.load();
         float aspect = size.height > 0 ? static_cast<float>(size.width) / size.height : 1.0f;
-        bool diverged = get_is_fps_diverged();
-        samples::Circle::Color ballColor = diverged ? samples::Circle::Color{1.0f, 0.35f, 0.25f}
-                                                    : samples::Circle::Color{0.0f, 0.9f, 0.75f};
+        const samples::Circle::Color ballColor{0.0f, 0.9f, 0.75f};
         int32_t gpuWork = get_current_gpu_workload();
         const float drawRadius = (gpuWork > 0) ? 0.65f : 0.12f;
         const float drawX = (gpuWork > 0) ? 0.0f : ball.x;
@@ -1131,13 +1148,7 @@ private:
         mCurrentCircleY.store(drawY);
         mCurrentCircleRadius.store(drawRadius);
 
-        if (mOverlayEnabled.load()) {
-            mTelemetry.CaptureSnapshot(&mTelemetrySnapshot);
-            mTelemetrySnapshot.histogramMode = mTouchDrag.histogramMode.load();
-            mOverlayBatcher.BeginFrame(static_cast<float>(size.width),
-                                       static_cast<float>(size.height));
-            mOverlayBatcher.BuildTelemetryHud(mTelemetrySnapshot);
-        }
+        buildTelemetryOverlay(static_cast<float>(size.width), static_cast<float>(size.height));
 
         gl.circleRenderer.Draw(size.width, size.height, aspect, circles, gpuWork,
                                mOverlayEnabled.load() ? &gl.overlayRenderer : nullptr,
@@ -1173,7 +1184,7 @@ private:
         bool wasTracing = false;
         int prevStepIndex = -2;
         uint64_t frameCounter = 0;
-        mTelemetry.Reset();
+        mTelemetry.reset();
 
         while (mRunning.load()) {
             switch (poll_calibration_hold()) {
@@ -1205,7 +1216,7 @@ private:
             // Execute calibrated DVFS workload inside the Swappy frame window
             run_frame_swappy_test_workload();
 
-            // Update bouncyball position and color based on current test phase / divergence
+            // Update bouncyball position and color based on current test phase
             const float dt = clampedFrameDeltaSeconds(prevFrameEnd);
             updateBallMotion(ball, dt);
 
@@ -1257,7 +1268,6 @@ private:
     std::atomic<bool> mOverlayEnabled{true};
     samples::TelemetryRingBuffer mTelemetry;
     samples::OverlayBatcher mOverlayBatcher;
-    samples::TelemetrySnapshot mTelemetrySnapshot;
     TouchDragState mTouchDrag;
     std::atomic<float> mCurrentCircleX{0.0f};
     std::atomic<float> mCurrentCircleY{0.0f};
@@ -1288,6 +1298,14 @@ void swappy_backend_set_auto_pipeline_mode(bool enabled) {
 
 void swappy_backend_set_buffer_stuffing_fix_wait(int32_t n_frames) {
     SwappyTestRenderer::getInstance().setBufferStuffingFixWait(n_frames);
+}
+
+bool swappy_backend_get_auto_pipeline_mode(void) {
+    return SwappyTestRenderer::getInstance().getAutoPipelineMode();
+}
+
+int32_t swappy_backend_get_buffer_stuffing_fix_wait(void) {
+    return SwappyTestRenderer::getInstance().getBufferStuffingFixWait();
 }
 
 void swappy_backend_reset_frame_pacing(void) {
@@ -1352,9 +1370,9 @@ JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetPacing
 
 JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nStartRender(
         JNIEnv* env, jobject /* this */, jobject surface, jint width, jint height,
-        jboolean autoStart) {
+        jboolean /* autoStart */) {
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
-    SwappyTestRenderer::getInstance().start(window, width, height, autoStart);
+    SwappyTestRenderer::getInstance().start(window, width, height);
 }
 
 JNIEXPORT void JNICALL
@@ -1400,15 +1418,20 @@ JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetTestSc
     env->ReleaseStringUTFChars(scenario, str);
 }
 
-JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetCustomSteps(
-        JNIEnv* env, jobject /* this */, jstring stepsSpec) {
-    if (!stepsSpec) {
-        set_custom_steps("");
+JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSelectScenario(
+        JNIEnv* /* env */, jobject /* this */, jint scenarioIndex) {
+    select_scenario(scenarioIndex);
+}
+
+JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetCustomScenario(
+        JNIEnv* env, jobject /* this */, jstring scenarioSpec) {
+    if (!scenarioSpec) {
+        set_custom_scenario("");
         return;
     }
-    const char* str = env->GetStringUTFChars(stepsSpec, nullptr);
-    set_custom_steps(str);
-    env->ReleaseStringUTFChars(stepsSpec, str);
+    const char* str = env->GetStringUTFChars(scenarioSpec, nullptr);
+    set_custom_scenario(str);
+    env->ReleaseStringUTFChars(scenarioSpec, str);
 }
 
 JNIEXPORT void JNICALL Java_com_samples_swappytest_SwappyTestActivity_nSetRunIteration(

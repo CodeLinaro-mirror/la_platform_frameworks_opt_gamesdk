@@ -20,8 +20,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "DvfsBenchmark.h"
-
 namespace samples {
 
 struct FrameTelemetrySample {
@@ -40,89 +38,82 @@ struct ClusterRollingStats {
     bool isActiveCluster = false;
 };
 
-struct TelemetrySnapshot {
-    static constexpr size_t kBufferCapacity = 150;
+struct TelemetryRollingStats {
     static constexpr size_t kMaxClusters = 4;
-    static constexpr size_t kNumFpsGuidelines = 5;
-    static constexpr std::array<int32_t, kNumFpsGuidelines> kFpsGuidelines = {120, 60, 40, 30, 15};
 
-    std::array<FrameTelemetrySample, kBufferCapacity> samples{};
-    size_t sampleCount = 0;
-    size_t oldestSampleIndex = 0;
-
-    float activeCadenceMs = 16.67f;
-    std::array<bool, kNumFpsGuidelines> supportedFps = {false, true, true, true, true};
-
+    float swapDurationMs = 16.67f;
     int32_t clusterCount = 3;
     std::array<ClusterRollingStats, kMaxClusters> clusterStats{};
     float averageGpuFrequencyPercent = -1.0f;
+};
 
-    std::array<char, 128> lineExpectedFps{};
-    std::array<char, 128> lineRealFps{};
-    std::array<char, 128> lineCpuFrequency{};
-    std::array<char, 128> lineTestStatus{};
+struct Histogram1sData {
+    static constexpr size_t kBinCount = 42;
 
-    struct Histogram1sData {
-        static constexpr size_t kBinCount = 42;
-        std::array<int32_t, kBinCount> totalBins{};
-        std::array<int32_t, kBinCount> workBins{};
-        std::array<int32_t, kBinCount> expBins{};
-        std::array<float, kBinCount> workCpuSums{};
-        std::array<float, kBinCount> workTotalSums{};
-        int32_t windowFrames = 0;
-        int32_t frames60 = 0;
-        int32_t frames40 = 0;
-        int32_t frames30 = 0;
-        int32_t framesSlow = 0;
-        float avgExpMs = 0.0f;
-        float avgCpuMs = 0.0f;
-        float avgGlMs = 0.0f;
-        float avgTotalMs = 0.0f;
-    };
-
-    bool histogramMode = false;
-    Histogram1sData histogram{};
+    std::array<int32_t, kBinCount> totalBins{};
+    std::array<int32_t, kBinCount> workBins{};
+    std::array<int32_t, kBinCount> expBins{};
+    std::array<float, kBinCount> workCpuSums{};
+    std::array<float, kBinCount> workTotalSums{};
+    int32_t windowFrames = 0;
+    int32_t frames60 = 0;
+    int32_t frames40 = 0;
+    int32_t frames30 = 0;
+    int32_t framesSlow = 0;
+    float avgExpMs = 0.0f;
+    float avgCpuMs = 0.0f;
+    float avgGlMs = 0.0f;
+    float avgTotalMs = 0.0f;
 };
 
 class TelemetryRingBuffer {
 public:
-    static constexpr size_t kCapacity = TelemetrySnapshot::kBufferCapacity;
+    static constexpr size_t kCapacity = 150;
+    static constexpr size_t kMaxClusters = TelemetryRollingStats::kMaxClusters;
     static constexpr size_t kRollingFrequencyWindowFrames = 60;
-    static constexpr size_t kActiveCadenceWindowFrames = 20;
+    static constexpr size_t kSwapDurationWindowFrames = 20;
 
     TelemetryRingBuffer() = default;
 
-    void Reset() noexcept;
+    void reset() noexcept;
 
-    void RecordFrame(
-            uint64_t frameDurationNs, float gpuWorkMs, const char* pacingStrategyName,
-            const std::array<bool, TelemetrySnapshot::kNumFpsGuidelines>& supportedFps) noexcept;
+    void recordFrame(uint64_t frameDurationNs, float gpuWorkMs) noexcept;
+
+    [[nodiscard]] size_t sampleCount() const noexcept {
+        return mCount;
+    }
 
     /**
-     * Copies the latest ring buffer state and rolling statistics into outSnapshot.
-     * Precondition: outSnapshot != nullptr.
+     * Returns the sample at chronological `index` in [0, sampleCount()), where 0 is the
+     * oldest sample in the ring buffer and sampleCount() - 1 is the most recent.
      */
-    void CaptureSnapshot(TelemetrySnapshot* outSnapshot) const noexcept;
+    [[nodiscard]] const FrameTelemetrySample& sampleOldestFirst(size_t index) const noexcept;
+
+    /**
+     * Returns the most recently recorded sample, or nullptr if the buffer is empty.
+     */
+    [[nodiscard]] const FrameTelemetrySample* latestSample() const noexcept;
+
+    /**
+     * Computes rolling swap duration, CPU cluster residency/frequency, and GPU frequency
+     * statistics over the recent frame windows. Returns default baseline values if empty.
+     */
+    [[nodiscard]] TelemetryRollingStats computeRollingStats() const noexcept;
+
+    /**
+     * Aggregates a 1-second frame-time and work-duration histogram from the most recent
+     * samples. Returns a zero-initialized histogram if empty.
+     */
+    [[nodiscard]] Histogram1sData computeHistogram1s() const noexcept;
 
 private:
-    void UpdateRollingStatsAndText(const DvfsUiSnapshot& ui,
-                                   const char* pacingStrategyName) noexcept;
+    [[nodiscard]] const FrameTelemetrySample& sampleNewestFirst(size_t age) const noexcept;
+    [[nodiscard]] float computeSwapDurationMs() const noexcept;
 
     std::array<FrameTelemetrySample, kCapacity> mSamples{};
     size_t mHead = 0;
     size_t mCount = 0;
     int32_t mClusterCount = 3;
-    std::array<bool, TelemetrySnapshot::kNumFpsGuidelines> mSupportedFps = {false, true, true, true,
-                                                                            true};
-
-    float mActiveCadenceMs = 16.67f;
-    std::array<ClusterRollingStats, TelemetrySnapshot::kMaxClusters> mClusterStats{};
-    float mAverageGpuFrequencyPercent = -1.0f;
-
-    std::array<char, 128> mLineExpectedFps{};
-    std::array<char, 128> mLineRealFps{};
-    std::array<char, 128> mLineCpuFrequency{};
-    std::array<char, 128> mLineTestStatus{};
 };
 
 } // namespace samples

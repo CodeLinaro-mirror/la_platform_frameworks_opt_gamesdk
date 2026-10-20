@@ -9,6 +9,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size
 
 include_directories(../../common/include)
 include_directories(src/main/cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party)
 
 add_library(${CMAKE_PROJECT_NAME}
             SHARED
@@ -21,8 +22,30 @@ add_library(${CMAKE_PROJECT_NAME}
             src/main/cpp/GpuCalibration.cpp
             src/main/cpp/OverlayBatcher.cpp
             src/main/cpp/Scenario.cpp
+            src/main/cpp/ScenarioBuilder.cpp
+            src/main/cpp/ScenarioEngine.cpp
+            src/main/cpp/ScenarioParser.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/json11/json11.cpp
             src/main/cpp/SwappyTestRenderer.cpp
             src/main/cpp/TelemetryRingBuffer.cpp
+            src/main/cpp/scenarios/H1.cpp
+            src/main/cpp/scenarios/H10.cpp
+            src/main/cpp/scenarios/H2.cpp
+            src/main/cpp/scenarios/H3.cpp
+            src/main/cpp/scenarios/H4.cpp
+            src/main/cpp/scenarios/H6.cpp
+            src/main/cpp/scenarios/H7.cpp
+            src/main/cpp/scenarios/H8.cpp
+            src/main/cpp/scenarios/H9.cpp
+            src/main/cpp/scenarios/S1.cpp
+            src/main/cpp/scenarios/S10.cpp
+            src/main/cpp/scenarios/S11.cpp
+            src/main/cpp/scenarios/S2.cpp
+            src/main/cpp/scenarios/S3.cpp
+            src/main/cpp/scenarios/S4.cpp
+            src/main/cpp/scenarios/S5.cpp
+            src/main/cpp/scenarios/S7.cpp
+            src/main/cpp/scenarios/ScenarioCatalog.cpp
             src/main/cpp/gles/GlesCircleRenderer.cpp
             src/main/cpp/gles/GlesContext.cpp
             src/main/cpp/gles/GlesGpuCalibrationTarget.cpp
