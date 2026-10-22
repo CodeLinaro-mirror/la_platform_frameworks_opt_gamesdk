@@ -1,0 +1,4 @@
+{
+  "build_root": "/tmp/agdk_coverage_corpus/tree/gamesdk",
+  "compiler": "Android (12027248, +pgo, +bolt, +lto, +mlgo, based on r522817) clang version 18.0.1 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)"
+}
