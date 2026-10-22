@@ -14,6 +14,11 @@
 # ./build.sh hostUnitTests
 #   Runs the host C++ unit tests (swappy_host_test) with prebuilt JDK environment
 
+# ./build.sh coverageBundle: write the .gcno bundle from testApks to DIST_DIR.
+# ./build.sh coverageTests: run the tools/coverage unit and corpus tests.
+# ./build.sh hostCoverageReport (or ./build.sh hostUnitTests --coverage):
+#   write the host coverage report to DIST_DIR.
+
 set -e # Exit on error
 
 # Set up the environment
@@ -169,6 +174,44 @@ else
     dist_dir=$DIST_DIR
 fi
 
+package_coverage_bundle() {
+    # Write .gcno notes and the manifest for CI post-processing.
+    python3 tools/coverage bundle \
+        --out "$dist_dir/agdk_coverage_bundle.tar.gz" --diff-base=HEAD~1
+    # An instrumentation regression yields an empty bundle, not an error.
+    python3 tools/coverage/check_coverage_artifacts.py \
+        bundle "$dist_dir/agdk_coverage_bundle.tar.gz" \
+        --module games-frame-pacing --module game-activity \
+        --module game-text-input --module games-controller
+    # Temporary alias for the deployed presubmit analyzer until it switches to
+    # agdk_coverage_bundle.tar.gz (b/573084056).
+    cp "$dist_dir/agdk_coverage_bundle.tar.gz" "$dist_dir/swappy_coverage_bundle.tar.gz"
+}
+
+run_coverage_tests() {
+    # Unit tests plus the llvm-cov corpus regression test. The corpus test must
+    # run (not skip) on CI, where the NDK llvm-cov is on PATH.
+    AGDK_COVERAGE_REQUIRE_LLVM_COV=1 python3 -B -m unittest discover \
+        -s tools/coverage/tests -t tools/coverage
+}
+
+generate_host_coverage_report() {
+    if [[ ! -d ../.temp/host/.cmake || ! -f ../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml ]]; then
+        echo "error: host coverage inputs not found; run './build.sh hostUnitTests' first" >&2
+        exit 1
+    fi
+    python3 tools/coverage report \
+        --out "$dist_dir/host_coverage" \
+        --native-build-dir ../.temp/host/.cmake \
+        --diff-base=HEAD~1 \
+        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml" \
+        --jacoco-xml="buildSrc/build/reports/jacoco/test/jacocoTestReport.xml"
+    # A path-mapping regression yields an empty report, not an error.
+    python3 tools/coverage/check_coverage_artifacts.py \
+        summary "$dist_dir/host_coverage/coverage_summary.json" \
+        --language cpp --language java
+}
+
 ## Build the Game SDK distribution zip and the zips for Maven AARs
 if [[ $1 == "full" ]]
 then
@@ -234,10 +277,14 @@ then
     (cd "$dist_dir/$package_name/apks/test" && zip -j "$dist_dir/androidTest.zip" *.apk *.config)
     cp -v "$dist_dir/androidTest.zip" "$dist_dir/$package_name/androidTest.zip"
 
-    # Package .gcno notes, C++ sources, and report generator for CI post-processing
-    python3 games-frame-pacing/tools/generate_test_coverage.py \
-        --mode=package-gcno --dist-dir="$dist_dir" --diff-base=HEAD~1
+    # Run coverageBundle in testApks while CI runs only testApks in this
+    # container and ATP pairs .gcda files with these .gcno notes.
+    package_coverage_bundle
     cp -v "$dist_dir/swappy_coverage_bundle.tar.gz" "$dist_dir/$package_name/swappy_coverage_bundle.tar.gz"
+    exit
+elif [[ $1 == "coverageBundle" ]]
+then
+    package_coverage_bundle
     exit
 elif [[ $1 == "hostUnitTests" ]]
 then
@@ -246,12 +293,19 @@ then
         :game-activity:testDebugUnitTest :game-activity:jacocoTestReport \
         :buildSrc:test :buildSrc:jacocoTestReport \
         -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
-    python3 -B -m unittest discover -s games-frame-pacing/tools -p 'test_generate_test_coverage.py'
-    python3 games-frame-pacing/tools/generate_test_coverage.py \
-        --mode=report --gcda-dir="../.temp/host/.cmake" --output-dir="$dist_dir/host_coverage" \
-        --diff-base=HEAD~1 \
-        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml" \
-        --jacoco-xml="buildSrc/build/reports/jacoco/test/jacocoTestReport.xml"
+    run_coverage_tests
+    if [[ $2 == "--coverage" ]]
+    then
+        generate_host_coverage_report
+    fi
+    exit
+elif [[ $1 == "coverageTests" ]]
+then
+    run_coverage_tests
+    exit
+elif [[ $1 == "hostCoverageReport" ]]
+then
+    generate_host_coverage_report
     exit
 else
     # The default is to build the express zip
