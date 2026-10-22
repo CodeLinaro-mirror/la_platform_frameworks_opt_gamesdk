@@ -66,6 +66,8 @@ if(BUILD_TEST)
      find_package(junit-gtest REQUIRED CONFIG)
 
      add_library(paddleboat_test SHARED ${SOURCE_LOCATION_TEST}/paddleboat_tests.cpp)
+     target_include_directories(paddleboat_test PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/../test/common)
      target_link_libraries(paddleboat_test
        PRIVATE
          paddleboat_static

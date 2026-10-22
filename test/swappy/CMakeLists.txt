@@ -56,6 +56,7 @@ include_directories(
   ../../games-frame-pacing/common
   ../../src/common
   ../../include
+  ../common
 )
 
 set ( SOURCE_LOCATION_COMMON "../../games-frame-pacing/common" )

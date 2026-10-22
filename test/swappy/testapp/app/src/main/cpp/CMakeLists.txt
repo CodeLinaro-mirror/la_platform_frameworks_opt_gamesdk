@@ -30,6 +30,7 @@ if(AGDK_ENABLE_COVERAGE)
 endif()
 
 include_directories("${TEST_DIR}"
+        "${TEST_DIR}/../common"
         "${TEST_DIR}/../../samples/common/include"
         "${TEST_DIR}/../../games-frame-pacing"
         "${TEST_DIR}/../../games-frame-pacing/common"

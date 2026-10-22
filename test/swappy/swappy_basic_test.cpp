@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "ChoreographerShim.h"
-#include "GcovFlushEnvironment.h"
 #include "SwappyDisplayManager.h"
+#include "gcov_flush_environment.h"
 #include "swappy/swappyGL.h"
 #include "swappy/swappyGL_extra.h"
 #include "swappy/swappyVk.h"

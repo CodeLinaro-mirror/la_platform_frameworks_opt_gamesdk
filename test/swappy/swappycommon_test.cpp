@@ -23,11 +23,11 @@
 #include <thread>
 #include <vector>
 
-#include "GcovFlushEnvironment.h"
 #include "common/CPUTracer.h"
 #include "common/CpuInfo.h"
 #include "common/FrameStatistics.h"
 #include "common/SwappyDisplayManager.h"
+#include "gcov_flush_environment.h"
 #include "gtest/gtest.h"
 #include "swappy/swappy_common.h"
 

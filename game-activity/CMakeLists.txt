@@ -60,5 +60,7 @@ if(BUILD_ANDROID_TESTS)
     add_library(gameactivity_test_native SHARED
         ${GAMEACTIVITY_SRCS}
         src/androidTest/cpp/gameactivity_test.cpp)
+    target_include_directories(gameactivity_test_native PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../test/common)
     target_link_libraries(gameactivity_test_native android log)
 endif()
