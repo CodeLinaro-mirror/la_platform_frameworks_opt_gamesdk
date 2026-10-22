@@ -204,8 +204,7 @@ generate_host_coverage_report() {
         --out "$dist_dir/host_coverage" \
         --native-build-dir ../.temp/host/.cmake \
         --diff-base=HEAD~1 \
-        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml" \
-        --jacoco-xml="buildSrc/build/reports/jacoco/test/jacocoTestReport.xml"
+        --jacoco-xml="../out_game_activity/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
     # A path-mapping regression yields an empty report, not an error.
     python3 tools/coverage/check_coverage_artifacts.py \
         summary "$dist_dir/host_coverage/coverage_summary.json" \
@@ -291,7 +290,7 @@ then
     find ../.temp/host/.cmake -name "*.gcda" -delete 2>/dev/null || true
     ./gradlew hostUnitTests \
         :game-activity:testDebugUnitTest :game-activity:jacocoTestReport \
-        :buildSrc:test :buildSrc:jacocoTestReport \
+        :buildSrc:test \
         -Pndk=$AGDK_NDK_VERSION -PenableCoverage=true --stacktrace
     run_coverage_tests
     if [[ $2 == "--coverage" ]]
