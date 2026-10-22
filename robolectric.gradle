@@ -1,0 +1,44 @@
+/*
+ * Copyright 2026 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Robolectric unit test settings for an Android module. Gradle resolves the
+// instrumented Android SDK JARs of Robolectric 4.13 before the tests start.
+// The tests then run with robolectric.offline=true and do not download JARs
+// from Maven. The tests need these SDK versions:
+//   - 12-robolectric-7732740-i6: SDK 31, the runtime SDK of @Config(sdk = 31).
+//   - 14-robolectric-10818077-i6: SDK 34. Robolectric 4.13 resolves its
+//     maximum supported SDK at startup.
+def robolectricSdkVersions = [
+    '12-robolectric-7732740-i6',
+    '14-robolectric-10818077-i6',
+]
+
+// A detached configuration for each version keeps Gradle from replacing the
+// lower version with the higher one.
+def copyRobolectricDependencies = tasks.register('copyRobolectricDependencies', Sync) {
+    from robolectricSdkVersions.collect { version ->
+        configurations.detachedConfiguration(
+            dependencies.create("org.robolectric:android-all-instrumented:$version")
+        ).setTransitive(false)
+    }
+    into "$buildDir/robolectric-dependencies"
+}
+
+android.testOptions.unitTests.all {
+    dependsOn copyRobolectricDependencies
+    systemProperty 'robolectric.offline', 'true'
+    systemProperty 'robolectric.dependency.dir', "$buildDir/robolectric-dependencies"
+}
