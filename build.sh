@@ -279,7 +279,6 @@ then
     # Run coverageBundle in testApks while CI runs only testApks in this
     # container and ATP pairs .gcda files with these .gcno notes.
     package_coverage_bundle
-    cp -v "$dist_dir/swappy_coverage_bundle.tar.gz" "$dist_dir/$package_name/swappy_coverage_bundle.tar.gz"
     exit
 elif [[ $1 == "coverageBundle" ]]
 then
