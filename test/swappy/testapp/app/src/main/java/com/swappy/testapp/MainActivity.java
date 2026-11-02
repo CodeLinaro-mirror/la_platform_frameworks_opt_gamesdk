@@ -17,18 +17,42 @@
 package com.swappy.testapp;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
-    TextView mTextView;
-    Thread mTestThread;
-    Timer mTimer;
-    Boolean mDone;
-    String mResult;
+    private static final long POLL_INTERVAL_MS = 1000L;
+    private static final Handler sMainHandler = new Handler(Looper.getMainLooper());
+    private static final Object sLock = new Object();
+    // GoogleTest supports only one RUN_ALL_TESTS() call per process.
+    private static boolean sStarted = false;
+    // Null until the test run ends.
+    private static String sResult = null;
+    // Accessed on the main thread between onStart() and onStop().
+    private static Runnable sActivePollRunnable = null;
+
+    private TextView mTextView;
+    private final Runnable mPollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            final String result;
+            synchronized (sLock) {
+                result = sResult;
+            }
+            if (result != null) {
+                mTextView.setText(result);
+            } else {
+                mTextView.setText(testSummarySoFar());
+                sMainHandler.postDelayed(this, POLL_INTERVAL_MS);
+            }
+        }
+    };
 
     // Used to load the test app's native library on application startup.
     static {
@@ -42,53 +66,56 @@ public class MainActivity extends AppCompatActivity {
 
         mTextView = findViewById(R.id.sample_text);
         mTextView.setMovementMethod(new ScrollingMovementMethod());
-        mDone = false;
-        startTestsOnSeparateThread();
-        mTimer = new Timer();
-        mTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                TimerMethod();
-            }
-        }, 0, 1000);
-    }
-    private void TimerMethod() {
-        // This method is called directly by the timer
-        // and runs in the same thread as the timer.
-
-        // We call the method that will work with the UI
-        // through the runOnUiThread method.
-        this.runOnUiThread(() -> {
-            if (mDone) {
-                mTextView.setText(mResult);
-                mTimer.cancel();
-            } else {
-                mTextView.setText(testSummarySoFar());
-            }
-        });
+        startTestsOnce();
     }
 
     @Override
-    protected void onDestroy() {
-        try {
-            mTestThread.join();
-        } catch (InterruptedException e) {
-            //
-        }
-        super.onDestroy();
+    protected void onStart() {
+        super.onStart();
+        sActivePollRunnable = mPollRunnable;
+        sMainHandler.post(mPollRunnable);
     }
-    void startTestsOnSeparateThread() {
-        mTestThread = new Thread(() -> {
-            mResult = runTests();
-            mDone = true;
-        });
-        mTestThread.start();
+
+    @Override
+    protected void onStop() {
+        if (sActivePollRunnable == mPollRunnable) {
+            sActivePollRunnable = null;
+        }
+        sMainHandler.removeCallbacks(mPollRunnable);
+        super.onStop();
+    }
+
+    private static void startTestsOnce() {
+        synchronized (sLock) {
+            if (sStarted) {
+                return;
+            }
+            sStarted = true;
+        }
+        Thread testThread = new Thread(() -> {
+            String result = "";
+            try {
+                result = runTests();
+            } finally {
+                synchronized (sLock) {
+                    sResult = result;
+                }
+                // Show the result now instead of at the next poll.
+                sMainHandler.post(() -> {
+                    if (sActivePollRunnable != null) {
+                        sMainHandler.removeCallbacks(sActivePollRunnable);
+                        sActivePollRunnable.run();
+                    }
+                });
+            }
+        }, "SwappyTestRunner");
+        testThread.start();
     }
 
     /**
      * Native methods implemented in app's native library,
      * which is packaged with this application.
      */
-    public native String runTests();
-    public native String testSummarySoFar();
+    public static native String runTests();
+    public static native String testSummarySoFar();
 }

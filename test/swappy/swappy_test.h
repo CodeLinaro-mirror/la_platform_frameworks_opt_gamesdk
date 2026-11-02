@@ -16,10 +16,15 @@
 
 #pragma once
 
+#include <jni.h>
+
+#include <string>
+
 // This function is exported by the test library and should be called to run the
 // tests if you have a Java env. messages is filled with a summary of the tests
 // run, including failure messages.
 extern "C" int shared_main(int argc, char* argv[], JNIEnv* env, jobject context,
                            std::string& messages);
 
-extern "C" size_t test_summary(char* result, size_t len);
+// Writes the current test progress summary to summary.
+extern "C" void test_summary(std::string& summary);

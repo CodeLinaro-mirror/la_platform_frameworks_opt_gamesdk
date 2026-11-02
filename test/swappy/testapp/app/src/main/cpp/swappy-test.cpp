@@ -22,13 +22,13 @@
 #define LOG_TAG "TestApp"
 #include "Log.h"
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_swappy_testapp_MainActivity_runTests(JNIEnv* env,
-                                                                                   jobject ctx) {
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_swappy_testapp_MainActivity_runTests(JNIEnv* env, jclass /*clazz*/) {
     int argc = 1;
     char appName[] = "testapp";
     char* argv[] = {appName};
     std::string full_record;
-    int ret_code = shared_main(argc, argv, env, ctx, full_record);
+    int ret_code = shared_main(argc, argv, env, nullptr, full_record);
     if (ret_code == 0) {
         ALOGV("%s", full_record.c_str());
     } else {
@@ -38,9 +38,8 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_swappy_testapp_MainActivity_runTes
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_swappy_testapp_MainActivity_testSummarySoFar(JNIEnv* env, jobject ctx) {
-    constexpr int BUF_LEN = 2048;
-    static char buf[BUF_LEN] = "";
-    test_summary(buf, BUF_LEN);
-    return env->NewStringUTF(buf);
+Java_com_swappy_testapp_MainActivity_testSummarySoFar(JNIEnv* env, jclass /*clazz*/) {
+    std::string summary;
+    test_summary(summary);
+    return env->NewStringUTF(summary.c_str());
 }
