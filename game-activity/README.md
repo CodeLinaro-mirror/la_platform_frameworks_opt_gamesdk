@@ -27,3 +27,8 @@ dependencies {
     ...
 `
 Not adding this will cause a JNI crash at startup.
+
+Declare `android:appCategory="game"` on the `<application>` element of your manifest. On
+Android 16, for targetSdk 36 and later, the system ignores `screenOrientation`,
+`resizeableActivity` and aspect ratio limits on large screens (smallest width 600dp or more)
+unless the app declares this category.
