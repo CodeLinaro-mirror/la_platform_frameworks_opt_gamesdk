@@ -24,4 +24,10 @@ public class TestGameActivity extends GameActivity {
     }
 
     public static native void setOnPauseSleepDurationMs(int durationMs);
+
+    /** Returns the trim level seen by the last APP_CMD_LOW_MEMORY handler, or -1. */
+    public static native int getLastTrimMemoryLevel();
+
+    /** Returns the GameActivityTrimMemoryLevel values, from RUNNING_MODERATE to COMPLETE. */
+    public static native int[] getTrimMemoryLevels();
 }

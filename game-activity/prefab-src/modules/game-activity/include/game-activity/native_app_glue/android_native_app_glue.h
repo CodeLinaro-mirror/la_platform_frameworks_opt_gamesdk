@@ -250,6 +250,12 @@ struct android_app {
      */
     int textInputState;
 
+    /**
+     * Last onTrimMemory level, one of GameActivityTrimMemoryLevel.
+     * Valid within APP_CMD_LOW_MEMORY handler.
+     */
+    int trimMemoryLevel;
+
     // Below are "private" implementation of the glue code.
     /** @cond INTERNAL */
 
@@ -269,6 +275,7 @@ struct android_app {
     int redrawNeeded;
     ANativeWindow* pendingWindow;
     ARect pendingContentRect;
+    int pendingTrimMemoryLevel;
 
     android_key_event_filter keyEventFilter;
     android_motion_event_filter motionEventFilter;
@@ -373,8 +380,8 @@ enum NativeAppGlueAppCmd : int8_t {
     APP_CMD_CONFIG_CHANGED,
 
     /**
-     * Command from main thread: the system is running low on memory.
-     * Try to reduce your memory use.
+     * Command from main thread: onTrimMemory was called. The level is in
+     * android_app::trimMemoryLevel.
      */
     APP_CMD_LOW_MEMORY,
 

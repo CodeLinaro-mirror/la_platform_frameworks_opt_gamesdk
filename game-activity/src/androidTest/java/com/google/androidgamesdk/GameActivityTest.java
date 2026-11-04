@@ -16,9 +16,13 @@
 
 package com.google.androidgamesdk;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.content.ComponentCallbacks2;
+import android.os.SystemClock;
 import android.util.Log;
 import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
@@ -93,5 +97,45 @@ public class GameActivityTest {
                 logcatString.contains("Application callback for event APP_CMD_PAUSE took"));
         assertTrue("Expected error log signature missing",
                 logcatString.contains(" E threaded_app: Application callback"));
+    }
+
+    @Test
+    public void onTrimMemory_passesLevelToLowMemoryCommand() {
+        ActivityScenario<TestGameActivity> scenario = rule.getScenario();
+
+        scenario.onActivity(
+                activity -> activity.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN));
+        assertEquals(ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN,
+                waitForTrimMemoryLevel(ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN));
+
+        scenario.onActivity(
+                activity -> activity.onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_BACKGROUND));
+        assertEquals(ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
+                waitForTrimMemoryLevel(ComponentCallbacks2.TRIM_MEMORY_BACKGROUND));
+    }
+
+    @Test
+    public void trimMemoryLevels_matchComponentCallbacks2() {
+        int[] expected = {
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE,
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL,
+                ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN,
+                ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
+                ComponentCallbacks2.TRIM_MEMORY_MODERATE,
+                ComponentCallbacks2.TRIM_MEMORY_COMPLETE,
+        };
+        assertArrayEquals(expected, TestGameActivity.getTrimMemoryLevels());
+    }
+
+    /** Waits up to 5 seconds for the native thread to handle APP_CMD_LOW_MEMORY. */
+    private static int waitForTrimMemoryLevel(int expectedLevel) {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        int level = TestGameActivity.getLastTrimMemoryLevel();
+        while (level != expectedLevel && SystemClock.uptimeMillis() < deadline) {
+            SystemClock.sleep(10);
+            level = TestGameActivity.getLastTrimMemoryLevel();
+        }
+        return level;
     }
 }

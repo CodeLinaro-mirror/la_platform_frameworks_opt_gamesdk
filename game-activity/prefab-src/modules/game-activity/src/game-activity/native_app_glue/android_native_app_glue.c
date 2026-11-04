@@ -135,6 +135,13 @@ void android_app_pre_exec_cmd(struct android_app* android_app, int8_t cmd) {
             LOGV("APP_CMD_DESTROY");
             android_app->destroyRequested = 1;
             break;
+
+        case APP_CMD_LOW_MEMORY:
+            LOGV("APP_CMD_LOW_MEMORY");
+            pthread_mutex_lock(&android_app->mutex);
+            android_app->trimMemoryLevel = android_app->pendingTrimMemoryLevel;
+            pthread_mutex_unlock(&android_app->mutex);
+            break;
     }
 }
 
@@ -504,7 +511,14 @@ static void onConfigurationChanged(GameActivity* activity) {
 
 static void onTrimMemory(GameActivity* activity, int level) {
     LOGV("TrimMemory: %p %d", activity, level);
-    android_app_write_cmd(ToApp(activity), APP_CMD_LOW_MEMORY);
+
+    struct android_app* android_app = ToApp(activity);
+
+    pthread_mutex_lock(&android_app->mutex);
+    android_app->pendingTrimMemoryLevel = level;
+
+    android_app_write_cmd(android_app, APP_CMD_LOW_MEMORY);
+    pthread_mutex_unlock(&android_app->mutex);
 }
 
 static void onWindowFocusChanged(GameActivity* activity, bool focused) {

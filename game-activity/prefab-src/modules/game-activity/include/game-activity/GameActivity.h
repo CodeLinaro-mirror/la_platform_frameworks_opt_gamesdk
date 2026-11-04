@@ -149,6 +149,52 @@ typedef struct GameActivity {
 typedef void (*SaveInstanceStateRecallback)(const char* bytes, int len, void* context);
 
 /**
+ * Levels for GameActivityCallbacks::onTrimMemory,
+ * as per the Java API at android.content.ComponentCallbacks2.
+ */
+enum GameActivityTrimMemoryLevel : uint8_t {
+    /**
+     * The process is running and not killable, but the device is running
+     * moderately low on memory.
+     * @deprecated Apps are not notified of this level since API level 34.
+     */
+    GAMEACTIVITY_TRIM_MEMORY_RUNNING_MODERATE = 5,
+
+    /**
+     * The process is running and not killable, but the device is running
+     * much lower on memory.
+     * @deprecated Apps are not notified of this level since API level 34.
+     */
+    GAMEACTIVITY_TRIM_MEMORY_RUNNING_LOW = 10,
+
+    /**
+     * The process is running and not killable, but the device is running
+     * extremely low on memory.
+     * @deprecated Apps are not notified of this level since API level 34.
+     */
+    GAMEACTIVITY_TRIM_MEMORY_RUNNING_CRITICAL = 15,
+
+    /** The process UI is no longer visible to the user. */
+    GAMEACTIVITY_TRIM_MEMORY_UI_HIDDEN = 20,
+
+    /** The process went to the background. */
+    GAMEACTIVITY_TRIM_MEMORY_BACKGROUND = 40,
+
+    /**
+     * The process is around the middle of the background LRU list.
+     * @deprecated Apps are not notified of this level since API level 34.
+     */
+    GAMEACTIVITY_TRIM_MEMORY_MODERATE = 60,
+
+    /**
+     * The process is one of the first to be killed if the system does not
+     * find memory soon.
+     * @deprecated Apps are not notified of this level since API level 34.
+     */
+    GAMEACTIVITY_TRIM_MEMORY_COMPLETE = 80,
+};
+
+/**
  * These are the callbacks the framework makes into a native application.
  * All of these callbacks happen on the main thread of the application.
  * By default, all callbacks are NULL; set to a pointer to your own function
@@ -241,9 +287,9 @@ typedef struct GameActivityCallbacks {
     void (*onConfigurationChanged)(GameActivity* activity);
 
     /**
-     * The system is running low on memory.  Use this callback to release
-     * resources you do not need, to help the system avoid killing more
-     * important processes.
+     * The activity received onTrimMemory. `level` is one of
+     * GameActivityTrimMemoryLevel. Use this callback to release resources you
+     * do not need, to help the system avoid killing more important processes.
      */
     void (*onTrimMemory)(GameActivity* activity, int level);
 
