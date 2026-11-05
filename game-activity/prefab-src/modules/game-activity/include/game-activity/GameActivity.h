@@ -330,6 +330,10 @@ typedef struct GameActivityCallbacks {
     /**
      * Callback called when the rectangle in the window where the content
      * should be placed has changed.
+     *
+     * With edge-to-edge (enforced for targetSdk 35+ on Android 15+), the
+     * rectangle covers the whole window and is not a safe area. Use
+     * GameActivity_getWindowInsets for system bars, display cutout and IME.
      */
     void (*onContentRectChanged)(GameActivity* activity, const ARect* rect);
 

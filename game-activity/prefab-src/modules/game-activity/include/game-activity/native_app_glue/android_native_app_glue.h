@@ -207,6 +207,11 @@ struct android_app {
     /**
      * Current content rectangle of the window; this is the area where the
      * window's content should be placed to be seen by the user.
+     *
+     * With edge-to-edge (enforced for targetSdk 35+ on Android 15+), this
+     * covers the whole window, including system bars and the display cutout,
+     * and does not shrink when the IME opens. Use GameActivity_getWindowInsets
+     * to find the safe area.
      */
     ARect contentRect;
 
@@ -353,7 +358,9 @@ enum NativeAppGlueAppCmd : int8_t {
     /**
      * Command from main thread: the content area of the window has changed,
      * such as from the soft input window being shown or hidden.  You can
-     * find the new content rect in android_app::contentRect.
+     * find the new content rect in android_app::contentRect. With
+     * edge-to-edge, use APP_CMD_WINDOW_INSETS_CHANGED for system bar, display
+     * cutout and IME changes.
      */
     APP_CMD_CONTENT_RECT_CHANGED,
 
